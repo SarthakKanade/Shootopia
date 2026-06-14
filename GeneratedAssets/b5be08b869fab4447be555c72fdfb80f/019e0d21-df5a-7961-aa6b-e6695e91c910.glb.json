@@ -1,0 +1,23 @@
+{
+    "asset": "b5be08b869fab4447be555c72fdfb80f",
+    "fileName": "019e0d21-df5a-7961-aa6b-e6695e91c910.glb",
+    "prompt": "Stylized low-poly sci-fi explosive launcher weapon. Chunky shoulder-fired launcher with oversized barrel and heavy front-loaded proportions. Dark gunmetal body, burnt orange emissive core. Game-ready low-poly geometry with clean shapes and minimal micro-detail. Unity URP compatible. Use the provided front and side views for accurate 3D reconstruction. EXTREMELY LOW POLY.",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1-multiview",
+    "modelName": "Tripo P1 (Multi-View)",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "c1b6e3b855da846778328d2cc16bb20a",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "4a5e0da1c30a7406cb1e0759905437d5",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

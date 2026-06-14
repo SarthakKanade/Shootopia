@@ -1,0 +1,23 @@
+{
+    "asset": "6423af9c3f175408dae9d33fd9111b9f",
+    "fileName": "019e0d18-4f36-7f54-8613-aaf2ad51c58b.glb",
+    "prompt": "A stylized low-poly sci-fi explosive launcher, matching the provided concept image. Large cylindrical barrel, chunky silhouette, gunmetal gray and burnt orange emissive colors. Game-ready low-poly mesh.",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "59224fc1b46004331875974592695f45",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

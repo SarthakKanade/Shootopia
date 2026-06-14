@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53a92b37e93504627a57875e2aee5720, type: 3}
+  m_Name: DefaultCratePool
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponCratePool
+  entries:
+  - weapon: {fileID: 11400000, guid: d9d135b5d0d0f3e41a946aafca4e4194, type: 2}
+    weight: 35
+  - weapon: {fileID: 11400000, guid: 415bc20cdf8ba3a40874bd57595bff53, type: 2}
+    weight: 25
+  - weapon: {fileID: 11400000, guid: 2c976e16b969b1342b6d6c527eff1f29, type: 2}
+    weight: 15
+  - weapon: {fileID: 11400000, guid: ec070eda774c040b4be370a6ac007e25, type: 2}
+    weight: 3
+  - weapon: {fileID: 11400000, guid: ed45eefa8991648d18c91f42fca252e7, type: 2}
+    weight: 20
+  - weapon: {fileID: 11400000, guid: 977df16517d08403a999d7f3ad9fe492, type: 2}
+    weight: 10

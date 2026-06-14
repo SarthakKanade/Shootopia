@@ -1,0 +1,38 @@
+{
+    "asset": "59224fc1b46004331875974592695f45",
+    "fileName": "019e0d16-8ded-7bf0-844f-118587ee7371.png",
+    "prompt": "A stylized low-poly sci-fi explosive launcher weapon, chunky shoulder-fired plasma launcher, oversized barrel, heavy front-loaded proportions, large cylindrical barrel, thick reinforced front muzzle ring, compact rear grip assembly, side-mounted energy canisters, bulky cooling vents, angular armor plating, dark gunmetal body, burnt orange emissive energy core, black heat-resistant grip surfaces, industrial hazard accents. Flat background, side view. Consistent with the art style of a fast-paced FPS like Quake or Doom.",
+    "negativePrompt": "",
+    "model": "gemini-3.1-flash",
+    "modelName": "Gemini 3.1 Nano Banana 2",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": [
+            {
+                "doodleReferenceType": 7,
+                "doodle": [],
+                "label": "Image",
+                "strength": 0.25,
+                "invertStrength": false,
+                "assetReferenceGuid": "f52ea73f1ff4d44b09b3055bd7d6023e",
+                "unlabeledIndex": -1
+            }
+        ]
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}

@@ -1,0 +1,23 @@
+{
+    "asset": "bb9bc66dfd431462789a03fd8d44e0d9",
+    "fileName": "019e0b3b-3ee0-7970-b14c-1eac91a893f3.glb",
+    "prompt": "Generate a 3D game-ready robot character based on the reference image. Style: low-poly stylised, Unity URP compatible. Polygon budget: 800–1200 tris. Small knee-height squat robot. Compact and squat body, rounded rectangular torso wider than tall. Two short thick articulated legs with wide flat feet. No arms. Small visor-style sensor dome on top of torso with no neck. Burnt copper hull with glowing orange panel seams and bright orange visor eye. Simple rig for Generic import. Animations: Idle (subtle bob), Walk (leg cycle, forward lean), Death (collapse flat).",
+    "negativePrompt": "",
+    "model": "model3d-tripo3-1",
+    "modelName": "Tripo 3.1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "bb5bf7c09967e44559c24a8cfe95e958",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

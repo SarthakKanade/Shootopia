@@ -1,0 +1,28 @@
+{
+    "asset": "bb5bf7c09967e44559c24a8cfe95e958",
+    "fileName": "019e0b38-76fd-73c8-b8bb-e89d90e19473.png",
+    "prompt": "A low-poly stylised sci-fi robot character, small knee-height squat machine. Rounded rectangular torso, burnt copper hull with glowing orange light in the seams. Small orange glowing visor eye on top. Two short thick articulated legs, wide feet. No arms. Friendly mechanical purposeful appearance. Clean white background, orthographic front-three-quarters view.",
+    "negativePrompt": "",
+    "model": "gemini-3.1-flash",
+    "modelName": "Gemini 3.1 Nano Banana 2",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}

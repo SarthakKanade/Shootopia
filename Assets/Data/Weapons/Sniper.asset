@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
+  m_Name: Sniper
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.WeaponSO
+  weaponPrefab: {fileID: 8295475405941267054, guid: 97a2a71fbbb374efa879f1e4fb941289, type: 3}
+  weaponName: Sniper
+  Damage: 200
+  FireRate: 1.8
+  HitVFXPrefab: {fileID: 0}
+  isAutomatic: 0
+  CanZoom: 0
+  ZoomAmount: 10
+  ZoomRotationSpeed: 0.3
+  MagazineSize: 12
+  handedness: 1
+  category: 0
+  durabilityType: 2
+  maxUses: 4
+  weaponDuration: 15
+  isPickupOnly: 0
+  gaugeKillFill: 38
+  isAutoFire: 0
+  isCharged: 1
+  chargeTime: 0
+  isContinuous: 0
+  isTrap: 0
+  projectilePrefab: {fileID: 5169903893949519335, guid: 6fbbece1386664f6ca72c832ea3664ea, type: 3}
+  projectileSpeed: 300
+  hasGravity: 0
+  throwAngle: 0
+  throwForce: 12
+  isExplosive: 0
+  splashDamage: 0
+  blastRadius: 0
+  selfDamage: 0
+  freezeDuration: 0
+  maxSlowPercent: 0
+  minSlowPercent: 0
+  afterburnDPS: 0
+  afterburnDuration: 0
+  pullRadius: 0
+  pullForce: 0
+  voidDuration: 0
+  damageAtCentre: 0
+  damageAtEdge: 0
+  maxBounces: 0
+  projectileLifetime: 0
+  previewDistance: 0
+  hasADS: 1
+  requiresADSToFire: 1
+  adsFOV: 25
+  adsMoveSpeedMult: 0.6
+  damagePerSecond: 0
+  maxRange: 0
+  coneAngle: 0
+  fuelDuration: 0
+  tickRate: 0.1
+  fuseTime: 0
+  cloudRadius: 0
+  cloudDuration: 0
+  slowPercent: 0
+  activationDelay: 0
+  triggerRadius: 0
+  armDelay: 0
+  selfTrigger: 0
+  persistOnDeath: 0
+  isRare: 0

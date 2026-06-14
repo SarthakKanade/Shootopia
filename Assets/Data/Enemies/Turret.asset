@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d47f3c7e085da4a9ea8fd51caf5560b8, type: 3}
+  m_Name: Turret
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Enemies.EnemySO
+  maxHealth: 150
+  moveSpeed: 3.5
+  detectionRange: 20
+  damage: 2
+  attackCooldown: 2
+  chargeGrantedOnKill: 0.34
+  scoreValue: 100
+  deathVFXPrefab: {fileID: 2904693464289756635, guid: 4004ad4853243c3418d391fe3ecbb605, type: 3}
+  hitVFXPrefab: {fileID: 2441387557689100275, guid: 19ac90b976612fc4391769548028212e, type: 3}

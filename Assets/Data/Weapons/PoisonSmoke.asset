@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
+  m_Name: PoisonSmoke
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.WeaponSO
+  weaponPrefab: {fileID: 7564754781573016161, guid: 86864fcb64f4e42b4a054bc49ff96548, type: 3}
+  weaponName: Poison Smoke
+  Damage: 1
+  FireRate: 0.5
+  HitVFXPrefab: {fileID: 0}
+  isAutomatic: 0
+  CanZoom: 0
+  ZoomAmount: 10
+  ZoomRotationSpeed: 0.3
+  MagazineSize: 12
+  category: 5
+  durabilityType: 2
+  maxUses: 1
+  weaponDuration: 15
+  isPickupOnly: 0
+  gaugeKillFill: 20
+  isAutoFire: 0
+  isCharged: 0
+  chargeTime: 0
+  isContinuous: 0
+  isTrap: 1
+  projectilePrefab: {fileID: 1438103596642828602, guid: 41141a6c0420a44ba879a057eae22b96, type: 3}
+  projectileSpeed: 20
+  hasGravity: 0
+  throwAngle: 30
+  throwForce: 12
+  isExplosive: 0
+  splashDamage: 0
+  blastRadius: 0
+  selfDamage: 1
+  freezeDuration: 0
+  maxSlowPercent: 0
+  minSlowPercent: 0
+  afterburnDPS: 0
+  afterburnDuration: 0
+  pullRadius: 0
+  pullForce: 0
+  voidDuration: 0
+  damageAtCentre: 0
+  damageAtEdge: 0
+  maxBounces: 0
+  projectileLifetime: 0
+  previewDistance: 0
+  hasADS: 0
+  requiresADSToFire: 0
+  adsFOV: 60
+  adsMoveSpeedMult: 1
+  damagePerSecond: 10
+  maxRange: 0
+  coneAngle: 0
+  fuelDuration: 0
+  tickRate: 0.5
+  fuseTime: 2.5
+  cloudRadius: 5
+  cloudDuration: 5
+  slowPercent: 0.35
+  activationDelay: 0.5
+  triggerRadius: 0
+  armDelay: 0
+  selfTrigger: 0
+  persistOnDeath: 0
+  isRare: 0

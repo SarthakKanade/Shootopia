@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
+  m_Name: AreaBlaster
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.WeaponSO
+  weaponPrefab: {fileID: 6906896758769685781, guid: 41024e7341d8048c6b561ef3dd42757c, type: 3}
+  weaponName: 
+  Damage: 55
+  FireRate: 1.2
+  HitVFXPrefab: {fileID: 5791000063613441834, guid: d33d921a5cc1f4267bec3b06e8223901, type: 3}
+  isAutomatic: 0
+  CanZoom: 0
+  ZoomAmount: 10
+  ZoomRotationSpeed: 0.3
+  MagazineSize: 12
+  handedness: 0
+  category: 0
+  durabilityType: 0
+  maxUses: 5
+  weaponDuration: 15
+  isPickupOnly: 0
+  gaugeKillFill: 30
+  isAutoFire: 0
+  isCharged: 1
+  chargeTime: 0.4
+  isContinuous: 0
+  isTrap: 0
+  projectilePrefab: {fileID: 6485509891921342873, guid: 356fe8e38646a48519bdec156e27cb74, type: 3}
+  projectileSpeed: 22
+  hasGravity: 0
+  throwAngle: 0
+  throwForce: 12
+  isExplosive: 1
+  splashDamage: 20
+  blastRadius: 4
+  selfDamage: 0
+  freezeDuration: 0
+  maxSlowPercent: 0
+  minSlowPercent: 0
+  afterburnDPS: 0
+  afterburnDuration: 0
+  pullRadius: 0
+  pullForce: 0
+  voidDuration: 0
+  damageAtCentre: 0
+  damageAtEdge: 0
+  maxBounces: 0
+  projectileLifetime: 0
+  previewDistance: 0
+  hasADS: 0
+  requiresADSToFire: 0
+  adsFOV: 60
+  adsMoveSpeedMult: 1
+  damagePerSecond: 0
+  maxRange: 0
+  coneAngle: 0
+  fuelDuration: 0
+  tickRate: 0.1
+  fuseTime: 0
+  cloudRadius: 0
+  cloudDuration: 0
+  slowPercent: 0
+  activationDelay: 0
+  triggerRadius: 0
+  armDelay: 0
+  selfTrigger: 0
+  persistOnDeath: 0
+  isRare: 0

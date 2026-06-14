@@ -1,0 +1,23 @@
+{
+    "asset": "684cad575fc984c11b6f4b6caf901f45",
+    "fileName": "019e0cd9-71d6-7119-b744-62f92dd05ef2.glb",
+    "prompt": "very low poly sci-fi pistol, blocky geometric mesh, under 1000 triangles, flat shading style, matte material, gunmetal grey, cyan glowing core.",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "61edc1a4efa434a2987e30dce4459eaa",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

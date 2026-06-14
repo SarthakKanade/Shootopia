@@ -1,0 +1,28 @@
+{
+    "asset": "f52ea73f1ff4d44b09b3055bd7d6023e",
+    "fileName": "019e0ccd-7bc7-7f8f-b5fe-974bd2705c69.png",
+    "prompt": "stylized low-poly sci-fi plasma pistol concept art, side view, compact military silhouette, gunmetal grey, dark charcoal grip, cyan emissive plasma core, flat colors, clean outlines, no shading, isometric perspective but flat side profile.",
+    "negativePrompt": "",
+    "model": "flux-2-dev",
+    "modelName": "Flux 2 (Dev)",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}

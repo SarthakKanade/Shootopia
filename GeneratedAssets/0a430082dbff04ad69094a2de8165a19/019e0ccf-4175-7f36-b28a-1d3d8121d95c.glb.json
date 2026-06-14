@@ -1,0 +1,23 @@
+{
+    "asset": "0a430082dbff04ad69094a2de8165a19",
+    "fileName": "019e0ccf-4175-7f36-b28a-1d3d8121d95c.glb",
+    "prompt": "stylized low-poly sci-fi plasma pistol, compact military silhouette, gunmetal grey, dark charcoal grip, cyan emissive plasma core, matching the reference image style.",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "f52ea73f1ff4d44b09b3055bd7d6023e",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}
