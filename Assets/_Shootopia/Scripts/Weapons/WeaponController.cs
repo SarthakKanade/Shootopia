@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Unity.Cinemachine;
 using VelocityWars;
 using VelocityWars.Core;
 
@@ -34,6 +35,14 @@ namespace Shootopia
 
         [Header("Charging VFX")]
         [SerializeField] private GameObject defaultChargeVFXPrefab;
+
+        [Header("UI & ADS")]
+        [SerializeField] private GameObject scopeOverlay;
+        [SerializeField] private CinemachineCamera playerFollowCamera;
+        private GameObject _scopeOverlayInstance;
+        private float _defaultFOV;
+        private float _originalMoveSpeed;
+        private bool _isADSActive;
 
         private static readonly int HashStance = Animator.StringToHash("Stance");
         private static readonly int HashAimPitch = Animator.StringToHash("AimPitch");
@@ -87,7 +96,27 @@ namespace Shootopia
             if (motor == null) motor = GetComponent<CharacterMotor>();
             if (input == null) input = GetComponent<PlayerInputRouter>();
             _aimRig = GetComponent<PlayerAimRig>();
+
+            if (scopeOverlay != null)
+            {
+                _scopeOverlayInstance = Instantiate(scopeOverlay);
+                _scopeOverlayInstance.SetActive(false);
             }
+
+            if (playerFollowCamera == null)
+            {
+                playerFollowCamera = FindAnyObjectByType<CinemachineCamera>();
+            }
+
+            if (playerFollowCamera != null)
+            {
+                _defaultFOV = playerFollowCamera.Lens.FieldOfView;
+            }
+            if (motor != null)
+            {
+                _originalMoveSpeed = motor.moveSpeed;
+            }
+        }
 
             private IAimProvider Aim => motor != null ? motor.Aim : null;
 
@@ -105,8 +134,68 @@ namespace Shootopia
                 CycleWeapon();
 
             HandleFire();
+            HandleADS();
+            HandleFOVLerp();
             FeedAimPitch();
             UpdateDynamicStance();
+        }
+
+        private void HandleFOVLerp()
+        {
+            if (CurrentAttach == null || CurrentAttach.gameplayData == null || playerFollowCamera == null) return;
+
+            float targetFOV = _isADSActive ? CurrentAttach.gameplayData.adsFOV : _defaultFOV;
+            if (Mathf.Abs(playerFollowCamera.Lens.FieldOfView - targetFOV) > 0.1f)
+            {
+                float newFOV = Mathf.Lerp(playerFollowCamera.Lens.FieldOfView, targetFOV, Time.deltaTime * 10f);
+                playerFollowCamera.Lens.FieldOfView = newFOV;
+            }
+        }
+
+        private void HandleADS()
+        {
+            if (CurrentAttach == null) return;
+
+            bool isSniper = CurrentAttach.name.Contains("Sniper");
+            if (!isSniper)
+            {
+                if (_isADSActive) ExitADS();
+                return;
+            }
+
+            // Auto scope if charging/firing the sniper or holding zoom (AltFire)
+            bool shouldScope = _isCharging || input.Intent.AltFire;
+            
+            if (shouldScope && !_isADSActive)
+            {
+                EnterADS();
+            }
+            else if (!shouldScope && _isADSActive)
+            {
+                ExitADS();
+            }
+        }
+
+        private void EnterADS()
+        {
+            _isADSActive = true;
+            if (_scopeOverlayInstance != null) _scopeOverlayInstance.SetActive(true);
+
+            if (motor != null && CurrentAttach.gameplayData != null)
+            {
+                motor.moveSpeed = _originalMoveSpeed * CurrentAttach.gameplayData.adsMoveSpeedMult;
+            }
+        }
+
+        private void ExitADS()
+        {
+            _isADSActive = false;
+            if (_scopeOverlayInstance != null) _scopeOverlayInstance.SetActive(false);
+
+            if (motor != null)
+            {
+                motor.moveSpeed = _originalMoveSpeed;
+            }
         }
 
         private void UpdateDynamicStance()
@@ -174,7 +263,7 @@ namespace Shootopia
                         // Start charging
                         _isCharging = true;
                         _chargeTimer = 0f;
-                        if (defaultChargeVFXPrefab != null && Muzzle != null)
+                        if (defaultChargeVFXPrefab != null && Muzzle != null && !CurrentAttach.name.Contains("Sniper"))
                         {
                             _activeChargeVFX = Instantiate(defaultChargeVFXPrefab, Muzzle);
                             _activeChargeVFX.transform.localPosition = Vector3.zero;
@@ -372,6 +461,7 @@ namespace Shootopia
                 animator.SetBool(HashIsFiring, false);
                 animator.SetFloat(HashShootSpeed, 1f);
             }
+            if (_isADSActive) ExitADS();
 
             if (_currentVisual != null) Destroy(_currentVisual);
             Muzzle = GripR = GripL = null;

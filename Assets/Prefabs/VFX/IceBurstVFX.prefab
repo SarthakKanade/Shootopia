@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 348733152478433516}
   - component: {fileID: 7285712741406191924}
   - component: {fileID: 4395411479659782768}
+  - component: {fileID: 7411643340192464434}
   m_Layer: 0
   m_Name: IceBurstVFX
   m_TagString: Untagged
@@ -4894,3 +4895,16 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
+--- !u!114 &7411643340192464434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4080521053894357887}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c40a7e1d513b04240b256696bca943ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.TimedDestroy
+  delay: 5.75

@@ -244,6 +244,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   hitRange: 200
   defaultChargeVFXPrefab: {fileID: 472893121703444873, guid: f8f78b07b7bac46d3ae30dc660699320, type: 3}
+  scopeOverlay: {fileID: 3383112620698120021, guid: 7b41fdde6bd0b4c91847882d77d2a970, type: 3}
 --- !u!1001 &4081399981032633150
 PrefabInstance:
   m_ObjectHideFlags: 0

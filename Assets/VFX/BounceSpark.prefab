@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 5265064278828191621}
   - component: {fileID: 3134135004675641022}
   - component: {fileID: 3187975224611413942}
+  - component: {fileID: 30775638336543513}
   m_Layer: 0
   m_Name: BounceSpark
   m_TagString: Untagged
@@ -4894,3 +4895,16 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
+--- !u!114 &30775638336543513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3710540494006657454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c40a7e1d513b04240b256696bca943ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.TimedDestroy
+  delay: 0.8

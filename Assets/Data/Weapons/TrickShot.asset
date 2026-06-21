@@ -34,7 +34,7 @@ MonoBehaviour:
   chargeTime: 0.01
   isContinuous: 0
   isTrap: 0
-  projectilePrefab: {fileID: 2408379828848892124, guid: fe86fb515cdf24b95940160a178bfa07, type: 3}
+  projectilePrefab: {fileID: 2377969135853823090, guid: 8bdfa4b44e67e411f9f7f8b831a96a03, type: 3}
   projectileSpeed: 20
   hasGravity: 0
   throwAngle: 0

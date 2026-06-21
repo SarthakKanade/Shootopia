@@ -9,6 +9,7 @@ namespace VelocityWars
     {
         [Header("VFX")]
         [SerializeField] private GameObject implosionVFX;
+        [SerializeField] private GameObject disappearVFX;
         
         private WeaponSO _data;
         private CinemachineImpulseSource _impulseSource;
@@ -17,6 +18,10 @@ namespace VelocityWars
         public void Initialize(WeaponSO data)
         {
             _data = data;
+            if (_data != null)
+            {
+                implosionVFX = _data.HitVFXPrefab;
+            }
             _isInitialized = true;
             StartCoroutine(VoidRoutine());
         }
@@ -30,6 +35,16 @@ namespace VelocityWars
         {
             // Wait for initialization if needed
             while (!_isInitialized) yield return null;
+
+            // Spawn blast before the black hole
+            if (implosionVFX != null)
+            {
+                GameObject spawnedImplosion = Instantiate(implosionVFX, transform.position, Quaternion.LookRotation(Vector3.up));
+                if (_data != null && _data.name.Contains("VoidGun"))
+                {
+                    spawnedImplosion.transform.localScale = Vector3.one * 1.8f;
+                }
+            }
 
             float elapsed = 0f;
             float radius = _data.pullRadius;
@@ -89,10 +104,14 @@ namespace VelocityWars
                 yield return new WaitForFixedUpdate();
             }
 
-            // Final Implosion collapse
-            if (implosionVFX != null)
+            // Spawn disappear VFX at the end of the black hole
+            if (disappearVFX != null)
             {
-                Instantiate(implosionVFX, transform.position, Quaternion.identity);
+                GameObject spawnedDisappear = Instantiate(disappearVFX, transform.position, Quaternion.LookRotation(Vector3.up));
+                if (_data != null && _data.name.Contains("VoidGun"))
+                {
+                    spawnedDisappear.transform.localScale = Vector3.one * 3.5f; // Increased from 1.8f to make the final blast larger
+                }
             }
 
             Destroy(gameObject);

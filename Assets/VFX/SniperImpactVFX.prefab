@@ -122,6 +122,7 @@ GameObject:
   - component: {fileID: 8650772262374653501}
   - component: {fileID: 4020378419863082804}
   - component: {fileID: 3400672989387331741}
+  - component: {fileID: -970071531727617993}
   m_Layer: 0
   m_Name: SniperImpactVFX
   m_TagString: Untagged
@@ -5006,3 +5007,16 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
+--- !u!114 &-970071531727617993
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5562265899387408960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c40a7e1d513b04240b256696bca943ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.TimedDestroy
+  delay: 0.8

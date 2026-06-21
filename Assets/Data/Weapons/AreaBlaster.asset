@@ -16,7 +16,7 @@ MonoBehaviour:
   weaponName: 
   Damage: 55
   FireRate: 1.2
-  HitVFXPrefab: {fileID: 5791000063613441834, guid: d33d921a5cc1f4267bec3b06e8223901, type: 3}
+  HitVFXPrefab: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
@@ -34,7 +34,7 @@ MonoBehaviour:
   chargeTime: 0.4
   isContinuous: 0
   isTrap: 0
-  projectilePrefab: {fileID: 6485509891921342873, guid: 356fe8e38646a48519bdec156e27cb74, type: 3}
+  projectilePrefab: {fileID: 415908930186214545, guid: 76024a630624d48c19bed69ce42f3079, type: 3}
   projectileSpeed: 22
   hasGravity: 0
   throwAngle: 0

@@ -15,8 +15,8 @@ MonoBehaviour:
   weaponPrefab: {fileID: 6190323765523087412, guid: a5f8ed30077a74a53b0b72d77c5455ce, type: 3}
   weaponName: Flame Gun
   Damage: 1
-  FireRate: 0.5
-  HitVFXPrefab: {fileID: 0}
+  FireRate: 0.06
+  HitVFXPrefab: {fileID: 5762880852013441109, guid: 808cc5444dae25b4f8a8fa0d9230409e, type: 3}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
@@ -34,7 +34,7 @@ MonoBehaviour:
   chargeTime: 0
   isContinuous: 1
   isTrap: 0
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 3562189247435599777, guid: 2afc0f75a655f4bb49a9301feb7f374b, type: 3}
   projectileSpeed: 20
   hasGravity: 0
   throwAngle: 0

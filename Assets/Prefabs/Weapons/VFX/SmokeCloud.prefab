@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 5072882101141391923}
   - component: {fileID: 4429266272069485156}
   - component: {fileID: 3867664907736837956}
+  - component: {fileID: -201207702089356745}
   m_Layer: 0
   m_Name: SmokeCloud
   m_TagString: Untagged
@@ -67,6 +68,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b69f9dccdc53d4e959bfda227698e70a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.SmokeCloud
+--- !u!114 &-201207702089356745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3470193367042686354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c40a7e1d513b04240b256696bca943ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.TimedDestroy
+  delay: 8.5
 --- !u!1 &9203881086371280131
 GameObject:
   m_ObjectHideFlags: 0

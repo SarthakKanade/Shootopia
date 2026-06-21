@@ -87,8 +87,6 @@ Thumbs.db
 # Unused/No longer needed third-party asset packs (Transitioned to Chibi)
 /[Aa]ssets/BattleRoyaleDuoPAPBR/
 /[Aa]ssets/BattleRoyaleDuoPAPBR.meta
-/[Aa]ssets/Kevin Iglesias/
-/[Aa]ssets/Kevin Iglesias.meta
 
 # Unused/Temporary scene files
 /[Aa]ssets/Scenes/GameScene.unity
@@ -106,3 +104,13 @@ Thumbs.db
 /unity-mcp-server/
 /mono_crash.0.0.json
 /AnimatorInfo.txt
+
+# Additional IDE files
+.idea/
+.vscode/
+*.swp
+*.*~
+project.lock.json
+.vsconfig
+.idea.temp/
+*.slnx

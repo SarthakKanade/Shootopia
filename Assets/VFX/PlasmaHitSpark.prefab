@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2910693052120954805}
   - component: {fileID: 3853349728693089673}
   - component: {fileID: 48488710331591622}
+  - component: {fileID: -6078787507104687396}
   m_Layer: 0
   m_Name: PlasmaHitSpark
   m_TagString: Untagged
@@ -4894,3 +4895,16 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
+--- !u!114 &-6078787507104687396
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5189848042707124606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c40a7e1d513b04240b256696bca943ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.TimedDestroy
+  delay: 5.6

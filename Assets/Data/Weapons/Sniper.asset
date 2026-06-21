@@ -34,7 +34,7 @@ MonoBehaviour:
   chargeTime: 0
   isContinuous: 0
   isTrap: 0
-  projectilePrefab: {fileID: 5169903893949519335, guid: 6fbbece1386664f6ca72c832ea3664ea, type: 3}
+  projectilePrefab: {fileID: 3845752899543052250, guid: a3d3a84ea01594185bdc3db169ddc394, type: 3}
   projectileSpeed: 300
   hasGravity: 0
   throwAngle: 0
@@ -58,7 +58,7 @@ MonoBehaviour:
   previewDistance: 0
   hasADS: 1
   requiresADSToFire: 1
-  adsFOV: 25
+  adsFOV: 10
   adsMoveSpeedMult: 0.6
   damagePerSecond: 0
   maxRange: 0
