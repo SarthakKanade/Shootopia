@@ -1,0 +1,18 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement style="flex-grow: 1; justify-content: center; align-items: center; background-color: rgba(20, 20, 20, 0.85);">
+        <ui:VisualElement class="blocks-modal" style="width: 450px; padding: 25px; background-color: rgb(32, 34, 38); border-radius: 12px; border-width: 2px; border-color: rgb(58, 62, 70);">
+            <ui:Label text="LOBBY WAITING ROOM" class="blocks-header" style="font-size: 24px; -unity-font-style: bold; color: rgb(240, 240, 240); margin-bottom: 8px; text-align: center; letter-spacing: 1px;"/>
+            <ui:Label name="RoomInfoLabel" text="Room Code: ------" style="font-size: 16px; color: rgb(150, 155, 165); margin-bottom: 20px; text-align: center;"/>
+            
+            <ui:Label text="Players in Room:" style="font-size: 14px; color: rgb(180, 185, 195); -unity-font-style: bold; margin-bottom: 8px;"/>
+            <ui:VisualElement name="PlayerList" style="margin-bottom: 25px; min-height: 120px; background-color: rgb(20, 21, 23); padding: 12px; border-radius: 8px; border-width: 1px; border-color: rgb(44, 47, 54);"/>
+            
+            <ui:Toggle name="VisibilityToggle" label="Public Session" value="true" style="color: rgb(220, 225, 235); margin-bottom: 20px; font-size: 14px;"/>
+            
+            <ui:VisualElement style="flex-direction: column; justify-content: center;">
+                <ui:Button name="ReadyButton" text="READY" style="margin-bottom: 12px; height: 45px; font-size: 16px; -unity-font-style: bold; border-radius: 8px; background-color: rgb(88, 101, 242); color: white; border-width: 0;"/>
+                <ui:Button name="StartMatchButton" text="START MATCH" style="height: 45px; font-size: 16px; -unity-font-style: bold; border-radius: 8px; background-color: rgb(35, 165, 90); color: white; border-width: 0;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

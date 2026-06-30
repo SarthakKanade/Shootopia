@@ -1,10 +1,11 @@
 using UnityEngine;
 using Shootopia.FSM;
+using Unity.Netcode;
 
 namespace Shootopia
 {
     [RequireComponent(typeof(CharacterController))]
-    public class CharacterMotor : MonoBehaviour
+    public class CharacterMotor : NetworkBehaviour
     {
         [Header("References")]
         [SerializeField] private PlayerInputRouter input;
@@ -36,6 +37,8 @@ namespace Shootopia
         public float DashSpeed => dashSpeed;
         public float RollSpeed => rollSpeed;
 
+        private readonly NetworkVariable<Quaternion> _modelRotation = new NetworkVariable<Quaternion>(Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
         // FSM Context
         public BaseState CurrentState { get; set; }
         private StateFactory _factory;
@@ -66,6 +69,12 @@ namespace Shootopia
 
         private void Update()
         {
+            // Only the owning client drives FSM, input, and animator triggers.
+            if (!IsOwner)
+            {
+                ModelRoot.rotation = _modelRotation.Value;
+                return;
+            }
             if (input == null) return;
             float dt = Time.deltaTime;
 
@@ -91,6 +100,7 @@ namespace Shootopia
             {
                 Quaternion target = Quaternion.LookRotation(fwd, Vector3.up);
                 ModelRoot.rotation = Quaternion.RotateTowards(ModelRoot.rotation, target, rotationSpeed * dt);
+                _modelRotation.Value = ModelRoot.rotation;
             }
 
             Vector3 localMove = ModelRoot.InverseTransformDirection(worldMove);
@@ -103,6 +113,31 @@ namespace Shootopia
 
             Vector3 velocity = worldMove * (moveSpeed * speedMultiplier) + Vector3.up * VerticalVelocity;
             Controller.Move(velocity * dt);
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            base.OnNetworkSpawn();
+
+            if (IsOwner)
+            {
+                var aimProvider = FindAnyObjectByType<CameraAimProvider>();
+                if (aimProvider != null)
+                {
+                    SetAimProvider(aimProvider);
+                }
+
+                var cinemachineCam = FindAnyObjectByType<Unity.Cinemachine.CinemachineCamera>();
+                if (cinemachineCam != null)
+                {
+                    var target = transform.Find("CameraTarget");
+                    if (target != null)
+                    {
+                        cinemachineCam.Follow = target;
+                        Debug.Log("[CharacterMotor] Set CinemachineCamera follow target to CameraTarget");
+                    }
+                }
+            }
         }
 
         public void OnAnimationFinished(string animName)

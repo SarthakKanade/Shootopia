@@ -88,10 +88,6 @@ Thumbs.db
 /[Aa]ssets/BattleRoyaleDuoPAPBR/
 /[Aa]ssets/BattleRoyaleDuoPAPBR.meta
 
-# Unused/Temporary scene files
-/[Aa]ssets/Scenes/GameScene.unity
-/[Aa]ssets/Scenes/GameScene.unity.meta
-
 # Project planning, notes, and screenshots
 /[Aa]ssets/Plans/
 /[Aa]ssets/Plans.meta
@@ -114,3 +110,7 @@ project.lock.json
 .vsconfig
 .idea.temp/
 *.slnx
+
+# Multiplayer packages local settings
+/ProjectSettings/VirtualProjectsConfig.json
+/ProjectSettings/Packages/com.unity.multiplayer.tools/

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -9,7 +10,7 @@ namespace Shootopia
     /// the devices directly. Touch on-screen controls (mobile) can be added later
     /// by writing into <see cref="ExternalIntent"/> without changing consumers.
     /// </summary>
-    public class PlayerInputRouter : MonoBehaviour
+    public class PlayerInputRouter : NetworkBehaviour
     {
         /// <summary>The resolved intent for the current frame.</summary>
         public PlayerInputIntent Intent { get; private set; }
@@ -35,11 +36,7 @@ namespace Shootopia
 
         private void OnEnable()
         {
-            if (lockCursor)
-            {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-            }
+            UpdateCursorLock();
         }
 
         private void OnDisable()
@@ -48,8 +45,35 @@ namespace Shootopia
             Cursor.visible = true;
         }
 
+        private void UpdateCursorLock()
+        {
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            bool shouldLock = lockCursor && activeScene == "GameScene";
+
+            if (shouldLock)
+            {
+                if (Cursor.lockState != CursorLockMode.Locked)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
+                }
+            }
+            else
+            {
+                if (Cursor.lockState != CursorLockMode.None)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
+            }
+        }
+
         void Update()
         {
+            if (!IsOwner) return;
+
+            UpdateCursorLock();
+
             var intent = new PlayerInputIntent();
 
             Keyboard kb = Keyboard.current;

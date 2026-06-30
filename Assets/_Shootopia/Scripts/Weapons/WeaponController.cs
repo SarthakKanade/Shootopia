@@ -3,6 +3,7 @@ using UnityEngine;
 using Unity.Cinemachine;
 using VelocityWars;
 using VelocityWars.Core;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -13,7 +14,7 @@ namespace Shootopia
     /// and IK (Phase 7). MP-friendly: consumes <see cref="PlayerInputRouter"/>
     /// intent and <see cref="IAimProvider"/> — never Camera.main.
     /// </summary>
-    public class WeaponController : MonoBehaviour
+    public class WeaponController : NetworkBehaviour
     {
         [Header("References")]
         [SerializeField] private Transform weaponSocket;     // WeaponSocket_R under hand_r
@@ -54,6 +55,7 @@ namespace Shootopia
         private float _chargeTimer;
         private GameObject _activeChargeVFX;
 
+        private readonly NetworkVariable<int> _equippedWeaponIndex = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private int _currentIndex = -1;
         private GameObject _currentVisual;
         private PlayerAimRig _aimRig;
@@ -97,21 +99,11 @@ namespace Shootopia
             if (input == null) input = GetComponent<PlayerInputRouter>();
             _aimRig = GetComponent<PlayerAimRig>();
 
-            if (scopeOverlay != null)
-            {
-                _scopeOverlayInstance = Instantiate(scopeOverlay);
-                _scopeOverlayInstance.SetActive(false);
-            }
+            // Scope overlay and camera FOV are HUD/local-owner concerns.
+            // Instantiated in OnNetworkSpawn once IsOwner is known.
 
-            if (playerFollowCamera == null)
-            {
-                playerFollowCamera = FindAnyObjectByType<CinemachineCamera>();
-            }
-
-            if (playerFollowCamera != null)
-            {
-                _defaultFOV = playerFollowCamera.Lens.FieldOfView;
-            }
+            // playerFollowCamera and defaultFOV are only needed by the local owner.
+            // Do NOT cache them here; wait until OnNetworkSpawn so IsOwner is valid.
             if (motor != null)
             {
                 _originalMoveSpeed = motor.moveSpeed;
@@ -120,14 +112,58 @@ namespace Shootopia
 
             private IAimProvider Aim => motor != null ? motor.Aim : null;
 
-        private void Start()
+        public override void OnNetworkSpawn()
         {
-            if (loadout != null && loadout.Length > 0)
-                Equip(0);
+            base.OnNetworkSpawn();
+
+            _equippedWeaponIndex.OnValueChanged += OnEquippedWeaponChanged;
+
+            if (IsOwner)
+            {
+                // Resolve camera only for the local player.
+                if (playerFollowCamera == null)
+                    playerFollowCamera = FindAnyObjectByType<CinemachineCamera>();
+
+                if (playerFollowCamera != null)
+                    _defaultFOV = playerFollowCamera.Lens.FieldOfView;
+
+                // Create the scope overlay HUD for this local player only.
+                if (scopeOverlay != null)
+                {
+                    _scopeOverlayInstance = Instantiate(scopeOverlay);
+                    _scopeOverlayInstance.SetActive(false);
+                }
+
+                if (loadout != null && loadout.Length > 0)
+                    Equip(0);
+            }
+            else
+            {
+                if (_equippedWeaponIndex.Value >= 0)
+                {
+                    Equip(_equippedWeaponIndex.Value);
+                }
+            }
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            base.OnNetworkDespawn();
+            _equippedWeaponIndex.OnValueChanged -= OnEquippedWeaponChanged;
+        }
+
+        private void OnEquippedWeaponChanged(int previousValue, int newValue)
+        {
+            if (!IsOwner)
+            {
+                Equip(newValue);
+            }
         }
 
         private void Update()
         {
+            // Only the owning client drives input, firing, ADS, and camera FOV.
+            if (!IsOwner) return;
             if (input == null) return;
 
             if (input.Intent.SwapWeapon)
@@ -375,6 +411,9 @@ namespace Shootopia
             if (dir.sqrMagnitude < 0.0001f) dir = Muzzle != null ? Muzzle.forward : transform.forward;
             Quaternion rot = Quaternion.LookRotation(dir.normalized, Vector3.up);
 
+            // Replicate firing, projectile spawning, and VFX to all clients
+            FireProjectileRpc(_currentIndex, origin, rot);
+
             if (data.projectilePrefab != null)
             {
                 var proj = Instantiate(data.projectilePrefab, origin, rot);
@@ -397,6 +436,38 @@ namespace Shootopia
             if (_muzzleFlash != null) _muzzleFlash.Play();
 
             DecrementDurability(data);
+        }
+
+        [Rpc(SendTo.ClientsAndHost)]
+        private void FireProjectileRpc(int weaponIndex, Vector3 origin, Quaternion rotation)
+        {
+            // Owner already fired locally to ensure instant feedback
+            if (IsOwner) return;
+
+            if (loadout == null || weaponIndex < 0 || weaponIndex >= loadout.Length) return;
+            var attach = loadout[weaponIndex];
+            if (attach == null) return;
+            var data = attach.gameplayData;
+            if (data == null) return;
+
+            if (data.projectilePrefab != null)
+            {
+                var proj = Instantiate(data.projectilePrefab, origin, rotation);
+                var bp = proj.GetComponent<BaseProjectile>();
+                if (bp != null) bp.Init(data, gameObject);
+            }
+            else
+            {
+                // Hitscan
+                Vector3 rayDir = rotation * Vector3.forward;
+                if (Physics.Raycast(origin, rayDir, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
+                {
+                    if (data.HitVFXPrefab != null)
+                        Instantiate(data.HitVFXPrefab, hit.point, Quaternion.LookRotation(hit.normal));
+                }
+            }
+
+            if (_muzzleFlash != null) _muzzleFlash.Play();
         }
 
         private void DecrementDurability(WeaponSO data)
@@ -483,6 +554,11 @@ namespace Shootopia
             if (loadout == null || index < 0 || index >= loadout.Length) return;
             var attach = loadout[index];
             if (attach == null) return;
+
+            if (IsOwner)
+            {
+                _equippedWeaponIndex.Value = index;
+            }
 
             CancelCharge();
             if (animator != null)
