@@ -414,6 +414,12 @@ namespace Shootopia
             // Replicate firing, projectile spawning, and VFX to all clients
             FireProjectileRpc(_currentIndex, origin, rot);
 
+            // Send to server for authoritative validation
+            if (IsOwner)
+            {
+                FireWeaponServerRpc(origin, dir.normalized, data.name);
+            }
+
             if (data.projectilePrefab != null)
             {
                 var proj = Instantiate(data.projectilePrefab, origin, rot);
@@ -422,14 +428,12 @@ namespace Shootopia
             }
             else
             {
-                // Hitscan: ray from muzzle toward the aim point (no Camera.main).
+                // Hitscan: ray from muzzle toward the aim point (no Camera.main) for local visual feedback
                 Vector3 rayDir = dir.normalized;
                 if (Physics.Raycast(origin, rayDir, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
                 {
                     if (data.HitVFXPrefab != null)
                         Instantiate(data.HitVFXPrefab, hit.point, Quaternion.LookRotation(hit.normal));
-                    if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
-                        damageable.TakeDamage(data.Damage, DamageType.Player, data);
                 }
             }
 
@@ -468,6 +472,59 @@ namespace Shootopia
             }
 
             if (_muzzleFlash != null) _muzzleFlash.Play();
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void FireWeaponServerRpc(Vector3 firePoint, Vector3 aimDir, string weaponName)
+        {
+            if (!IsServer) return;
+
+            if (loadout == null || _currentIndex < 0 || _currentIndex >= loadout.Length) return;
+            var attach = loadout[_currentIndex];
+            if (attach == null) return;
+            var data = attach.gameplayData;
+            if (data == null) return;
+
+            // Projectiles handle their own collision-based damage on the server
+            if (data.projectilePrefab != null) return;
+
+            Debug.Log($"[WeaponController] Server validating hitscan shot from Client {OwnerClientId} (Weapon: {weaponName})");
+
+            if (Physics.Raycast(firePoint, aimDir, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+                {
+                    var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
+                    if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
+
+                    bool wasAlive = targetHealth != null && targetHealth.GetCurrentHp() > 0f;
+
+                    // Apply damage
+                    damageable.TakeDamage(data.Damage, DamageType.Bullet, data);
+
+                    // Report kill if target was killed
+                    if (wasAlive && targetHealth != null && targetHealth.GetCurrentHp() <= 0f)
+                    {
+                        ulong killerId = OwnerClientId;
+                        ulong victimId = targetHealth.OwnerClientId;
+
+                        Debug.Log($"[WeaponController] Server detected hitscan kill: Player {killerId} killed Player {victimId} with {weaponName}");
+
+                        if (NetworkedGameManager.Instance != null)
+                        {
+                            NetworkedGameManager.ReportKill(killerId, victimId, weaponName);
+                        }
+
+                        BroadcastKillEventClientRpc($"Player {killerId}", $"Player {victimId}", weaponName);
+                    }
+                }
+            }
+        }
+
+        [Rpc(SendTo.ClientsAndHost)]
+        private void BroadcastKillEventClientRpc(string killerName, string victimName, string weaponName)
+        {
+            Debug.Log($"[WeaponController] Kill feed broadcast: {killerName} killed {victimName} with {weaponName}");
         }
 
         private void DecrementDurability(WeaponSO data)

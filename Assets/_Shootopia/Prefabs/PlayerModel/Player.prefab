@@ -2029,6 +2029,7 @@ GameObject:
   - component: {fileID: 832604553517410419}
   - component: {fileID: 3536743027351902061}
   - component: {fileID: 7679714562528034799}
+  - component: {fileID: 4111803751308288155}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -2314,3 +2315,20 @@ MonoBehaviour:
       Synchronize: 1
       ParameterType: 1
   AnimatorParametersExpanded: 0
+--- !u!114 &4111803751308288155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6245397629552963378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 322ab093d1360d147ae04c9dfb65340e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
+  ShowTopMostFoldoutHeaderGroup: 1
+  _maxHp: 100
+  _totalLives: 3
+  _onHpChanged: {fileID: 11400000, guid: a3d5d48fd2f284535be7075646d90fc3, type: 2}
+  _onPlayerDied: {fileID: 11400000, guid: 4607fe3c5ede7460885ff8a0380f4b99, type: 2}

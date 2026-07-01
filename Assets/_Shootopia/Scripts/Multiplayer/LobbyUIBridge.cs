@@ -23,6 +23,7 @@ namespace Shootopia
         private TextField _roomNameInput;
         private Button _createPublicButton;
         private Button _createPrivateButton;
+        private DropdownField _modeDropdown;
         
         // Room Join elements
         private TextField _joinCodeInput;
@@ -81,6 +82,35 @@ namespace Shootopia
                 }
 
                 var parent = defaultCreateButton?.parent ?? createSessionElement;
+
+                // Add a dropdown to select Game Mode
+                _modeDropdown = createSessionElement.Q<DropdownField>("CustomModeDropdown");
+                if (_modeDropdown == null)
+                {
+                    _modeDropdown = new DropdownField("Game Mode", new System.Collections.Generic.List<string> { "FFA", "TDM" }, 0);
+                    _modeDropdown.name = "CustomModeDropdown";
+                    _modeDropdown.style.marginTop = 10f;
+                    _modeDropdown.style.marginBottom = 10f;
+
+                    // Insert directly below the room name input field
+                    if (_roomNameInput != null)
+                    {
+                        var parentContainer = _roomNameInput.parent;
+                        if (parentContainer != null)
+                        {
+                            int index = parentContainer.IndexOf(_roomNameInput);
+                            parentContainer.Insert(index + 1, _modeDropdown);
+                        }
+                        else
+                        {
+                            createSessionElement.Add(_modeDropdown);
+                        }
+                    }
+                    else
+                    {
+                        createSessionElement.Add(_modeDropdown);
+                    }
+                }
 
                 // Add "Create Public Room" button if not already added
                 _createPublicButton = parent.Q<Button>("CreatePublicButton");
@@ -275,12 +305,14 @@ namespace Shootopia
             string roomName = _roomNameInput != null ? _roomNameInput.value : "Public Room";
             if (string.IsNullOrEmpty(roomName)) roomName = "Public Room";
 
+            string selectedMode = _modeDropdown != null ? _modeDropdown.value : "FFA";
+
             try
             {
-                Debug.Log($"[LobbyUIBridge] Creating public session: {roomName}");
+                Debug.Log($"[LobbyUIBridge] Creating public session: {roomName} with GameMode: {selectedMode}");
                 if (SessionManager.Instance != null)
                 {
-                    await SessionManager.Instance.CreateSession(roomName, isPublic: true, maxPlayers: 4, gameMode: "FFA");
+                    await SessionManager.Instance.CreateSession(roomName, isPublic: true, maxPlayers: 4, gameMode: selectedMode);
                 }
             }
             catch (Exception ex)
@@ -294,12 +326,14 @@ namespace Shootopia
             string roomName = _roomNameInput != null ? _roomNameInput.value : "Private Room";
             if (string.IsNullOrEmpty(roomName)) roomName = "Private Room";
 
+            string selectedMode = _modeDropdown != null ? _modeDropdown.value : "FFA";
+
             try
             {
-                Debug.Log($"[LobbyUIBridge] Creating private session: {roomName}");
+                Debug.Log($"[LobbyUIBridge] Creating private session: {roomName} with GameMode: {selectedMode}");
                 if (SessionManager.Instance != null)
                 {
-                    await SessionManager.Instance.CreateSession(roomName, isPublic: false, maxPlayers: 4, gameMode: "FFA");
+                    await SessionManager.Instance.CreateSession(roomName, isPublic: false, maxPlayers: 4, gameMode: selectedMode);
                 }
             }
             catch (Exception ex)
