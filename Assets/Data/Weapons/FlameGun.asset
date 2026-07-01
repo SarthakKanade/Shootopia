@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
   m_Name: FlameGun
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.WeaponSO
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 6190323765523087412, guid: a5f8ed30077a74a53b0b72d77c5455ce, type: 3}
   weaponName: Flame Gun
   Damage: 1

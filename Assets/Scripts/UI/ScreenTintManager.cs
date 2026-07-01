@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class ScreenTintManager : MonoBehaviour
     {

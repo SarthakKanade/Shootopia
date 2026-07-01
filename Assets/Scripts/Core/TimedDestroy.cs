@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace VelocityWars.Core
+namespace Shootopia
 {
     public class TimedDestroy : MonoBehaviour
     {

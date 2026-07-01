@@ -1,7 +1,7 @@
 using UnityEngine;
-using VelocityWars.Core;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class CryoProjectileController : BaseProjectile
     {
@@ -42,19 +42,13 @@ namespace VelocityWars
                     float dist = Vector3.Distance(transform.position, targetPos);
                     
                     // Check if it's a Robot for status effects (check parent too)
-                    Robot robot = c.GetComponentInParent<Robot>();
-                    
-                    // Increased threshold to 1.5m to account for larger enemy bounds and center offsets
                     if (dist <= 1.5f)
                     {
                         t.TakeDamage(_weaponData.Damage, DamageType.Projectile, _weaponData);
-                        if (robot != null) robot.ApplyFrozen(_weaponData.freezeDuration);
                     }
                     else
                     {
-                        float slow = Mathf.Lerp(_weaponData.maxSlowPercent, _weaponData.minSlowPercent, dist / _weaponData.blastRadius);
                         t.TakeDamage(_weaponData.splashDamage, DamageType.Projectile, _weaponData);
-                        if (robot != null) robot.ApplySlow(slow, _weaponData.freezeDuration);
                     }
                 }
             }

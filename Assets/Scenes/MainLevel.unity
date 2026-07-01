@@ -24395,7 +24395,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -57505,7 +57505,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -68871,7 +68871,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cce8eaa14236b46a6be15fce078ce613, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.GameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.GameEventListener
   _event: {fileID: 11400000, guid: c1c05501ed9d54c56863f8bf3716fa2b, type: 2}
   _response:
     m_PersistentCalls:
@@ -68899,7 +68899,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cce8eaa14236b46a6be15fce078ce613, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.GameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.GameEventListener
   _event: {fileID: 11400000, guid: 9a7a65a619b964867a6894db2dbb3e3b, type: 2}
   _response:
     m_PersistentCalls:
@@ -68927,7 +68927,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: 70d3362835fc34815bc7900fcff24745, type: 2}
   _response:
     m_PersistentCalls:
@@ -68955,7 +68955,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 259a6b303e8a84057b9c8c3b385e2d8a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Player.VelocityGaugeUI
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.VelocityGaugeUI
   _gaugeFillBar: {fileID: 1616243946}
   _abilityIcon: {fileID: 989392041}
   _readyIndicator: {fileID: 68084885}
@@ -84047,7 +84047,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -121052,7 +121052,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -185190,7 +185190,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -259926,7 +259926,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -267635,7 +267635,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -269053,7 +269053,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -278866,7 +278866,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 35b2c51a038ca4e1abc69f9845b642f8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Pickups.HealthCrateNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.Pickups.HealthCrateNode
   _healthCratePrefab: {fileID: 524355008129158377, guid: 2e40a8797fb1d47d1ae4ee700094183e, type: 3}
   _respawnTime: 25
 --- !u!1 &1052908476
@@ -316995,7 +316995,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -332369,7 +332369,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2979c170209aa4522871e71ed00d5152, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Managers.LivesManager
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.Managers.LivesManager
   _totalLives: 3
   _spawnPoint: {fileID: 1981751922}
   _isMultiplayer: 0
@@ -335297,7 +335297,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -343090,7 +343090,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: acfcd1bcb507d43ff917a5d502ff73bd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Player.VelocityGaugeManager
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.VelocityGaugeManager
   _multStartsAtKill: 3
   _maxStreakCap: 5
   _multPerStreakLevel: 0.5
@@ -343115,7 +343115,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: fb95b6119018449449ce01e270d52ea7, type: 2}
   _response:
     m_PersistentCalls:
@@ -343143,7 +343143,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fa17341fb01194a28a4c91f7ae49e862, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Player.OverclockVisuals
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.OverclockVisuals
   _overclockColor: {r: 1, g: 0.7019608, b: 0, a: 1}
   _baseIntensity: 1.8
   _pulseFrequency: 1
@@ -384362,7 +384362,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -400963,7 +400963,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 598a187cc8aea4182ad471026c00e521, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnManager
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnManager
   _allNodes:
   - {fileID: 382023247}
   - {fileID: 941768540}
@@ -446658,7 +446658,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67b7537353b44443e9f6b7862041d5dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Weapons.WeaponSpawnNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSpawnNode
   _cooldownDuration: 20
   _cratePrefab: {fileID: 977082619810156027, guid: 66b29af418eec4452a1d88a222d9a849, type: 3}
   _onWeaponPickedUp: {fileID: 11400000, guid: 6ac29ccae2c9548f0b89b07b2678b79d, type: 2}
@@ -511452,7 +511452,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: f8aa2c7fb60f3495ea912522d64d33e5, type: 2}
   _response:
     m_PersistentCalls:
@@ -511480,7 +511480,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: a3d5d48fd2f284535be7075646d90fc3, type: 2}
   _response:
     m_PersistentCalls:
@@ -511508,7 +511508,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fa0868cab4fbc477a90e8a8a432e6858, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.UIManager
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.UIManager
   enemiesLeftText: {fileID: 1318998209}
   youWinText: {fileID: 0}
   gameOverContainer: {fileID: 0}
@@ -511558,7 +511558,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: bd6b661f132f143dbabc8e87e1ce5c22, type: 2}
   _response:
     m_PersistentCalls:
@@ -511586,7 +511586,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: e46981f9a30154180af3e506aa478c46, type: 2}
   _response:
     m_PersistentCalls:
@@ -511614,7 +511614,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: 70d3362835fc34815bc7900fcff24745, type: 2}
   _response:
     m_PersistentCalls:
@@ -511642,7 +511642,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b29bd7711f0aa40c4a6209446b2c9552, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.FloatGameEventListener
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatGameEventListener
   _event: {fileID: 11400000, guid: 0fc64c1e99cc54aad9baa141f5446f4e, type: 2}
   _response:
     m_PersistentCalls:
@@ -550536,7 +550536,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 35b2c51a038ca4e1abc69f9845b642f8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Pickups.HealthCrateNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.Pickups.HealthCrateNode
   _healthCratePrefab: {fileID: 524355008129158377, guid: 2e40a8797fb1d47d1ae4ee700094183e, type: 3}
   _respawnTime: 25
 --- !u!1 &2032937250
@@ -581968,7 +581968,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 35b2c51a038ca4e1abc69f9845b642f8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Pickups.HealthCrateNode
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.Pickups.HealthCrateNode
   _healthCratePrefab: {fileID: 524355008129158377, guid: 2e40a8797fb1d47d1ae4ee700094183e, type: 3}
   _respawnTime: 25
 --- !u!1 &2085411405

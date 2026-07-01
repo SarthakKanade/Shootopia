@@ -1,9 +1,9 @@
 using UnityEngine;
 using System.Collections;
-using VelocityWars.Core;
+using Shootopia;
 using Unity.Cinemachine;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class GrenadeController : TrapBase
     {

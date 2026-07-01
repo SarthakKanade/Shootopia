@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class SmokeCanistarController : TrapBase
     {

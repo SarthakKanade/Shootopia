@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace VelocityWars.Core
+namespace Shootopia
 {
     /// <summary>
     /// Add to any GameObject. Assign a GameEvent SO and a UnityEvent response.

@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.AI;
 using StarterAssets;
-using VelocityWars.Core;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class SmokeCloud : MonoBehaviour
     {

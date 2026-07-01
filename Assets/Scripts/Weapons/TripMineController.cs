@@ -1,8 +1,8 @@
 using UnityEngine;
 using System.Collections;
-using VelocityWars.Core;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class TripMineController : TrapBase
     {

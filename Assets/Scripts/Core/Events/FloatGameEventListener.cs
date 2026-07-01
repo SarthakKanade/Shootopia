@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace VelocityWars.Core
+namespace Shootopia
 {
     [System.Serializable]
     public class FloatEvent : UnityEvent<float> { }

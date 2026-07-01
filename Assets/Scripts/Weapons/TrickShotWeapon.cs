@@ -1,8 +1,8 @@
 using UnityEngine;
 using StarterAssets;
-using VelocityWars;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class TrickShotWeapon : Weapon
     {

@@ -1,7 +1,7 @@
 using UnityEngine;
-using VelocityWars.Core;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class BounceProjectileController : BaseProjectile
     {

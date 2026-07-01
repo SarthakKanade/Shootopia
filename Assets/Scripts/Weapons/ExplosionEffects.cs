@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class ExplosionEffects : MonoBehaviour
     {

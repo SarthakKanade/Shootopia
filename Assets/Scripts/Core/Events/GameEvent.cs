@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace VelocityWars.Core
+namespace Shootopia
 {
-    [CreateAssetMenu(menuName = "VelocityWars/Events/Game Event")]
+    [CreateAssetMenu(menuName = "Shootopia/Events/Game Event")]
     public class GameEvent : ScriptableObject
     {
         private readonly List<GameEventListener> _listeners = new();

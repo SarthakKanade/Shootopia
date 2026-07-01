@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public enum WeaponCategory { Default, Control, Burst, Precision, Chaos, Trap }
     public enum DurabilityType { Ammo, TimeBased, Uses }

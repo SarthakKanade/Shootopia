@@ -1,8 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
-using VelocityWars.Core;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class FlameGunWeapon : Weapon
     {
@@ -118,16 +118,6 @@ namespace VelocityWars
 
         private void ApplyAfterburn(IDamageable target)
         {
-            // Check if the target is a valid MonoBehaviour (not destroyed)
-            if (target is MonoBehaviour mb && mb != null)
-            {
-                // Search parents for Robot status component
-                Robot robot = mb.GetComponentInParent<Robot>();
-                if (robot != null)
-                {
-                    robot.ApplyAfterburn(_so.afterburnDPS, _so.afterburnDuration);
-                }
-            }
         }
     }
 }

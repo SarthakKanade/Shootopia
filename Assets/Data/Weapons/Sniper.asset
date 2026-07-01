@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
   m_Name: Sniper
-  m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.WeaponSO
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 8295475405941267054, guid: 97a2a71fbbb374efa879f1e4fb941289, type: 3}
   weaponName: Sniper
   Damage: 200

@@ -1,7 +1,6 @@
 using Unity.Cinemachine;
 using UnityEngine;
-using VelocityWars.Core;
-using VelocityWars;
+using Shootopia;
 
 public class Weapon : MonoBehaviour
 {

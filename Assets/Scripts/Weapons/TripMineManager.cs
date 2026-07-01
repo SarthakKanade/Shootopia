@@ -1,9 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using VelocityWars.Core;
+using Shootopia;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class TripMineManager : MonoBehaviour
     {

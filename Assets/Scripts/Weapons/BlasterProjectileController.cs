@@ -1,8 +1,8 @@
 using UnityEngine;
-using VelocityWars.Core;
+using Shootopia;
 using Unity.Cinemachine;
 
-namespace VelocityWars
+namespace Shootopia
 {
     public class BlasterProjectileController : BaseProjectile
     {
