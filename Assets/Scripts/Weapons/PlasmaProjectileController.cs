@@ -26,7 +26,7 @@ namespace Shootopia
         {
             if (col.TryGetComponent(out IDamageable t))
             {
-                t.TakeDamage(18f, DamageType.Bullet);
+                t.TakeDamage(18f, DamageType.Bullet, _weaponData);
                 if (hitSparkVFX != null)
                 {
                     Instantiate(hitSparkVFX, transform.position, Quaternion.identity);

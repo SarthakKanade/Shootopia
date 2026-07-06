@@ -514,16 +514,9 @@ namespace Shootopia
                             NetworkedGameManager.ReportKill(killerId, victimId, weaponName);
                         }
 
-                        BroadcastKillEventClientRpc($"Player {killerId}", $"Player {victimId}", weaponName);
                     }
                 }
             }
-        }
-
-        [Rpc(SendTo.ClientsAndHost)]
-        private void BroadcastKillEventClientRpc(string killerName, string victimName, string weaponName)
-        {
-            Debug.Log($"[WeaponController] Kill feed broadcast: {killerName} killed {victimName} with {weaponName}");
         }
 
         private void DecrementDurability(WeaponSO data)

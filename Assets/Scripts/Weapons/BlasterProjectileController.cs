@@ -44,6 +44,10 @@ namespace Shootopia
             
             foreach (Collider hit in hits)
             {
+                // Skip the shooter's own colliders unless self-damage is explicitly enabled
+                if (!_weaponData.selfDamage && _owner != null && hit.transform.root == _owner.transform.root)
+                    continue;
+
                 if (hit.TryGetComponent(out IDamageable damageable))
                 {
                     float distance = Vector3.Distance(transform.position, hit.transform.position);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using Unity.Netcode;
@@ -146,12 +147,64 @@ namespace Shootopia
                     var no = playerGo.GetComponent<NetworkObject>();
                     no.SpawnAsPlayerObject(clientId, true);
                     Debug.Log($"[NetworkBootstrapper] Spawned player for client {clientId} at {pos}");
+
+                    AssignPlayerDisplayName(clientId, playerGo);
                 }
                 else
                 {
                     Debug.Log($"[NetworkBootstrapper] Client {clientId} already has a player object in this scene: '{client.PlayerObject.name}'");
                 }
             }
+        }
+
+        private void AssignPlayerDisplayName(ulong clientId, GameObject playerGo)
+        {
+            var nameDisplay = playerGo.GetComponent<PlayerNameDisplay>();
+            if (nameDisplay == null) return;
+
+            string displayName = ResolveDisplayName(clientId);
+            if (string.IsNullOrEmpty(displayName))
+            {
+                displayName = $"Player {clientId}";
+            }
+
+            nameDisplay.DisplayName.Value = displayName;
+            Debug.Log($"[NetworkBootstrapper] Assigned display name '{displayName}' to client {clientId}");
+
+            // Register in PlayerNameRegistry
+            PlayerNameRegistry.Register(clientId, displayName);
+        }
+
+        private string ResolveDisplayName(ulong clientId)
+        {
+            if (SessionManager.Instance == null) return null;
+
+            var session = SessionManager.Instance.GetCurrentSession();
+            if (session == null) return null;
+
+            int clientIndex = -1;
+            for (int i = 0; i < NetworkManager.Singleton.ConnectedClientsList.Count; i++)
+            {
+                if (NetworkManager.Singleton.ConnectedClientsList[i].ClientId == clientId)
+                {
+                    clientIndex = i;
+                    break;
+                }
+            }
+
+            if (clientIndex < 0) return null;
+
+            int playerIndex = 0;
+            foreach (var player in session.Players)
+            {
+                if (playerIndex == clientIndex)
+                {
+                    return player.GetPlayerName();
+                }
+                playerIndex++;
+            }
+
+            return null;
         }
 
         private void SpawnPlayersForConnectedClients()

@@ -102,11 +102,22 @@ namespace Shootopia
                 // Delegate core game mode logic
                 _activeGameMode.OnPlayerKilled(killerClientId, victimClientId);
 
+                // Resolve display names from the player registry
+                string killerName = ResolvePlayerDisplayName(killerClientId);
+                string victimName = ResolvePlayerDisplayName(victimClientId);
+
                 // Broadcast cosmetic killfeed entry to all clients
-                string killerName = $"Player {killerClientId}";
-                string victimName = $"Player {victimClientId}";
                 _activeGameMode.BroadcastKillFeedClientRpc(killerName, victimName, weaponName);
             }
+        }
+
+        /// <summary>
+        /// Resolves a player's display name by looking up their PlayerNameDisplay component.
+        /// Falls back to "Player {clientId}" if no display name is registered.
+        /// </summary>
+        private string ResolvePlayerDisplayName(ulong clientId)
+        {
+            return PlayerNameRegistry.GetName(clientId);
         }
 
         /// <summary>

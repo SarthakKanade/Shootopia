@@ -97,7 +97,7 @@ namespace Shootopia
                         // Linear falloff from centre to edge
                         float t = Mathf.Clamp01(dist / radius);
                         float dmg = Mathf.Lerp(_data.damageAtCentre, _data.damageAtEdge, t) * Time.fixedDeltaTime;
-                        damageable.TakeDamage(dmg, DamageType.Environment);
+                        damageable.TakeDamage(dmg, DamageType.Environment, _data);
                     }
                 }
 

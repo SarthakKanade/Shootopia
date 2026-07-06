@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7226549127541441085}
   - component: {fileID: 2971405447164247505}
-  - component: {fileID: 8890373073834103758}
   - component: {fileID: -4641811800484251662}
   - component: {fileID: 1683918009950930301}
   - component: {fileID: 2099617934907995669}
@@ -54,35 +53,7 @@ MonoBehaviour:
   Flags: 264449
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 8890373073834103758}
   - {fileID: -4641811800484251662}
---- !u!114 &8890373073834103758
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 899829158140259175}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d179f921055184b449320adacdcbdd28, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _targetMask:
-    serializedVersion: 2
-    m_Bits: 1536
-  _blockingMask:
-    serializedVersion: 2
-    m_Bits: 1
-  _hitType: 2
-  _explosionCheckOffset: {x: 0, y: 0.5, z: 0}
-  _innerRadius: 1.5
-  _outerRadius: 4
-  _innerDamage: 90
-  _outerDamage: 20
-  _canDamageOwner: 1
-  _despawnDelay: 3
-  _effectRoot: {fileID: 0}
 --- !u!114 &-4641811800484251662
 MonoBehaviour:
   m_ObjectHideFlags: 0

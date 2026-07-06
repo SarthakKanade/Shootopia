@@ -122,7 +122,7 @@ namespace Shootopia
                 {
                     float dist = Vector3.Distance(transform.position, c.transform.position);
                     float dmg = Mathf.Lerp(maxDmg, minDmg, dist / radius);
-                    t.TakeDamage(Mathf.Clamp(dmg, minDmg, maxDmg), DamageType.Explosion);
+                    t.TakeDamage(Mathf.Clamp(dmg, minDmg, maxDmg), DamageType.Explosion, _data);
                 }
             }
 
