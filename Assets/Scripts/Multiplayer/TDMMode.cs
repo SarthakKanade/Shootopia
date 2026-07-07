@@ -28,9 +28,11 @@ namespace Shootopia
             if (!IsServer) return;
 
             playerTeam.Clear();
+            PlayerKills.Clear();
+            PlayerDeaths.Clear();
             BlueScore.Value = 0;
             RedScore.Value = 0;
-            MatchTimeRemaining.Value = TimeLimit;
+            MatchTimeRemainingValue = TimeLimit;
             MatchInProgress.Value = true;
 
             // Subscribe to late-joining connections
@@ -46,6 +48,9 @@ namespace Shootopia
             }
 
             Debug.Log("[TDMMode] Match Started!");
+            
+            // Broadcast initial time
+            BroadcastTimeRemainingClientRpc(MatchTimeRemainingValue);
         }
 
         public override void OnNetworkDespawn()
@@ -98,6 +103,9 @@ namespace Shootopia
         {
             if (!IsServer || !MatchInProgress.Value) return;
 
+            // Track base scoring (increments kills/deaths in base dictionaries)
+            base.OnPlayerKilled(killerClientId, victimClientId);
+
             // Retrieve killer's team
             if (!playerTeam.TryGetValue(killerClientId, out int killerTeam))
             {
@@ -127,23 +135,11 @@ namespace Shootopia
             }
         }
 
-        private void Update()
-        {
-            if (!IsServer || !MatchInProgress.Value) return;
-
-            MatchTimeRemaining.Value -= Time.deltaTime;
-            if (MatchTimeRemaining.Value <= 0f)
-            {
-                MatchTimeRemaining.Value = 0f;
-                OnMatchEnd();
-            }
-        }
-
         public override void OnMatchEnd()
         {
             if (!IsServer) return;
 
-            MatchInProgress.Value = false;
+            base.OnMatchEnd();
 
             string winnerInfo;
             if (BlueScore.Value > RedScore.Value)
@@ -160,7 +156,9 @@ namespace Shootopia
             }
 
             Debug.Log($"[TDMMode] Match Ended! Winner: {winnerInfo}");
-            BroadcastMatchEndClientRpc(winnerInfo);
+
+            var scores = CompileScoreboard();
+            BroadcastMatchEndClientRpc(winnerInfo, scores);
         }
 
         [ClientRpc]

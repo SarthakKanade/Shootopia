@@ -15,6 +15,8 @@ namespace Shootopia
     /// </summary>
     public class WaitingRoomController : MonoBehaviour
     {
+        public static bool IsLobbyMenuOpen { get; private set; } = true;
+
         [Header("Scene Configuration")]
         [SerializeField] private string gameplaySceneName = "GameScene";
         [SerializeField] private UIDocument uiDocument;
@@ -26,8 +28,12 @@ namespace Shootopia
         private Toggle _visibilityToggle;
         private Label _roomInfoLabel;
 
+        private VisualElement _modal;
+        private Label _hudHint;
+
         private bool _isLocalReady = false;
         private bool _loadingGameplayScene = false;
+        private bool _menuOpen = true;
 
         private void OnEnable()
         {
@@ -82,12 +88,37 @@ namespace Shootopia
                 }
             }
 
+            // Find modal element and create HUD hint
+            _modal = _root.Q<VisualElement>(className: "blocks-modal");
+            
+            _hudHint = new Label("Press [Tab] to toggle Lobby Menu");
+            _hudHint.style.position = Position.Absolute;
+            _hudHint.style.bottom = 20f;
+            _hudHint.style.left = 20f;
+            _hudHint.style.fontSize = 16f;
+            _hudHint.style.color = Color.white;
+            _hudHint.style.backgroundColor = new Color(0f, 0f, 0f, 0.7f);
+            _hudHint.style.paddingTop = 6f;
+            _hudHint.style.paddingBottom = 6f;
+            _hudHint.style.paddingLeft = 12f;
+            _hudHint.style.paddingRight = 12f;
+            _hudHint.style.borderTopLeftRadius = 6f;
+            _hudHint.style.borderTopRightRadius = 6f;
+            _hudHint.style.borderBottomLeftRadius = 6f;
+            _hudHint.style.borderBottomRightRadius = 6f;
+            _root.Add(_hudHint);
+
+            // Start with the menu open
+            ToggleMenu(true);
+
             // Initial UI Refresh
             RefreshLobbyUI();
         }
 
         private void OnDisable()
         {
+            IsLobbyMenuOpen = false;
+
             if (_readyButton != null)
             {
                 _readyButton.clicked -= OnReadyClicked;
@@ -107,6 +138,43 @@ namespace Shootopia
             {
                 SessionManager.Instance.OnPlayerReadyChanged.RemoveListener(RefreshLobbyUI);
                 SessionManager.Instance.OnSessionLeft.RemoveListener(OnSessionLeft);
+            }
+        }
+
+        private void Update()
+        {
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
+            {
+                ToggleMenu(!_menuOpen);
+            }
+        }
+
+        private void ToggleMenu(bool open)
+        {
+            _menuOpen = open;
+            IsLobbyMenuOpen = open;
+
+            if (_modal != null)
+            {
+                _modal.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+
+            if (_root != null)
+            {
+                // Toggle background overlay visibility (transparent when playing in lobby, dark when menu is open)
+                _root.style.backgroundColor = open ? new Color(0.08f, 0.08f, 0.08f, 0.85f) : new Color(0f, 0f, 0f, 0f);
+            }
+
+            if (open)
+            {
+                UnityEngine.Cursor.lockState = CursorLockMode.None;
+                UnityEngine.Cursor.visible = true;
+            }
+            else
+            {
+                UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+                UnityEngine.Cursor.visible = false;
             }
         }
 

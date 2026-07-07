@@ -40,7 +40,13 @@ namespace Shootopia
                 var zoneScript = zone.GetComponent<VoidZone>();
                 if (zoneScript != null && _weaponData != null)
                 {
-                    zoneScript.Initialize(_weaponData);
+                    ulong ownerId = Unity.Netcode.NetworkManager.ServerClientId;
+                    if (_owner != null)
+                    {
+                        var netObj = _owner.GetComponent<Unity.Netcode.NetworkObject>();
+                        if (netObj != null) ownerId = netObj.OwnerClientId;
+                    }
+                    zoneScript.Initialize(_weaponData, ownerId);
                 }
             }
             Destroy(gameObject);

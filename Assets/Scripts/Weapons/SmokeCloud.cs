@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine.AI;
 using StarterAssets;
 using Shootopia;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -125,6 +126,11 @@ namespace Shootopia
 
         private void TickDamage()
         {
+            if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.LocalClientId != (ulong)_ownerID)
+            {
+                return;
+            }
+
             float dmg = _data != null ? (_data.damagePerSecond * (_data.tickRate > 0 ? _data.tickRate : 0.5f)) : 5f;
             
             for (int i = _inCloud.Count - 1; i >= 0; i--)
@@ -132,6 +138,17 @@ namespace Shootopia
                 var target = _inCloud[i];
                 if (target != null && (Object)target != null)
                 {
+                    if (target is PlayerHealth ph)
+                    {
+                        ph.LastAttackerClientId = (ulong)_ownerID;
+                    }
+                    else if (target is MonoBehaviour mb)
+                    {
+                        var ph2 = mb.GetComponentInParent<PlayerHealth>();
+                        if (ph2 == null) ph2 = mb.GetComponent<PlayerHealth>();
+                        if (ph2 != null) ph2.LastAttackerClientId = (ulong)_ownerID;
+                    }
+
                     target.TakeDamage(dmg, DamageType.Environment);
                 }
                 else

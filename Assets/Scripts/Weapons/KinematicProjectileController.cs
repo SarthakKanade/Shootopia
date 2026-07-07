@@ -1,5 +1,6 @@
 using UnityEngine;
 using Shootopia;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -164,8 +165,25 @@ namespace Shootopia
             // Apply Damage
             if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
             {
-                float damage = _weaponData != null ? _weaponData.Damage : 10f;
-                damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
+                if (IsOwnerProjectile())
+                {
+                    ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
+                    if (_owner != null)
+                    {
+                        var netObj = _owner.GetComponent<NetworkObject>();
+                        if (netObj != null) attackerId = netObj.OwnerClientId;
+                    }
+
+                    var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
+                    if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
+                    if (targetHealth != null)
+                    {
+                        targetHealth.LastAttackerClientId = attackerId;
+                    }
+
+                    float damage = _weaponData != null ? _weaponData.Damage : 10f;
+                    damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
+                }
             }
 
             // Spawn Void Zone if configured
@@ -180,7 +198,13 @@ namespace Shootopia
                 var zoneScript = zone.GetComponent<VoidZone>();
                 if (zoneScript != null && _weaponData != null)
                 {
-                    zoneScript.Initialize(_weaponData);
+                    ulong ownerId = Unity.Netcode.NetworkManager.ServerClientId;
+                    if (_owner != null)
+                    {
+                        var netObj = _owner.GetComponent<NetworkObject>();
+                        if (netObj != null) ownerId = netObj.OwnerClientId;
+                    }
+                    zoneScript.Initialize(_weaponData, ownerId);
                 }
             }
             else

@@ -165,6 +165,33 @@ namespace Shootopia
             if (!IsOwner) return;
             if (input == null) return;
 
+            // Weapon control gating
+            bool isFrozen = false;
+            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+
+            if (activeSceneName == "WaitingRoom")
+            {
+                isFrozen = WaitingRoomController.IsLobbyMenuOpen;
+            }
+            else if (activeSceneName == "GameScene")
+            {
+                if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
+                {
+                    isFrozen = true;
+                }
+            }
+
+            if (isFrozen)
+            {
+                if (_isADSActive) ExitADS();
+                if (animator != null)
+                {
+                    animator.SetBool(HashIsFiring, false);
+                }
+                _lastFire = false;
+                return;
+            }
+
             if (input.Intent.SwapWeapon)
                 CycleWeapon();
 
@@ -424,6 +451,8 @@ namespace Shootopia
                 var proj = Instantiate(data.projectilePrefab, origin, rot);
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
+                var tb = proj.GetComponent<TrapBase>();
+                if (tb != null) tb.Initialise((int)OwnerClientId, Camera.main, data);
             }
             else
             {
@@ -458,6 +487,8 @@ namespace Shootopia
                 var proj = Instantiate(data.projectilePrefab, origin, rotation);
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
+                var tb = proj.GetComponent<TrapBase>();
+                if (tb != null) tb.Initialise((int)OwnerClientId, Camera.main, data);
             }
             else
             {
@@ -499,6 +530,10 @@ namespace Shootopia
                     bool wasAlive = targetHealth != null && targetHealth.GetCurrentHp() > 0f;
 
                     // Apply damage
+                    if (targetHealth != null)
+                    {
+                        targetHealth.LastAttackerClientId = OwnerClientId;
+                    }
                     damageable.TakeDamage(data.Damage, DamageType.Bullet, data);
 
                     // Report kill if target was killed
@@ -674,6 +709,12 @@ namespace Shootopia
             {
                 if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
                 {
+                    var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
+                    if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
+                    if (targetHealth != null)
+                    {
+                        targetHealth.LastAttackerClientId = OwnerClientId;
+                    }
                     damageable.TakeDamage(25f, DamageType.Melee, null);
                 }
             }

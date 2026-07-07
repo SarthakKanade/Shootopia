@@ -16,6 +16,8 @@ namespace Shootopia
         [SerializeField] private FloatGameEvent _onHpChanged;
         [SerializeField] private GameEvent _onPlayerDied;
 
+        public ulong LastAttackerClientId { get; set; }
+
         [Header("Network State")]
         private readonly NetworkVariable<float> _currentHp = new NetworkVariable<float>(100f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private readonly NetworkVariable<int> livesRemaining = new NetworkVariable<int>(3, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -71,13 +73,18 @@ namespace Shootopia
         }
 
         // Call the Server Rpc so clients cannot cheat and apply arbitrary health modifications
-        TakeDamageServerRpc(amount, type, weaponName);
+        TakeDamageServerRpc(amount, type, weaponName, LastAttackerClientId);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    private void TakeDamageServerRpc(float amount, DamageType type, string weaponName, RpcParams rpcParams = default)
+    private void TakeDamageServerRpc(float amount, DamageType type, string weaponName, ulong attackerClientId, RpcParams rpcParams = default)
     {
         if (!IsServer) return;
+
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "WaitingRoom")
+        {
+            return;
+        }
 
         if (_isDead)
         {
@@ -94,13 +101,12 @@ namespace Shootopia
         if (_currentHp.Value <= 0f) return;
 
         _currentHp.Value = Mathf.Max(_currentHp.Value - amount, 0f);
-        ulong killerClientId = rpcParams.Receive.SenderClientId;
-        Debug.Log($"[PlayerHealth] Player {OwnerClientId} took {amount} damage from Client {killerClientId} (Type: {type}, Weapon: {weaponName}). Remaining HP: {_currentHp.Value}");
+        Debug.Log($"[PlayerHealth] Player {OwnerClientId} took {amount} damage from Attacker {attackerClientId} (Type: {type}, Weapon: {weaponName}). Remaining HP: {_currentHp.Value}");
 
         if (_currentHp.Value <= 0f)
         {
             _isDead = true;
-            HandleDeath(killerClientId, type, weaponName);
+            HandleDeath(attackerClientId, type, weaponName);
         }
     }
 
@@ -123,14 +129,8 @@ namespace Shootopia
         // Notify all clients to trigger death VFX / UI
         DeathClientRpc(type);
 
-        if (livesRemaining.Value > 0)
-        {
-            StartCoroutine(RespawnSequence());
-        }
-        else
-        {
-            Debug.Log($"[PlayerHealth] Player {OwnerClientId} has no lives remaining.");
-        }
+        // Always respawn the player (removed death spawn limit cap)
+        StartCoroutine(RespawnSequence());
     }
 
     private IEnumerator RespawnSequence()

@@ -1,5 +1,6 @@
 using UnityEngine;
 using Shootopia;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -41,7 +42,24 @@ namespace Shootopia
             // Check for IDamageable
             if (col.gameObject.TryGetComponent(out IDamageable damageable))
             {
-                damageable.TakeDamage(_damage, DamageType.Bullet, _weaponData);
+                if (IsOwnerProjectile())
+                {
+                    ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
+                    if (_owner != null)
+                    {
+                        var netObj = _owner.GetComponent<NetworkObject>();
+                        if (netObj != null) attackerId = netObj.OwnerClientId;
+                    }
+
+                    var targetHealth = col.gameObject.GetComponentInParent<PlayerHealth>();
+                    if (targetHealth == null) targetHealth = col.gameObject.GetComponent<PlayerHealth>();
+                    if (targetHealth != null)
+                    {
+                        targetHealth.LastAttackerClientId = attackerId;
+                    }
+
+                    damageable.TakeDamage(_damage, DamageType.Bullet, _weaponData);
+                }
                 CancelInvoke();
                 Destroy(gameObject);
                 return;

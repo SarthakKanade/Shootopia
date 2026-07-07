@@ -1,5 +1,6 @@
 using UnityEngine;
 using Shootopia;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -42,13 +43,34 @@ namespace Shootopia
                     float dist = Vector3.Distance(transform.position, targetPos);
                     
                     // Check if it's a Robot for status effects (check parent too)
-                    if (dist <= 1.5f)
+                    if (IsOwnerProjectile())
                     {
-                        t.TakeDamage(_weaponData.Damage, DamageType.Projectile, _weaponData);
-                    }
-                    else
-                    {
-                        t.TakeDamage(_weaponData.splashDamage, DamageType.Projectile, _weaponData);
+                        ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
+                        if (_owner != null)
+                        {
+                            var netObj = _owner.GetComponent<NetworkObject>();
+                            if (netObj != null) attackerId = netObj.OwnerClientId;
+                        }
+
+                        if (t is PlayerHealth ph)
+                        {
+                            ph.LastAttackerClientId = attackerId;
+                        }
+                        else if (t is MonoBehaviour mb)
+                        {
+                            var ph2 = mb.GetComponentInParent<PlayerHealth>();
+                            if (ph2 == null) ph2 = mb.GetComponent<PlayerHealth>();
+                            if (ph2 != null) ph2.LastAttackerClientId = attackerId;
+                        }
+
+                        if (dist <= 1.5f)
+                        {
+                            t.TakeDamage(_weaponData.Damage, DamageType.Projectile, _weaponData);
+                        }
+                        else
+                        {
+                            t.TakeDamage(_weaponData.splashDamage, DamageType.Projectile, _weaponData);
+                        }
                     }
                 }
             }

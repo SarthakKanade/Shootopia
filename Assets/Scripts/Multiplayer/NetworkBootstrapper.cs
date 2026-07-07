@@ -51,8 +51,13 @@ namespace Shootopia
             {
                 string role = NetworkManager.Singleton.IsHost ? "Host" : "Client";
                 Debug.Log($"[NetworkBootstrapper] Already connected as {role}. Local Client ID: {NetworkManager.Singleton.LocalClientId}");
-                // Do NOT spawn here. Spawning is handled by OnSceneEvent -> LoadEventCompleted,
-                // which fires only after all clients have confirmed the scene is loaded.
+                
+                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (NetworkManager.Singleton.IsServer && activeSceneName == "WaitingRoom")
+                {
+                    Debug.Log("[NetworkBootstrapper] Already listening in WaitingRoom. Spawning players.");
+                    SpawnPlayersForConnectedClients();
+                }
                 return;
             }
 
@@ -257,6 +262,11 @@ namespace Shootopia
                     if (NetworkManager.Singleton.StartHost())
                     {
                         Debug.Log("[NetworkBootstrapper] StartHost successfully initiated.");
+                        string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                        if (activeSceneName == "WaitingRoom")
+                        {
+                            SpawnPlayerForClient(NetworkManager.Singleton.LocalClientId);
+                        }
                     }
                     else
                     {
@@ -303,6 +313,16 @@ namespace Shootopia
             else
             {
                 Debug.Log($"[NetworkBootstrapper] Remote client connected to host. Client ID: {clientId}");
+            }
+
+            if (NetworkManager.Singleton.IsServer)
+            {
+                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (activeSceneName == "WaitingRoom")
+                {
+                    Debug.Log($"[NetworkBootstrapper] Client {clientId} connected while in WaitingRoom. Spawning player.");
+                    SpawnPlayerForClient(clientId);
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Shootopia;
 using Unity.Cinemachine;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -50,16 +51,33 @@ namespace Shootopia
 
                 if (hit.TryGetComponent(out IDamageable damageable))
                 {
-                    float distance = Vector3.Distance(transform.position, hit.transform.position);
-                    
-                    // Linear damage falloff: Damage (at center) -> SplashDamage (at edge)
-                    float t = Mathf.Clamp01(distance / _weaponData.blastRadius);
-                    float damage = Mathf.Lerp(_weaponData.Damage, _weaponData.splashDamage, t);
-                    
-                    // Ensure it doesn't go below splash damage
-                    damage = Mathf.Clamp(damage, _weaponData.splashDamage, _weaponData.Damage);
+                    if (IsOwnerProjectile())
+                    {
+                        ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
+                        if (_owner != null)
+                        {
+                            var netObj = _owner.GetComponent<NetworkObject>();
+                            if (netObj != null) attackerId = netObj.OwnerClientId;
+                        }
 
-                    damageable.TakeDamage(damage, DamageType.Explosion, _weaponData);
+                        var targetHealth = hit.GetComponentInParent<PlayerHealth>();
+                        if (targetHealth == null) targetHealth = hit.GetComponent<PlayerHealth>();
+                        if (targetHealth != null)
+                        {
+                            targetHealth.LastAttackerClientId = attackerId;
+                        }
+
+                        float distance = Vector3.Distance(transform.position, hit.transform.position);
+                        
+                        // Linear damage falloff: Damage (at center) -> SplashDamage (at edge)
+                        float t = Mathf.Clamp01(distance / _weaponData.blastRadius);
+                        float damage = Mathf.Lerp(_weaponData.Damage, _weaponData.splashDamage, t);
+                        
+                        // Ensure it doesn't go below splash damage
+                        damage = Mathf.Clamp(damage, _weaponData.splashDamage, _weaponData.Damage);
+
+                        damageable.TakeDamage(damage, DamageType.Explosion, _weaponData);
+                    }
                 }
             }
 

@@ -13,33 +13,30 @@ namespace Shootopia
         private const int KillLimit = 10;
         private const float TimeLimit = 300f; // 5 minutes
 
-        // Server-side & Client-side kill tracking
-        private readonly Dictionary<ulong, int> _playerKills = new Dictionary<ulong, int>();
-
         public override void OnMatchStart()
         {
             if (!IsServer) return;
 
-            _playerKills.Clear();
-            MatchTimeRemaining.Value = TimeLimit;
+            PlayerKills.Clear();
+            PlayerDeaths.Clear();
+            MatchTimeRemainingValue = TimeLimit;
             MatchInProgress.Value = true;
             Debug.Log("[FFAMode] Match Started!");
+            
+            // Broadcast initial time
+            BroadcastTimeRemainingClientRpc(MatchTimeRemainingValue);
         }
 
         public override void OnPlayerKilled(ulong killerClientId, ulong victimClientId)
         {
             if (!IsServer || !MatchInProgress.Value) return;
 
-            // Track/increment kills for the killer
-            if (!_playerKills.ContainsKey(killerClientId))
-            {
-                _playerKills[killerClientId] = 0;
-            }
+            // Track base scoring (increments kills/deaths in base dictionaries)
+            base.OnPlayerKilled(killerClientId, victimClientId);
 
-            _playerKills[killerClientId]++;
-            int killerKills = _playerKills[killerClientId];
+            int killerKills = PlayerKills.TryGetValue(killerClientId, out var k) ? k : 0;
 
-            // Replicate score change to all clients
+            // Replicate score change to all clients (for visual feed)
             SyncPlayerKillsClientRpc(killerClientId, killerKills);
 
             Debug.Log($"[FFAMode] Player {killerClientId} killed Player {victimClientId}. Total Kills: {killerKills}");
@@ -51,28 +48,16 @@ namespace Shootopia
             }
         }
 
-        private void Update()
-        {
-            if (!IsServer || !MatchInProgress.Value) return;
-
-            MatchTimeRemaining.Value -= Time.deltaTime;
-            if (MatchTimeRemaining.Value <= 0f)
-            {
-                MatchTimeRemaining.Value = 0f;
-                OnMatchEnd();
-            }
-        }
-
         public override void OnMatchEnd()
         {
             if (!IsServer) return;
 
-            MatchInProgress.Value = false;
+            base.OnMatchEnd();
             
             // Find winner with highest kills
             ulong winnerId = 0;
             int maxKills = -1;
-            foreach (var kvp in _playerKills)
+            foreach (var kvp in PlayerKills)
             {
                 if (kvp.Value > maxKills)
                 {
@@ -84,19 +69,21 @@ namespace Shootopia
             string winnerInfo = maxKills > 0 ? $"Player {winnerId} with {maxKills} kills" : "No one (Draw)";
             Debug.Log($"[FFAMode] Match Ended! Winner: {winnerInfo}");
 
-            BroadcastMatchEndClientRpc(winnerInfo);
+            var scores = CompileScoreboard();
+            BroadcastMatchEndClientRpc(winnerInfo, scores);
         }
 
         [ClientRpc]
         private void SyncPlayerKillsClientRpc(ulong clientId, int kills)
         {
-            _playerKills[clientId] = kills;
+            // Sync locally for client scoring reads if needed
+            PlayerKills[clientId] = kills;
             Debug.Log($"[FFA Client] Sync: Player {clientId} has {kills} kills");
         }
 
         public int GetPlayerKills(ulong clientId)
         {
-            return _playerKills.TryGetValue(clientId, out int kills) ? kills : 0;
+            return PlayerKills.TryGetValue(clientId, out int kills) ? kills : 0;
         }
     }
 }

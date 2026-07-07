@@ -76,6 +76,34 @@ namespace Shootopia
 
             var intent = new PlayerInputIntent();
 
+            // Gating input: freeze when lobby menu is open or match is in pre-match countdown hold
+            bool isFrozen = false;
+            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+
+            if (activeSceneName == "WaitingRoom")
+            {
+                isFrozen = WaitingRoomController.IsLobbyMenuOpen;
+            }
+            else if (activeSceneName == "GameScene")
+            {
+                if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
+                {
+                    isFrozen = true;
+                }
+            }
+
+            if (isFrozen)
+            {
+                LookDelta = Vector2.zero;
+                if (Mouse.current != null)
+                {
+                    ScreenAimPosition = Mouse.current.position.ReadValue();
+                    HasScreenAim = true;
+                }
+                Intent = intent;
+                return;
+            }
+
             Keyboard kb = Keyboard.current;
             Mouse mouse = Mouse.current;
             Gamepad pad = Gamepad.current;

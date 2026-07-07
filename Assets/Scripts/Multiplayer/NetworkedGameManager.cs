@@ -22,6 +22,12 @@ namespace Shootopia
                 return;
             }
             Instance = this;
+
+            // Automatically add ResultsScreenController so it is active in the scene!
+            if (gameObject.GetComponent<ResultsScreenController>() == null)
+            {
+                gameObject.AddComponent<ResultsScreenController>();
+            }
         }
 
         public override void OnNetworkSpawn()
@@ -74,8 +80,79 @@ namespace Shootopia
                     }
                 }
 
-                _activeGameMode.OnMatchStart();
+                // Check if active scene is the WaitingRoom (Lobby)
+                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (activeSceneName == "WaitingRoom")
+                {
+                    Debug.Log("[NetworkedGameManager] Active scene is WaitingRoom. Skipping match start countdown.");
+                    return;
+                }
+
+                // Start the pre-match countdown sequence in GameScene
+                StartCoroutine(PreMatchSequence());
             }
+        }
+
+        private System.Collections.IEnumerator PreMatchSequence()
+        {
+            if (_activeGameMode == null) yield break;
+
+            _activeGameMode.MatchActive.Value = false;
+            _activeGameMode.PreMatchCountdown.Value = -1;
+
+            // 1. Wait for players to spawn
+            float maxWaitTime = 10f; // maximum wait timeout
+            float waitTimer = 0f;
+            int expectedPlayers = 1;
+
+            if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
+            {
+                expectedPlayers = SessionManager.Instance.GetCurrentSession().Players.Count;
+            }
+            Debug.Log($"[NetworkedGameManager] Pre-match: Waiting for {expectedPlayers} players to spawn...");
+
+            while (waitTimer < maxWaitTime)
+            {
+                int spawnedCount = 0;
+                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                {
+                    if (client.PlayerObject != null)
+                    {
+                        spawnedCount++;
+                    }
+                }
+
+                if (spawnedCount >= expectedPlayers && spawnedCount > 0)
+                {
+                    Debug.Log($"[NetworkedGameManager] All {spawnedCount} expected players spawned!");
+                    break;
+                }
+
+                yield return new WaitForSeconds(0.5f);
+                waitTimer += 0.5f;
+            }
+
+            if (waitTimer >= maxWaitTime)
+            {
+                Debug.LogWarning("[NetworkedGameManager] Pre-match wait timeout reached before all expected players spawned.");
+            }
+
+            // 2. 3-second countdown
+            int countdown = 3;
+            while (countdown > 0)
+            {
+                _activeGameMode.PreMatchCountdown.Value = countdown;
+                Debug.Log($"[NetworkedGameManager] Countdown: {countdown}...");
+                yield return new WaitForSeconds(1.0f);
+                countdown--;
+            }
+
+            _activeGameMode.PreMatchCountdown.Value = 0;
+            _activeGameMode.MatchActive.Value = true;
+            Debug.Log("[NetworkedGameManager] Match started - players released");
+
+            // 3. Start match game mode logic
+            _activeGameMode.OnMatchStart();
         }
 
         /// <summary>

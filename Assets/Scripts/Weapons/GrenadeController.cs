@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using Shootopia;
 using Unity.Cinemachine;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -75,9 +76,19 @@ namespace Shootopia
             {
                 if (c.TryGetComponent(out IDamageable t))
                 {
-                    float dist = Vector3.Distance(transform.position, c.transform.position);
-                    float dmg = Mathf.Lerp(maxDamage, minDamage, dist / blastRadius);
-                    t.TakeDamage(Mathf.Clamp(dmg, minDamage, maxDamage), DamageType.Explosion, _data);
+                    if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.LocalClientId == (ulong)_ownerID)
+                    {
+                        var targetHealth = c.GetComponentInParent<PlayerHealth>();
+                        if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                        if (targetHealth != null)
+                        {
+                            targetHealth.LastAttackerClientId = (ulong)_ownerID;
+                        }
+
+                        float dist = Vector3.Distance(transform.position, c.transform.position);
+                        float dmg = Mathf.Lerp(maxDamage, minDamage, dist / blastRadius);
+                        t.TakeDamage(Mathf.Clamp(dmg, minDamage, maxDamage), DamageType.Explosion, _data);
+                    }
                 }
             }
 

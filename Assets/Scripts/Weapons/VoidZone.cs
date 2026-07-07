@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using Shootopia;
 using Unity.Cinemachine;
+using Unity.Netcode;
 
 namespace Shootopia
 {
@@ -14,10 +15,14 @@ namespace Shootopia
         private WeaponSO _data;
         private CinemachineImpulseSource _impulseSource;
         private bool _isInitialized = false;
+        private ulong _ownerID;
+        private bool _hasOwner = false;
 
-        public void Initialize(WeaponSO data)
+        public void Initialize(WeaponSO data, ulong ownerId)
         {
             _data = data;
+            _ownerID = ownerId;
+            _hasOwner = true;
             if (_data != null)
             {
                 implosionVFX = _data.HitVFXPrefab;
@@ -94,10 +99,20 @@ namespace Shootopia
                     // Continuous damage
                     if (c.TryGetComponent<IDamageable>(out var damageable))
                     {
-                        // Linear falloff from centre to edge
-                        float t = Mathf.Clamp01(dist / radius);
-                        float dmg = Mathf.Lerp(_data.damageAtCentre, _data.damageAtEdge, t) * Time.fixedDeltaTime;
-                        damageable.TakeDamage(dmg, DamageType.Environment, _data);
+                        if (_hasOwner && Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.LocalClientId == _ownerID)
+                        {
+                            var targetHealth = c.GetComponentInParent<PlayerHealth>();
+                            if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                            if (targetHealth != null)
+                            {
+                                targetHealth.LastAttackerClientId = _ownerID;
+                            }
+
+                            // Linear falloff from centre to edge
+                            float t = Mathf.Clamp01(dist / radius);
+                            float dmg = Mathf.Lerp(_data.damageAtCentre, _data.damageAtEdge, t) * Time.fixedDeltaTime;
+                            damageable.TakeDamage(dmg, DamageType.Environment, _data);
+                        }
                     }
                 }
 
