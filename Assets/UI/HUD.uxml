@@ -1,0 +1,38 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="HUD_Root" style="flex-grow: 1; pointer-events: none; width: 100%; height: 100%;">
+        
+        <!-- Top Center Panel: Match Timer & Scores -->
+        <ui:VisualElement name="TopPanel" style="padding: 10px 20px; background-color: rgba(20, 20, 20, 0.75); border-radius: 8px; border-width: 1px; border-color: rgb(60, 60, 60); position: absolute; top: 20px; align-self: center; align-items: center; min-width: 220px;">
+            <ui:Label name="TimerText" text="05:00" style="font-size: 26px; color: white; -unity-font-style: bold; letter-spacing: 1px;"/>
+            <ui:VisualElement name="ScoreContainer" style="flex-direction: row; margin-top: 4px; justify-content: center; align-items: center;"/>
+        </ui:VisualElement>
+
+        <!-- Top Right Panel: Kill Feed Container -->
+        <ui:VisualElement name="KillFeed" style="position: absolute; top: 20px; right: 20px; width: 350px; align-items: flex-end;"/>
+
+        <!-- Bottom Left Panel: Health Bar -->
+        <ui:VisualElement name="HealthPanel" style="width: 240px; padding: 12px; background-color: rgba(20, 20, 20, 0.75); border-radius: 8px; border-width: 1px; border-color: rgb(60, 60, 60); position: absolute; bottom: 20px; left: 20px;">
+            <ui:Label text="HEALTH" style="font-size: 11px; color: rgb(160, 160, 160); -unity-font-style: bold; margin-bottom: 4px; letter-spacing: 0.5px;"/>
+            <ui:VisualElement style="background-color: rgb(40, 40, 40); height: 22px; border-radius: 4px; overflow: hidden; position: relative;">
+                <ui:VisualElement name="HealthFill" style="background-color: rgb(39, 174, 96); width: 100%; height: 100%; transition: width 0.1s ease-in-out;"/>
+                <ui:Label name="HealthText" text="100 / 100" style="position: absolute; width: 100%; height: 100%; color: white; font-size: 12px; -unity-font-style: bold; -unity-text-align: middle-center;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Bottom Right Panel: Weapon & Ammo Card -->
+        <ui:VisualElement name="WeaponPanel" style="width: 240px; padding: 12px; background-color: rgba(20, 20, 20, 0.75); border-radius: 8px; border-width: 1px; border-color: rgb(60, 60, 60); position: absolute; bottom: 20px; right: 20px;">
+            <ui:Label name="WeaponCategory" text="DEFAULT" style="font-size: 11px; color: rgb(160, 160, 160); -unity-font-style: bold; margin-bottom: 2px; letter-spacing: 0.5px;"/>
+            <ui:Label name="WeaponName" text="FISTS" style="font-size: 18px; color: white; -unity-font-style: bold; margin-bottom: 6px;"/>
+            
+            <ui:VisualElement name="AmmoContainer" style="flex-direction: row; align-items: center; justify-content: space-between;">
+                <ui:Label name="AmmoText" text="100 / 100" style="font-size: 18px; color: white; -unity-font-style: bold;"/>
+            </ui:VisualElement>
+            
+            <!-- Cooldown/Charge bar (visible for cooldown-based weapon designs) -->
+            <ui:VisualElement name="CooldownBar" style="background-color: rgb(40, 40, 40); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 6px; display: none;">
+                <ui:VisualElement name="CooldownFill" style="background-color: rgb(241, 196, 15); width: 0%; height: 100%;"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

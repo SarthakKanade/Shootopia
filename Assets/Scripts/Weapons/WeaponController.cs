@@ -91,6 +91,13 @@ namespace Shootopia
             }
         }
 
+        public int CurrentAmmo => _currentAmmo;
+        public int CurrentUses => _currentUses;
+        public float TimeRemaining => _timeRemaining;
+        public float TimeSinceLastShot => _timeSinceLastShot;
+        public bool IsCharging => _isCharging;
+        public float ChargeTimer => _chargeTimer;
+
         private void Awake()
         {
             if (animator == null) animator = GetComponentInChildren<Animator>(true);

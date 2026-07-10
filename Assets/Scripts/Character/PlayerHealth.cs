@@ -20,6 +20,7 @@ namespace Shootopia
 
         [Header("Network State")]
         private readonly NetworkVariable<float> _currentHp = new NetworkVariable<float>(100f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public NetworkVariable<float> CurrentHp => _currentHp;
         private readonly NetworkVariable<int> livesRemaining = new NetworkVariable<int>(3, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         private bool _isDead = false;

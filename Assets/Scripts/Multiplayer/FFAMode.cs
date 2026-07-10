@@ -8,7 +8,7 @@ namespace Shootopia
     /// Free-For-All game mode. Tracks individual player kills with a target score of 10
     /// and a time limit of 5 minutes.
     /// </summary>
-    public class FFAMode : GameModeBase
+    public class FFAMode : GameModeBase, IScoreProvider
     {
         private const int KillLimit = 10;
         private const float TimeLimit = 300f; // 5 minutes
@@ -84,6 +84,54 @@ namespace Shootopia
         public int GetPlayerKills(ulong clientId)
         {
             return PlayerKills.TryGetValue(clientId, out int kills) ? kills : 0;
+        }
+
+        public ScoreDisplayData GetScoreDisplayData()
+        {
+            var entries = new List<ScoreDisplayEntry>();
+            
+            ulong localClientId = NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId : 0;
+            int localKills = GetPlayerKills(localClientId);
+            
+            entries.Add(new ScoreDisplayEntry { Label = "You", Value = $"{localKills} Kills" });
+
+            ulong leaderId = localClientId;
+            int maxKills = localKills;
+            
+            foreach (var kvp in PlayerKills)
+            {
+                if (kvp.Value > maxKills)
+                {
+                    maxKills = kvp.Value;
+                    leaderId = kvp.Key;
+                }
+            }
+
+            if (leaderId != localClientId)
+            {
+                string leaderName = PlayerNameRegistry.GetName(leaderId);
+                entries.Add(new ScoreDisplayEntry { Label = $"Leader ({leaderName})", Value = $"{maxKills} Kills" });
+            }
+            else
+            {
+                int runnerUpKills = -1;
+                ulong runnerUpId = ulong.MaxValue;
+                foreach (var kvp in PlayerKills)
+                {
+                    if (kvp.Key != localClientId && kvp.Value > runnerUpKills)
+                    {
+                        runnerUpKills = kvp.Value;
+                        runnerUpId = kvp.Key;
+                    }
+                }
+                if (runnerUpId != ulong.MaxValue && runnerUpKills >= 0)
+                {
+                    string runnerName = PlayerNameRegistry.GetName(runnerUpId);
+                    entries.Add(new ScoreDisplayEntry { Label = $"2nd ({runnerName})", Value = $"{runnerUpKills} Kills" });
+                }
+            }
+
+            return new ScoreDisplayData { Entries = entries };
         }
     }
 }
