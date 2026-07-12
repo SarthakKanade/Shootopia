@@ -27,7 +27,7 @@ namespace Shootopia
     {
         public static GameModeBase Instance { get; protected set; }
         public static event System.Action<string, PlayerScoreEntry[]> OnMatchEndedWithScoreboard;
-        public static event System.Action<string, string, string> OnKillFeedReceived;
+        public static event System.Action<string, string, string, ulong, ulong> OnKillFeedReceived;
 
         [Header("Match Lifecycle Variables")]
         public readonly NetworkVariable<bool> MatchActive = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -105,10 +105,10 @@ namespace Shootopia
         }
 
         [ClientRpc]
-        public void BroadcastKillFeedClientRpc(string killerName, string victimName, string weaponName)
+        public void BroadcastKillFeedClientRpc(string killerName, string victimName, string weaponName, ulong killerClientId, ulong victimClientId)
         {
             Debug.Log($"[KillFeed] {killerName} killed {victimName} with {weaponName}");
-            OnKillFeedReceived?.Invoke(killerName, victimName, weaponName);
+            OnKillFeedReceived?.Invoke(killerName, victimName, weaponName, killerClientId, victimClientId);
         }
 
         [ClientRpc]

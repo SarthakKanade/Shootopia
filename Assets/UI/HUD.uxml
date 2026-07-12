@@ -34,5 +34,19 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <!-- Damage Flash Overlay -->
+        <ui:VisualElement name="DamageFlash" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-width: 24px; border-color: rgba(231, 76, 60, 0); background-color: rgba(231, 76, 60, 0); pointer-events: none;" />
+
+        <!-- Hit Marker (Rotated X) -->
+        <ui:VisualElement name="HitMarker" style="position: absolute; top: 50%; left: 50%; width: 24px; height: 24px; margin-left: -12px; margin-top: -12px; pointer-events: none; opacity: 0; rotate: 45deg;">
+            <ui:VisualElement name="HitMarkerT" style="position: absolute; top: 0; left: 11px; width: 2px; height: 6px; background-color: white;"/>
+            <ui:VisualElement name="HitMarkerB" style="position: absolute; bottom: 0; left: 11px; width: 2px; height: 6px; background-color: white;"/>
+            <ui:VisualElement name="HitMarkerL" style="position: absolute; left: 0; top: 11px; width: 6px; height: 2px; background-color: white;"/>
+            <ui:VisualElement name="HitMarkerR" style="position: absolute; right: 0; top: 11px; width: 6px; height: 2px; background-color: white;"/>
+        </ui:VisualElement>
+
+        <!-- Kill Confirmation Label -->
+        <ui:Label name="KillConfirmation" text="+1 Kill" style="position: absolute; top: 60%; left: 50%; width: 300px; margin-left: -150px; -unity-text-align: middle-center; font-size: 22px; color: rgb(241, 196, 15); -unity-font-style: bold; opacity: 0; text-shadow: 1.5px 1.5px 2px rgba(0, 0, 0, 0.8);"/>
+
     </ui:VisualElement>
 </ui:UXML>

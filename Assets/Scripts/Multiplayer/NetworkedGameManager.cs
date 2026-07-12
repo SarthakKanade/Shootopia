@@ -184,7 +184,7 @@ namespace Shootopia
                 string victimName = ResolvePlayerDisplayName(victimClientId);
 
                 // Broadcast cosmetic killfeed entry to all clients
-                _activeGameMode.BroadcastKillFeedClientRpc(killerName, victimName, weaponName);
+                _activeGameMode.BroadcastKillFeedClientRpc(killerName, victimName, weaponName, killerClientId, victimClientId);
             }
         }
 

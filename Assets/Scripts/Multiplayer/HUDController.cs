@@ -16,6 +16,10 @@ namespace Shootopia
         [Header("UI Reference")]
         [SerializeField] private UIDocument uiDocument;
 
+        [Header("Combat Feel / Juice")]
+        [SerializeField] private AudioClip _hitSound;
+        [SerializeField] private AudioClip _killSound;
+
         private VisualElement _root;
         
         // UI Elements
@@ -31,6 +35,16 @@ namespace Shootopia
         private Label _ammoText;
         private VisualElement _cooldownBar;
         private VisualElement _cooldownFill;
+
+        private VisualElement _damageFlash;
+        private VisualElement _hitMarker;
+        private readonly List<VisualElement> _hitMarkerTicks = new List<VisualElement>();
+        private Label _killConfirmation;
+        private AudioSource _audioSource;
+
+        private Coroutine _damageFlashRoutine;
+        private Coroutine _hitMarkerRoutine;
+        private Coroutine _killConfirmationRoutine;
 
         // Player caching
         private PlayerHealth _localHealth;
@@ -66,8 +80,31 @@ namespace Shootopia
             _cooldownBar = _root.Q<VisualElement>("CooldownBar");
             _cooldownFill = _root.Q<VisualElement>("CooldownFill");
 
+            // Bind Combat Feel Elements
+            _damageFlash = _root.Q<VisualElement>("DamageFlash");
+            _hitMarker = _root.Q<VisualElement>("HitMarker");
+            _killConfirmation = _root.Q<Label>("KillConfirmation");
+
+            _hitMarkerTicks.Clear();
+            if (_hitMarker != null)
+            {
+                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerT"));
+                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerB"));
+                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerL"));
+                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerR"));
+            }
+
+            // Setup local audio source for 2D feedback sound
+            _audioSource = GetComponent<AudioSource>();
+            if (_audioSource == null)
+            {
+                _audioSource = gameObject.AddComponent<AudioSource>();
+            }
+            _audioSource.spatialBlend = 0f; // Force 2D sound
+
             // Subscribe to static event for kill feeds
             GameModeBase.OnKillFeedReceived += AddKillFeedEntry;
+            PlayerHealth.OnLocalPlayerHitConfirmed += ShowHitMarker;
             
             Debug.Log("[HUDController] Initialized successfully.");
         }
@@ -75,7 +112,12 @@ namespace Shootopia
         private void OnDisable()
         {
             GameModeBase.OnKillFeedReceived -= AddKillFeedEntry;
+            PlayerHealth.OnLocalPlayerHitConfirmed -= ShowHitMarker;
             CleanUpLocalPlayerReferences();
+
+            if (_damageFlashRoutine != null) { StopCoroutine(_damageFlashRoutine); _damageFlashRoutine = null; }
+            if (_hitMarkerRoutine != null) { StopCoroutine(_hitMarkerRoutine); _hitMarkerRoutine = null; }
+            if (_killConfirmationRoutine != null) { StopCoroutine(_killConfirmationRoutine); _killConfirmationRoutine = null; }
         }
 
         private void Update()
@@ -144,6 +186,13 @@ namespace Shootopia
             if (_healthText != null)
             {
                 _healthText.text = $"{Mathf.RoundToInt(newValue)} / {Mathf.RoundToInt(maxHp)}";
+            }
+
+            // Trigger screen flash when taking damage
+            if (newValue < previousValue && previousValue > 0f)
+            {
+                float damageTaken = previousValue - newValue;
+                TriggerDamageFlash(damageTaken);
             }
         }
 
@@ -322,7 +371,7 @@ namespace Shootopia
             }
         }
 
-        private void AddKillFeedEntry(string killerName, string victimName, string weaponName)
+        private void AddKillFeedEntry(string killerName, string victimName, string weaponName, ulong killerClientId, ulong victimClientId)
         {
             if (_killFeedContainer == null) return;
 
@@ -356,6 +405,12 @@ namespace Shootopia
 
             // Life timer
             StartCoroutine(FadeOutAndRemoveEntry(entry));
+
+            // Check if local player is the killer
+            if (NetworkManager.Singleton != null && killerClientId == NetworkManager.Singleton.LocalClientId && killerClientId != victimClientId)
+            {
+                ShowKillConfirmation(victimName);
+            }
         }
 
         private IEnumerator FadeOutAndRemoveEntry(VisualElement entry)
@@ -376,6 +431,126 @@ namespace Shootopia
             {
                 _killFeedContainer.Remove(entry);
             }
+        }
+
+        // --- Combat Feel Animations [CombatFeedback] ---
+
+        private void TriggerDamageFlash(float damage)
+        {
+            if (_damageFlash == null) return;
+            if (_damageFlashRoutine != null) StopCoroutine(_damageFlashRoutine);
+            _damageFlashRoutine = StartCoroutine(DamageFlashSequence(damage));
+        }
+
+        private IEnumerator DamageFlashSequence(float damage)
+        {
+            float maxHp = _localHealth != null ? _localHealth.GetMaxHp() : 100f;
+            float ratio = Mathf.Clamp01(damage / maxHp);
+            
+            // Intensity proportional to damage taken (min 0.3, max 0.8)
+            float startAlpha = Mathf.Lerp(0.3f, 0.8f, ratio);
+            float duration = Mathf.Lerp(0.2f, 0.5f, ratio);
+            
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float alpha = Mathf.Lerp(startAlpha, 0f, elapsed / duration);
+                Color c = new Color(0.9f, 0.3f, 0.23f, alpha);
+                _damageFlash.style.borderLeftColor = c;
+                _damageFlash.style.borderRightColor = c;
+                _damageFlash.style.borderTopColor = c;
+                _damageFlash.style.borderBottomColor = c;
+                _damageFlash.style.backgroundColor = new Color(0.9f, 0.3f, 0.23f, alpha * 0.25f);
+                yield return null;
+            }
+            
+            Color transparent = new Color(0.9f, 0.3f, 0.23f, 0f);
+            _damageFlash.style.borderLeftColor = transparent;
+            _damageFlash.style.borderRightColor = transparent;
+            _damageFlash.style.borderTopColor = transparent;
+            _damageFlash.style.borderBottomColor = transparent;
+            _damageFlash.style.backgroundColor = transparent;
+        }
+
+        private void ShowHitMarker(bool isKill)
+        {
+            if (_hitMarker == null) return;
+            if (_hitMarkerRoutine != null) StopCoroutine(_hitMarkerRoutine);
+            _hitMarkerRoutine = StartCoroutine(HitMarkerSequence(isKill));
+        }
+
+        private IEnumerator HitMarkerSequence(bool isKill)
+        {
+            Color tickColor = isKill ? new Color(0.92f, 0.15f, 0.15f) : Color.white;
+            foreach (var tick in _hitMarkerTicks)
+            {
+                if (tick != null) tick.style.backgroundColor = tickColor;
+            }
+
+            // Play hit/kill sound
+            AudioClip sound = isKill ? _killSound : _hitSound;
+            if (_audioSource != null && sound != null)
+            {
+                _audioSource.PlayOneShot(sound);
+            }
+
+            float duration = 0.2f;
+            float elapsed = 0f;
+            _hitMarker.style.opacity = 1f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                _hitMarker.style.opacity = Mathf.Lerp(1f, 0f, t);
+                yield return null;
+            }
+
+            _hitMarker.style.opacity = 0f;
+        }
+
+        private void ShowKillConfirmation(string victimName)
+        {
+            if (_killConfirmation == null) return;
+            if (_killConfirmationRoutine != null) StopCoroutine(_killConfirmationRoutine);
+            _killConfirmationRoutine = StartCoroutine(KillConfirmationSequence(victimName));
+        }
+
+        private IEnumerator KillConfirmationSequence(string victimName)
+        {
+            _killConfirmation.text = $"+1 Kill: {victimName.ToUpper()}";
+            _killConfirmation.style.opacity = 1f;
+            
+            float duration = 1.5f;
+            float elapsed = 0f;
+            
+            // Reset position & size
+            _killConfirmation.style.top = new Length(60, LengthUnit.Percent);
+            _killConfirmation.style.fontSize = 26f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                // Drift up
+                float topPct = Mathf.Lerp(60f, 54f, t);
+                _killConfirmation.style.top = new Length(topPct, LengthUnit.Percent);
+                
+                // Font size shrink slightly
+                _killConfirmation.style.fontSize = Mathf.Lerp(26f, 22f, t);
+
+                if (t > 0.6f)
+                {
+                    float fadeT = (t - 0.6f) / 0.4f;
+                    _killConfirmation.style.opacity = Mathf.Lerp(1f, 0f, fadeT);
+                }
+
+                yield return null;
+            }
+
+            _killConfirmation.style.opacity = 0f;
         }
     }
 }

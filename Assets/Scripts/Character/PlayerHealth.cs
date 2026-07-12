@@ -23,8 +23,17 @@ namespace Shootopia
         public NetworkVariable<float> CurrentHp => _currentHp;
         private readonly NetworkVariable<int> livesRemaining = new NetworkVariable<int>(3, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
+        [Header("Combat Feel / Juice [CombatFeedback]")]
+        [SerializeField] private GameObject _deathVFXPrefab;
+        [SerializeField] private GameObject _spawnVFXPrefab;
+        [SerializeField] private AudioClip _deathSound;
+        [SerializeField] private AudioClip _spawnSound;
+
+        public static event System.Action<bool> OnLocalPlayerHitConfirmed;
+
         private bool _isDead = false;
         private bool _isInvincible = false;
+        private Coroutine _invincibilityFlashRoutine;
 
         private void Awake()
         {
@@ -101,13 +110,33 @@ namespace Shootopia
 
         if (_currentHp.Value <= 0f) return;
 
+        float previousHp = _currentHp.Value;
         _currentHp.Value = Mathf.Max(_currentHp.Value - amount, 0f);
+        float actualDamage = previousHp - _currentHp.Value;
         Debug.Log($"[PlayerHealth] Player {OwnerClientId} took {amount} damage from Attacker {attackerClientId} (Type: {type}, Weapon: {weaponName}). Remaining HP: {_currentHp.Value}");
 
-        if (_currentHp.Value <= 0f)
+        if (actualDamage > 0f)
         {
-            _isDead = true;
-            HandleDeath(attackerClientId, type, weaponName);
+            bool isKill = _currentHp.Value <= 0f;
+
+            // Notify attacker client
+            if (attackerClientId != OwnerClientId && NetworkManager.Singleton.ConnectedClients.ContainsKey(attackerClientId))
+            {
+                ClientRpcParams clientRpcParams = new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams
+                    {
+                        TargetClientIds = new ulong[] { attackerClientId }
+                    }
+                };
+                NotifyHitConfirmedClientRpc(isKill, clientRpcParams);
+            }
+
+            if (isKill)
+            {
+                _isDead = true;
+                HandleDeath(attackerClientId, type, weaponName);
+            }
         }
     }
 
@@ -173,11 +202,28 @@ namespace Shootopia
     }
 
     [ClientRpc]
+    private void NotifyHitConfirmedClientRpc(bool isKill, ClientRpcParams clientRpcParams = default)
+    {
+        Debug.Log($"[CombatFeedback] NotifyHitConfirmedClientRpc received. IsKill: {isKill}");
+        OnLocalPlayerHitConfirmed?.Invoke(isKill);
+    }
+
+    [ClientRpc]
     private void DeathClientRpc(DamageType type)
     {
         Debug.Log($"[PlayerHealth] DeathClientRpc received for Player {OwnerClientId}");
 
         _onPlayerDied?.Raise();
+
+        // Spawn death VFX and play sound
+        if (_deathVFXPrefab != null)
+        {
+            Instantiate(_deathVFXPrefab, transform.position, Quaternion.identity);
+        }
+        if (_deathSound != null)
+        {
+            AudioSource.PlayClipAtPoint(_deathSound, transform.position, 1f);
+        }
 
         // Hide mesh and disable control locally
         SetPlayerVisibility(false);
@@ -196,10 +242,63 @@ namespace Shootopia
 
         // Restore visibility and control
         SetPlayerVisibility(true);
+
+        // Spawn respawn VFX and play sound
+        if (_spawnVFXPrefab != null)
+        {
+            Instantiate(_spawnVFXPrefab, transform.position, Quaternion.identity);
+        }
+        if (_spawnSound != null)
+        {
+            AudioSource.PlayClipAtPoint(_spawnSound, transform.position, 1f);
+        }
+
+        // Trigger visual invincibility flashing for exactly 1.5 seconds (matching invincibility timing from 4.2)
+        if (_invincibilityFlashRoutine != null) StopCoroutine(_invincibilityFlashRoutine);
+        _invincibilityFlashRoutine = StartCoroutine(InvincibilityFlashRoutine());
+    }
+
+    private IEnumerator InvincibilityFlashRoutine()
+    {
+        float duration = 1.5f; // Reuse invincibility duration from 4.2
+        float interval = 0.1f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (_isDead) yield break;
+
+            var renderers = GetComponentsInChildren<Renderer>(true);
+            bool visible = (Mathf.FloorToInt(elapsed / interval) % 2) == 0;
+            foreach (var r in renderers)
+            {
+                if (r != null) r.enabled = visible;
+            }
+
+            yield return new WaitForSeconds(interval);
+            elapsed += interval;
+        }
+
+        // Final restore
+        if (!_isDead)
+        {
+            var renderers = GetComponentsInChildren<Renderer>(true);
+            foreach (var r in renderers)
+            {
+                if (r != null) r.enabled = true;
+            }
+        }
+        _invincibilityFlashRoutine = null;
     }
 
     private void SetPlayerVisibility(bool visible)
     {
+        if (!visible && _invincibilityFlashRoutine != null)
+        {
+            StopCoroutine(_invincibilityFlashRoutine);
+            _invincibilityFlashRoutine = null;
+        }
+
         // Hide renderers
         var renderers = GetComponentsInChildren<Renderer>(true);
         foreach (var r in renderers)

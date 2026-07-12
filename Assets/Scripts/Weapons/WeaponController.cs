@@ -32,6 +32,8 @@ namespace Shootopia
         [Header("Hitscan (for weapons without a projectilePrefab)")]
         [SerializeField] private LayerMask hitMask = ~0;
         [SerializeField] private float hitRange = 200f;
+        [SerializeField] private GameObject _fallbackHitscanImpactVFX;
+        [SerializeField] private AudioClip _hitscanImpactSound;
 
         [Header("Charging VFX")]
         [SerializeField] private GameObject defaultChargeVFXPrefab;
@@ -467,8 +469,15 @@ namespace Shootopia
                 Vector3 rayDir = dir.normalized;
                 if (Physics.Raycast(origin, rayDir, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
                 {
-                    if (data.HitVFXPrefab != null)
-                        Instantiate(data.HitVFXPrefab, hit.point, Quaternion.LookRotation(hit.normal));
+                    GameObject hitVFX = data.HitVFXPrefab != null ? data.HitVFXPrefab : _fallbackHitscanImpactVFX;
+                    if (hitVFX != null)
+                    {
+                        Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
+                    }
+                    if (_hitscanImpactSound != null)
+                    {
+                        AudioSource.PlayClipAtPoint(_hitscanImpactSound, hit.point, 0.6f);
+                    }
                 }
             }
 
@@ -503,8 +512,15 @@ namespace Shootopia
                 Vector3 rayDir = rotation * Vector3.forward;
                 if (Physics.Raycast(origin, rayDir, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
                 {
-                    if (data.HitVFXPrefab != null)
-                        Instantiate(data.HitVFXPrefab, hit.point, Quaternion.LookRotation(hit.normal));
+                    GameObject hitVFX = data.HitVFXPrefab != null ? data.HitVFXPrefab : _fallbackHitscanImpactVFX;
+                    if (hitVFX != null)
+                    {
+                        Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
+                    }
+                    if (_hitscanImpactSound != null)
+                    {
+                        AudioSource.PlayClipAtPoint(_hitscanImpactSound, hit.point, 0.6f);
+                    }
                 }
             }
 

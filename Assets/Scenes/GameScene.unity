@@ -762,6 +762,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.HUDController
   uiDocument: {fileID: 1893077212}
+  _hitSound: {fileID: 8300000, guid: 9cc2a755bf3be1a418991bf0785b482c, type: 3}
+  _killSound: {fileID: 8300000, guid: 639bf6ac148bdf04eab2d8f6905693ac, type: 3}
 --- !u!114 &1893077212
 MonoBehaviour:
   m_ObjectHideFlags: 0
