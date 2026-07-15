@@ -275,21 +275,25 @@ namespace Shootopia
             var states = new List<PlayerReadyState>();
             if (_currentSession == null) return states;
 
-            foreach (var player in _currentSession.Players)
+            if (_currentSession.Players != null)
             {
-                bool isReady = false;
-                if (player.Properties != null && player.Properties.TryGetValue("IsReady", out var prop))
+                foreach (var player in _currentSession.Players)
                 {
-                    bool.TryParse(prop.Value, out isReady);
-                }
+                    if (player == null) continue;
+                    bool isReady = false;
+                    if (player.Properties != null && player.Properties.TryGetValue("IsReady", out var prop))
+                    {
+                        bool.TryParse(prop.Value, out isReady);
+                    }
 
-                // If player is host, default to ready = true
-                if (player.Id == _currentSession.Host)
-                {
-                    isReady = true;
-                }
+                    // If player is host, default to ready = true
+                    if (player.Id == _currentSession.Host)
+                    {
+                        isReady = true;
+                    }
 
-                states.Add(new PlayerReadyState(player.Id, isReady, player.GetPlayerName()));
+                    states.Add(new PlayerReadyState(player.Id, isReady, player.GetPlayerName()));
+                }
             }
             return states;
         }

@@ -107,7 +107,11 @@ namespace Shootopia
 
             if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
             {
-                expectedPlayers = SessionManager.Instance.GetCurrentSession().Players.Count;
+                var session = SessionManager.Instance.GetCurrentSession();
+                if (session.Players != null)
+                {
+                    expectedPlayers = session.Players.Count;
+                }
             }
             Debug.Log($"[NetworkedGameManager] Pre-match: Waiting for {expectedPlayers} players to spawn...");
 

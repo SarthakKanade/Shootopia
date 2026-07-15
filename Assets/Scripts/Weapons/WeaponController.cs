@@ -631,20 +631,7 @@ namespace Shootopia
 
         private void ExpireWeapon()
         {
-            if (_timeRoutine != null) { StopCoroutine(_timeRoutine); _timeRoutine = null; }
-
-            CancelCharge();
-            if (animator != null)
-            {
-                animator.SetBool(HashIsFiring, false);
-                animator.SetFloat(HashShootSpeed, 1f);
-            }
-            if (_isADSActive) ExitADS();
-
-            if (_currentVisual != null) Destroy(_currentVisual);
-            Muzzle = GripR = GripL = null;
-            CurrentAttach = null;
-            _muzzleFlash = null;
+            Equip(-1);
             onWeaponExpired?.Raise();
             onDurabilityChanged?.Raise(0f);
         }
@@ -658,7 +645,30 @@ namespace Shootopia
 
         public void Equip(int index)
         {
-            if (loadout == null || index < 0 || index >= loadout.Length) return;
+            if (loadout == null || index < 0 || index >= loadout.Length)
+            {
+                if (IsOwner)
+                {
+                    _equippedWeaponIndex.Value = -1;
+                }
+                if (_timeRoutine != null) { StopCoroutine(_timeRoutine); _timeRoutine = null; }
+
+                CancelCharge();
+                if (animator != null)
+                {
+                    animator.SetBool(HashIsFiring, false);
+                    animator.SetFloat(HashShootSpeed, 1f);
+                    animator.SetFloat(HashStance, 0f); // Default stance
+                }
+                if (_isADSActive && IsOwner) ExitADS();
+
+                if (_currentVisual != null) Destroy(_currentVisual);
+                Muzzle = GripR = GripL = null;
+                CurrentAttach = null;
+                _muzzleFlash = null;
+                _currentIndex = -1;
+                return;
+            }
             var attach = loadout[index];
             if (attach == null) return;
 

@@ -66,6 +66,46 @@ namespace Shootopia
             Debug.Log("[PlayerNameplate] Set nameplate for: " + displayName);
         }
 
+        private int _lastTeamId = -2;
+
+        private void Update()
+        {
+            UpdateTeamColor();
+        }
+
+        private void UpdateTeamColor()
+        {
+            if (GameModeBase.Instance is TDMMode tdm)
+            {
+                var no = GetComponentInParent<NetworkObject>();
+                if (no != null)
+                {
+                    int teamId = tdm.GetPlayerTeam(no.OwnerClientId);
+                    if (teamId != _lastTeamId)
+                    {
+                        if (teamId == 0) // Blue
+                        {
+                            SetNameplateColor(new Color(0.2f, 0.6f, 1f)); // Blue
+                            _lastTeamId = teamId;
+                        }
+                        else if (teamId == 1) // Red
+                        {
+                            SetNameplateColor(new Color(1f, 0.3f, 0.3f)); // Red
+                            _lastTeamId = teamId;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (_lastTeamId != -1)
+                {
+                    SetNameplateColor(Color.white); // default white for FFA
+                    _lastTeamId = -1;
+                }
+            }
+        }
+
         private void LateUpdate()
         {
             if (_camTransform != null && _canvas != null)

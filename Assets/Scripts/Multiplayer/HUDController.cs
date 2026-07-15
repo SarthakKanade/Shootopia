@@ -22,10 +22,10 @@ namespace Shootopia
 
         private VisualElement _root;
         
-        // UI Elements
         private Label _timerText;
         private VisualElement _scoreContainer;
         private VisualElement _killFeedContainer;
+        private Label _placementText;
         
         private VisualElement _healthFill;
         private Label _healthText;
@@ -70,6 +70,7 @@ namespace Shootopia
             _timerText = _root.Q<Label>("TimerText");
             _scoreContainer = _root.Q<VisualElement>("ScoreContainer");
             _killFeedContainer = _root.Q<VisualElement>("KillFeed");
+            _placementText = _root.Q<Label>("PlacementText");
             
             _healthFill = _root.Q<VisualElement>("HealthFill");
             _healthText = _root.Q<Label>("HealthText");
@@ -258,6 +259,14 @@ namespace Shootopia
                             {
                                 entryLabel.style.color = new Color(0.95f, 0.77f, 0.06f); // golden yellow
                             }
+                            else if (entry.Label.Equals("Blue", System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                entryLabel.style.color = new Color(0.2f, 0.6f, 1f); // Blue
+                            }
+                            else if (entry.Label.Equals("Red", System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                entryLabel.style.color = new Color(1f, 0.3f, 0.3f); // Red
+                            }
 
                             _scoreContainer.Add(entryLabel);
 
@@ -270,6 +279,33 @@ namespace Shootopia
                             }
                         }
                     }
+                }
+            }
+
+            // Update FFA Placement Indicator
+            if (GameModeBase.Instance is FFAMode ffa)
+            {
+                if (NetworkManager.Singleton != null)
+                {
+                    ulong localId = NetworkManager.Singleton.LocalClientId;
+                    int rank = ffa.GetPlayerRank(localId);
+                    string suffix = "th";
+                    if (rank == 1) suffix = "st";
+                    else if (rank == 2) suffix = "nd";
+                    else if (rank == 3) suffix = "rd";
+
+                    if (_placementText != null)
+                    {
+                        _placementText.text = $"YOU: {rank}{suffix} PLACE";
+                        _placementText.style.display = DisplayStyle.Flex;
+                    }
+                }
+            }
+            else
+            {
+                if (_placementText != null)
+                {
+                    _placementText.style.display = DisplayStyle.None;
                 }
             }
         }

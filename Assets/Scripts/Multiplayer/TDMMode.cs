@@ -8,7 +8,7 @@ namespace Shootopia
     /// Team Deathmatch game mode. Features Blue (0) and Red (1) teams, auto-balancing
     /// on player connect, a 15-kill score limit, and a 7-minute time limit.
     /// </summary>
-    public class TDMMode : GameModeBase
+    public class TDMMode : GameModeBase, IScoreProvider
     {
         private const int KillLimit = 15;
         private const float TimeLimit = 420f; // 7 minutes
@@ -44,6 +44,28 @@ namespace Shootopia
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                 {
                     AssignPlayerToTeam(client.ClientId);
+                }
+            }
+
+            // Reposition all currently connected players to their team spawn points
+            if (SpawnPointManager.Instance != null && NetworkManager.Singleton != null)
+            {
+                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                {
+                    if (client.PlayerObject != null)
+                    {
+                        int team = GetPlayerTeam(client.ClientId);
+                        SpawnPointType spawnType = (team == 0) ? SpawnPointType.TeamBlue : SpawnPointType.TeamRed;
+                        Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
+                        if (sp != null)
+                        {
+                            var health = client.PlayerObject.GetComponent<PlayerHealth>();
+                            if (health != null)
+                            {
+                                health.Teleport(sp.position);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -171,6 +193,17 @@ namespace Shootopia
         public int GetPlayerTeam(ulong clientId)
         {
             return playerTeam.TryGetValue(clientId, out int teamId) ? teamId : -1;
+        }
+
+        public ScoreDisplayData GetScoreDisplayData()
+        {
+            var entries = new List<ScoreDisplayEntry>
+            {
+                new ScoreDisplayEntry { Label = "Blue", Value = ScoreBlue.ToString() },
+                new ScoreDisplayEntry { Label = "Red", Value = ScoreRed.ToString() }
+            };
+
+            return new ScoreDisplayData { Entries = entries };
         }
     }
 }

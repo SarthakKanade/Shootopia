@@ -200,13 +200,17 @@ namespace Shootopia
             if (clientIndex < 0) return null;
 
             int playerIndex = 0;
-            foreach (var player in session.Players)
+            if (session.Players != null)
             {
-                if (playerIndex == clientIndex)
+                foreach (var player in session.Players)
                 {
-                    return player.GetPlayerName();
+                    if (player == null) continue;
+                    if (playerIndex == clientIndex)
+                    {
+                        return player.GetPlayerName();
+                    }
+                    playerIndex++;
                 }
-                playerIndex++;
             }
 
             return null;

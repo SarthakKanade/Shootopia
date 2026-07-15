@@ -110,6 +110,18 @@ namespace Shootopia
 
         if (_currentHp.Value <= 0f) return;
 
+        // Friendly fire prevention for TDM
+        if (GameModeBase.Instance is TDMMode tdm)
+        {
+            int victimTeam = tdm.GetPlayerTeam(OwnerClientId);
+            int attackerTeam = tdm.GetPlayerTeam(attackerClientId);
+            if (attackerClientId != OwnerClientId && victimTeam != -1 && attackerTeam != -1 && victimTeam == attackerTeam)
+            {
+                Debug.Log($"[PlayerHealth] Friendly fire prevented: Player {attackerClientId} tried to damage teammate {OwnerClientId} (Team {victimTeam})");
+                return;
+            }
+        }
+
         float previousHp = _currentHp.Value;
         _currentHp.Value = Mathf.Max(_currentHp.Value - amount, 0f);
         float actualDamage = previousHp - _currentHp.Value;
@@ -176,7 +188,15 @@ namespace Shootopia
         Vector3 spawnPos = Vector3.zero;
         if (SpawnPointManager.Instance != null)
         {
-            Transform sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
+            SpawnPointType spawnType = SpawnPointType.FFA;
+            if (GameModeBase.Instance is TDMMode tdm)
+            {
+                int team = tdm.GetPlayerTeam(OwnerClientId);
+                if (team == 0) spawnType = SpawnPointType.TeamBlue;
+                else if (team == 1) spawnType = SpawnPointType.TeamRed;
+            }
+
+            Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
             if (sp != null)
             {
                 spawnPos = sp.position;
@@ -337,5 +357,20 @@ namespace Shootopia
 
     public float GetCurrentHp() => _currentHp.Value;
     public float GetMaxHp() => _maxHp;
+
+    public void Teleport(Vector3 position)
+    {
+        if (!IsServer) return;
+        TeleportClientRpc(position);
+    }
+
+    [ClientRpc]
+    private void TeleportClientRpc(Vector3 position)
+    {
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        transform.position = position;
+        if (cc != null) cc.enabled = true;
+    }
 }
 }

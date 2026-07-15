@@ -5,6 +5,7 @@
         <ui:VisualElement name="TopPanel" style="padding: 10px 20px; background-color: rgba(20, 20, 20, 0.75); border-radius: 8px; border-width: 1px; border-color: rgb(60, 60, 60); position: absolute; top: 20px; align-self: center; align-items: center; min-width: 220px;">
             <ui:Label name="TimerText" text="05:00" style="font-size: 26px; color: white; -unity-font-style: bold; letter-spacing: 1px;"/>
             <ui:VisualElement name="ScoreContainer" style="flex-direction: row; margin-top: 4px; justify-content: center; align-items: center;"/>
+            <ui:Label name="PlacementText" text="" style="font-size: 13px; color: rgb(241, 196, 15); -unity-font-style: bold; margin-top: 4px; letter-spacing: 0.5px;"/>
         </ui:VisualElement>
 
         <!-- Top Right Panel: Kill Feed Container -->

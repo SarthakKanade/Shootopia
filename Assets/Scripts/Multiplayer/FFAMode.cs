@@ -86,6 +86,52 @@ namespace Shootopia
             return PlayerKills.TryGetValue(clientId, out int kills) ? kills : 0;
         }
 
+        public int GetPlayerRank(ulong clientId)
+        {
+            var sortedPlayers = new List<ulong>();
+            if (NetworkManager.Singleton != null)
+            {
+                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                {
+                    sortedPlayers.Add(client.ClientId);
+                }
+            }
+            else
+            {
+                foreach (var id in PlayerKills.Keys)
+                {
+                    sortedPlayers.Add(id);
+                }
+            }
+
+            // Sort players by kills (descending)
+            sortedPlayers.Sort((a, b) => {
+                int killsA = GetPlayerKills(a);
+                int killsB = GetPlayerKills(b);
+                return killsB.CompareTo(killsA);
+            });
+
+            // Find rank (handling ties)
+            int rank = 1;
+            int lastKills = -1;
+            for (int i = 0; i < sortedPlayers.Count; i++)
+            {
+                ulong id = sortedPlayers[i];
+                int kills = GetPlayerKills(id);
+                if (i > 0 && kills < lastKills)
+                {
+                    rank = i + 1;
+                }
+                if (id == clientId)
+                {
+                    return rank;
+                }
+                lastKills = kills;
+            }
+
+            return 1;
+        }
+
         public ScoreDisplayData GetScoreDisplayData()
         {
             var entries = new List<ScoreDisplayEntry>();
