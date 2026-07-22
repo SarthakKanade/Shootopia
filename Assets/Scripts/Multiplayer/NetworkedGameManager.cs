@@ -23,10 +23,14 @@ namespace Shootopia
             }
             Instance = this;
 
-            // Automatically add ResultsScreenController so it is active in the scene!
+            // Automatically add ResultsScreenController and ScoreboardController so they are active in the scene!
             if (gameObject.GetComponent<ResultsScreenController>() == null)
             {
                 gameObject.AddComponent<ResultsScreenController>();
+            }
+            if (gameObject.GetComponent<ScoreboardController>() == null)
+            {
+                gameObject.AddComponent<ScoreboardController>();
             }
         }
 

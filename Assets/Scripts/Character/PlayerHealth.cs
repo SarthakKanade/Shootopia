@@ -22,6 +22,8 @@ namespace Shootopia
         private readonly NetworkVariable<float> _currentHp = new NetworkVariable<float>(100f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         public NetworkVariable<float> CurrentHp => _currentHp;
         private readonly NetworkVariable<int> livesRemaining = new NetworkVariable<int>(3, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private readonly NetworkVariable<int> _deathCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public NetworkVariable<int> DeathCount => _deathCount;
 
         [Header("Combat Feel / Juice [CombatFeedback]")]
         [SerializeField] private GameObject _deathVFXPrefab;
@@ -49,6 +51,7 @@ namespace Shootopia
         {
             _currentHp.Value = _maxHp;
             livesRemaining.Value = _totalLives;
+            _deathCount.Value = 0;
         }
 
         // Initial UI update
@@ -157,6 +160,9 @@ namespace Shootopia
         if (!IsServer) return;
 
         _isDead = true;
+
+        _deathCount.Value++;
+        Debug.Log("[PlayerHealth] Death count updated: " + DeathCount.Value);
 
         // Decrement lives remaining
         livesRemaining.Value = Mathf.Max(livesRemaining.Value - 1, 0);

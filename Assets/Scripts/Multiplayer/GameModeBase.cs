@@ -68,6 +68,30 @@ namespace Shootopia
 
             if (!PlayerDeaths.ContainsKey(victimClientId)) PlayerDeaths[victimClientId] = 0;
             PlayerDeaths[victimClientId]++;
+
+            SyncPlayerStatsClientRpc(killerClientId, PlayerKills[killerClientId], victimClientId, PlayerDeaths[victimClientId]);
+        }
+
+        [ClientRpc]
+        protected void SyncPlayerStatsClientRpc(ulong killerId, int killerKills, ulong victimId, int victimDeaths)
+        {
+            PlayerKills[killerId] = killerKills;
+            PlayerDeaths[victimId] = victimDeaths;
+        }
+
+        public int GetPlayerKills(ulong clientId)
+        {
+            return PlayerKills.TryGetValue(clientId, out var k) ? k : 0;
+        }
+
+        public int GetPlayerDeaths(ulong clientId)
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) && client.PlayerObject != null)
+            {
+                var health = client.PlayerObject.GetComponent<PlayerHealth>();
+                if (health != null) return health.DeathCount.Value;
+            }
+            return PlayerDeaths.TryGetValue(clientId, out var d) ? d : 0;
         }
 
         public virtual void OnMatchEnd()
@@ -126,8 +150,8 @@ namespace Shootopia
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                 {
                     ulong id = client.ClientId;
-                    int kills = PlayerKills.TryGetValue(id, out var k) ? k : 0;
-                    int deaths = PlayerDeaths.TryGetValue(id, out var d) ? d : 0;
+                    int kills = GetPlayerKills(id);
+                    int deaths = GetPlayerDeaths(id);
                     entries.Add(new PlayerScoreEntry { ClientId = id, Kills = kills, Deaths = deaths });
                 }
             }

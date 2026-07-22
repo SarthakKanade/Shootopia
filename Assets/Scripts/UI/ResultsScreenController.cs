@@ -109,25 +109,33 @@ namespace Shootopia
                 GUI.Box(new Rect(0, 0, Screen.width, Screen.height), GUIContent.none, _backgroundStyle);
 
                 // Center Dialog Box
-                float boxWidth = 550f;
-                float boxHeight = 400f;
+                float boxWidth = 620f;
+                float boxHeight = 480f;
                 float boxX = (Screen.width - boxWidth) / 2f;
                 float boxY = (Screen.height - boxHeight) / 2f;
 
                 GUILayout.BeginArea(new Rect(boxX, boxY, boxWidth, boxHeight), _dialogStyle);
 
                 GUILayout.Label("MATCH OVER", _titleStyle);
-                GUILayout.Space(10f);
+                GUILayout.Space(5f);
 
-                GUILayout.Label("WINNER:", _labelStyle);
+                GUILayout.Label("VICTORY STATS:", _labelStyle);
                 GUILayout.Label(_winnerInfo, _winnerStyle);
-                GUILayout.Space(25f);
+                GUILayout.Space(15f);
+
+                var tdmMode = GameModeBase.Instance as TDMMode;
+                bool isTDM = tdmMode != null;
 
                 // Scoreboard Table header
                 GUILayout.BeginHorizontal();
-                GUILayout.Label("Player Name", _tableHeaderStyle, GUILayout.Width(250f));
-                GUILayout.Label("Kills", _tableHeaderStyle, GUILayout.Width(100f));
-                GUILayout.Label("Deaths", _tableHeaderStyle, GUILayout.Width(100f));
+                GUILayout.Label("Player Name", _tableHeaderStyle, GUILayout.Width(isTDM ? 200f : 270f));
+                if (isTDM)
+                {
+                    GUILayout.Label("Team", _tableHeaderStyle, GUILayout.Width(70f));
+                }
+                GUILayout.Label("Kills", _tableHeaderStyle, GUILayout.Width(90f));
+                GUILayout.Label("Deaths", _tableHeaderStyle, GUILayout.Width(90f));
+                GUILayout.Label("K/D", _tableHeaderStyle, GUILayout.Width(70f));
                 GUILayout.EndHorizontal();
 
                 // Separator line
@@ -135,17 +143,44 @@ namespace Shootopia
                 GUILayout.Space(5f);
 
                 // Draw score entries
-                if (_scores != null)
+                if (_scores != null && _scores.Length > 0)
                 {
-                    foreach (var entry in _scores)
+                    // Sort scores by kills descending
+                    var sortedScores = new List<PlayerScoreEntry>(_scores);
+                    sortedScores.Sort((a, b) => b.Kills.CompareTo(a.Kills));
+
+                    ulong localClientId = NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId : 0;
+
+                    foreach (var entry in sortedScores)
                     {
                         string playerName = PlayerNameRegistry.GetName(entry.ClientId);
                         if (string.IsNullOrEmpty(playerName)) playerName = $"Player {entry.ClientId}";
+                        if (entry.ClientId == localClientId) playerName += " (YOU)";
+
+                        float kd = entry.Deaths > 0 ? (float)entry.Kills / entry.Deaths : entry.Kills;
+                        string kdStr = entry.Deaths > 0 ? kd.ToString("0.0") : (entry.Kills > 0 ? entry.Kills.ToString("0.0") : "0.0");
+
+                        GUIStyle rowStyle = new GUIStyle(_tableRowStyle);
+                        if (entry.ClientId == localClientId)
+                        {
+                            rowStyle.fontStyle = FontStyle.Bold;
+                            rowStyle.normal.textColor = new Color(1f, 0.85f, 0.2f); // Yellow highlight for local player
+                        }
 
                         GUILayout.BeginHorizontal();
-                        GUILayout.Label(playerName, _tableRowStyle, GUILayout.Width(250f));
-                        GUILayout.Label(entry.Kills.ToString(), _tableRowStyle, GUILayout.Width(100f));
-                        GUILayout.Label(entry.Deaths.ToString(), _tableRowStyle, GUILayout.Width(100f));
+                        GUILayout.Label(playerName, rowStyle, GUILayout.Width(isTDM ? 200f : 270f));
+                        if (isTDM)
+                        {
+                            int team = tdmMode.GetPlayerTeam(entry.ClientId);
+                            string teamStr = team == 0 ? "Blue" : (team == 1 ? "Red" : "—");
+                            GUIStyle teamStyle = new GUIStyle(rowStyle);
+                            if (team == 0) teamStyle.normal.textColor = new Color(0.3f, 0.65f, 1f);
+                            else if (team == 1) teamStyle.normal.textColor = new Color(1f, 0.35f, 0.35f);
+                            GUILayout.Label(teamStr, teamStyle, GUILayout.Width(70f));
+                        }
+                        GUILayout.Label(entry.Kills.ToString(), rowStyle, GUILayout.Width(90f));
+                        GUILayout.Label(entry.Deaths.ToString(), rowStyle, GUILayout.Width(90f));
+                        GUILayout.Label(kdStr, rowStyle, GUILayout.Width(70f));
                         GUILayout.EndHorizontal();
                     }
                 }
