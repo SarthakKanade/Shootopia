@@ -103,8 +103,9 @@ namespace Shootopia
             }
             _audioSource.spatialBlend = 0f; // Force 2D sound
 
-            // Subscribe to static event for kill feeds
+            // Subscribe to static event for kill feeds & system messages
             GameModeBase.OnKillFeedReceived += AddKillFeedEntry;
+            GameModeBase.OnSystemMessageReceived += AddSystemFeedEntry;
             PlayerHealth.OnLocalPlayerHitConfirmed += ShowHitMarker;
             
             Debug.Log("[HUDController] Initialized successfully.");
@@ -113,6 +114,7 @@ namespace Shootopia
         private void OnDisable()
         {
             GameModeBase.OnKillFeedReceived -= AddKillFeedEntry;
+            GameModeBase.OnSystemMessageReceived -= AddSystemFeedEntry;
             PlayerHealth.OnLocalPlayerHitConfirmed -= ShowHitMarker;
             CleanUpLocalPlayerReferences();
 
@@ -447,6 +449,41 @@ namespace Shootopia
             {
                 ShowKillConfirmation(victimName);
             }
+        }
+
+        private void AddSystemFeedEntry(string message)
+        {
+            if (_killFeedContainer == null) return;
+
+            var entry = new VisualElement();
+            entry.style.backgroundColor = new Color(0.15f, 0.12f, 0.05f, 0.85f);
+            entry.style.borderTopLeftRadius = 4f;
+            entry.style.borderTopRightRadius = 4f;
+            entry.style.borderBottomLeftRadius = 4f;
+            entry.style.borderBottomRightRadius = 4f;
+            entry.style.borderLeftWidth = 3f;
+            entry.style.borderLeftColor = new Color(0.95f, 0.75f, 0.2f); // Amber / Yellow for system logs
+            entry.style.paddingTop = 4f;
+            entry.style.paddingBottom = 4f;
+            entry.style.paddingLeft = 10f;
+            entry.style.paddingRight = 10f;
+            entry.style.marginBottom = 6f;
+            entry.style.flexDirection = FlexDirection.Row;
+
+            var textLabel = new Label(message);
+            textLabel.style.color = new Color(0.95f, 0.95f, 0.8f);
+            textLabel.style.fontSize = 12f;
+            textLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
+            entry.Add(textLabel);
+
+            _killFeedContainer.Add(entry);
+
+            while (_killFeedContainer.childCount > 5)
+            {
+                _killFeedContainer.RemoveAt(0);
+            }
+
+            StartCoroutine(FadeOutAndRemoveEntry(entry));
         }
 
         private IEnumerator FadeOutAndRemoveEntry(VisualElement entry)

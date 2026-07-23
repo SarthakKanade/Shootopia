@@ -32,6 +32,15 @@ namespace Shootopia
             Debug.Log("[PlayerNameRegistry] Registered: " + clientId + " -> " + displayName);
         }
 
+        public static void Unregister(ulong clientId)
+        {
+            if (Instance != null && Instance._names.ContainsKey(clientId))
+            {
+                Instance._names.Remove(clientId);
+                Debug.Log("[PlayerNameRegistry] Unregistered: " + clientId);
+            }
+        }
+
         public static string GetName(ulong clientId)
         {
             if (Instance != null && Instance._names.TryGetValue(clientId, out string name))

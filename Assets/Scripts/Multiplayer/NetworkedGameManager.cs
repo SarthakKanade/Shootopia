@@ -23,7 +23,7 @@ namespace Shootopia
             }
             Instance = this;
 
-            // Automatically add ResultsScreenController and ScoreboardController so they are active in the scene!
+            // Automatically add Controllers and Handlers so they are active in the scene!
             if (gameObject.GetComponent<ResultsScreenController>() == null)
             {
                 gameObject.AddComponent<ResultsScreenController>();
@@ -31,6 +31,14 @@ namespace Shootopia
             if (gameObject.GetComponent<ScoreboardController>() == null)
             {
                 gameObject.AddComponent<ScoreboardController>();
+            }
+            if (DisconnectHandler.Instance == null && gameObject.GetComponent<DisconnectHandler>() == null)
+            {
+                gameObject.AddComponent<DisconnectHandler>();
+            }
+            if (NetworkNotificationUI.Instance == null && gameObject.GetComponent<NetworkNotificationUI>() == null)
+            {
+                gameObject.AddComponent<NetworkNotificationUI>();
             }
         }
 
