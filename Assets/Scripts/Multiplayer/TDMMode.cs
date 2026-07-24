@@ -32,7 +32,7 @@ namespace Shootopia
             PlayerDeaths.Clear();
             BlueScore.Value = 0;
             RedScore.Value = 0;
-            MatchTimeRemainingValue = TimeLimit;
+            MatchTimeRemaining.Value = TimeLimit;
             MatchInProgress.Value = true;
 
             // Subscribe to late-joining connections
@@ -72,7 +72,7 @@ namespace Shootopia
             Debug.Log("[TDMMode] Match Started!");
             
             // Broadcast initial time
-            BroadcastTimeRemainingClientRpc(MatchTimeRemainingValue);
+            BroadcastTimeRemainingClientRpc(MatchTimeRemaining.Value);
         }
 
         public override void OnNetworkDespawn()

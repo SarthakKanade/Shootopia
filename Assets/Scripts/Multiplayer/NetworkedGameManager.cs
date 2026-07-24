@@ -42,9 +42,13 @@ namespace Shootopia
             }
         }
 
+        public readonly NetworkVariable<Unity.Collections.FixedString32Bytes> ActiveModeName = new NetworkVariable<Unity.Collections.FixedString32Bytes>("FFA", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
+
+            ActiveModeName.OnValueChanged += OnActiveModeChanged;
 
             if (IsServer)
             {
@@ -59,38 +63,8 @@ namespace Shootopia
                 }
 
                 Debug.Log($"[NetworkedGameManager] Starting match. Selected mode from metadata: {selectedMode}");
-
-                var ffa = GetComponent<FFAMode>();
-                var tdm = GetComponent<TDMMode>();
-
-                if (selectedMode.Equals("TDM", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    if (tdm != null)
-                    {
-                        _activeGameMode = tdm;
-                        if (ffa != null) ffa.enabled = false;
-                        tdm.enabled = true;
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[NetworkedGameManager] TDMMode component not pre-attached! Adding dynamically (RPCs may fail).");
-                        _activeGameMode = gameObject.AddComponent<TDMMode>();
-                    }
-                }
-                else
-                {
-                    if (ffa != null)
-                    {
-                        _activeGameMode = ffa;
-                        if (tdm != null) tdm.enabled = false;
-                        ffa.enabled = true;
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[NetworkedGameManager] FFAMode component not pre-attached! Adding dynamically (RPCs may fail).");
-                        _activeGameMode = gameObject.AddComponent<FFAMode>();
-                    }
-                }
+                ActiveModeName.Value = selectedMode;
+                ApplyActiveGameMode(selectedMode);
 
                 // Check if active scene is the WaitingRoom (Lobby)
                 string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
@@ -103,6 +77,58 @@ namespace Shootopia
                 // Start the pre-match countdown sequence in GameScene
                 StartCoroutine(PreMatchSequence());
             }
+            else
+            {
+                ApplyActiveGameMode(ActiveModeName.Value.ToString());
+            }
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            base.OnNetworkDespawn();
+            ActiveModeName.OnValueChanged -= OnActiveModeChanged;
+        }
+
+        private void OnActiveModeChanged(Unity.Collections.FixedString32Bytes previousValue, Unity.Collections.FixedString32Bytes newValue)
+        {
+            ApplyActiveGameMode(newValue.ToString());
+        }
+
+        public void ApplyActiveGameMode(string selectedMode)
+        {
+            var ffa = GetComponent<FFAMode>();
+            var tdm = GetComponent<TDMMode>();
+
+            if (selectedMode.Equals("TDM", System.StringComparison.OrdinalIgnoreCase))
+            {
+                if (tdm != null)
+                {
+                    _activeGameMode = tdm;
+                    if (ffa != null) ffa.enabled = false;
+                    tdm.enabled = true;
+                }
+                else
+                {
+                    Debug.LogWarning("[NetworkedGameManager] TDMMode component not pre-attached! Adding dynamically.");
+                    _activeGameMode = gameObject.AddComponent<TDMMode>();
+                }
+            }
+            else
+            {
+                if (ffa != null)
+                {
+                    _activeGameMode = ffa;
+                    if (tdm != null) tdm.enabled = false;
+                    ffa.enabled = true;
+                }
+                else
+                {
+                    Debug.LogWarning("[NetworkedGameManager] FFAMode component not pre-attached! Adding dynamically.");
+                    _activeGameMode = gameObject.AddComponent<FFAMode>();
+                }
+            }
+
+            Debug.Log($"[NetworkedGameManager] Applied GameMode '{selectedMode}' (IsServer: {IsServer})");
         }
 
         private System.Collections.IEnumerator PreMatchSequence()

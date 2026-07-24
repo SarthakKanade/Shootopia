@@ -201,10 +201,12 @@ namespace Shootopia
 
         private void UpdateTimerAndScore()
         {
+            var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+
             // Update match countdown timer
-            if (GameModeBase.Instance != null && GameModeBase.Instance.IsInProgress)
+            if (activeMode != null && activeMode.IsInProgress)
             {
-                float timeRemaining = GameModeBase.Instance.TimeRemaining;
+                float timeRemaining = activeMode.TimeRemaining;
                 int minutes = Mathf.FloorToInt(timeRemaining / 60f);
                 int seconds = Mathf.FloorToInt(timeRemaining % 60f);
 
@@ -236,7 +238,7 @@ namespace Shootopia
             if (_scoreContainer != null)
             {
                 _scoreContainer.Clear();
-                if (GameModeBase.Instance is IScoreProvider scoreProvider)
+                if (activeMode is IScoreProvider scoreProvider)
                 {
                     var scoreData = scoreProvider.GetScoreDisplayData();
                     if (scoreData.Entries != null)

@@ -15,26 +15,48 @@ namespace Shootopia
     /// </summary>
     public class NetworkBootstrapper : MonoBehaviour
     {
+        private bool _isInitializing = false;
+
         private void Start()
         {
+            if (SessionManager.Instance != null)
+            {
+                SessionManager.Instance.OnSessionJoined.AddListener(OnSessionReady);
+                SessionManager.Instance.OnSessionCreated.AddListener(OnSessionReady);
+            }
+
+            TryInitialize();
+        }
+
+        private void OnSessionReady()
+        {
+            TryInitialize();
+        }
+
+        private void TryInitialize()
+        {
+            if (_isInitializing) return;
+
             if (SessionManager.Instance == null)
             {
-                Debug.LogError("[NetworkBootstrapper] SessionManager.Instance is null!");
+                Debug.LogWarning("[NetworkBootstrapper] SessionManager.Instance is null. Waiting...");
                 return;
             }
 
             var session = SessionManager.Instance.GetCurrentSession();
             if (session == null)
             {
-                Debug.LogError("[NetworkBootstrapper] No active UGS Session found!");
+                Debug.Log("[NetworkBootstrapper] No active UGS Session found yet. Waiting for session initialization...");
                 return;
             }
 
             if (NetworkManager.Singleton == null)
             {
-                Debug.LogError("[NetworkBootstrapper] NetworkManager.Singleton is null!");
+                Debug.LogWarning("[NetworkBootstrapper] NetworkManager.Singleton is null!");
                 return;
             }
+
+            _isInitializing = true;
 
             // Subscribe to NGO connection callbacks to track final client IDs
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -66,6 +88,12 @@ namespace Shootopia
 
         private void OnDestroy()
         {
+            if (SessionManager.Instance != null)
+            {
+                SessionManager.Instance.OnSessionJoined.RemoveListener(OnSessionReady);
+                SessionManager.Instance.OnSessionCreated.RemoveListener(OnSessionReady);
+            }
+
             if (NetworkManager.Singleton != null)
             {
                 NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;

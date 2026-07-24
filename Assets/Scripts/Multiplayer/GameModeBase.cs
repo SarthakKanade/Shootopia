@@ -37,12 +37,12 @@ namespace Shootopia
         [Header("Match State")]
         protected readonly NetworkVariable<bool> MatchInProgress = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-        protected float MatchTimeRemainingValue;
+        public readonly NetworkVariable<float> MatchTimeRemaining = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         /// <summary>
         /// Expose match variables to external systems (e.g., UI displays).
         /// </summary>
-        public float TimeRemaining => MatchTimeRemainingValue;
+        public float TimeRemaining => MatchTimeRemaining.Value;
         public bool IsInProgress => MatchInProgress.Value;
 
         protected readonly Dictionary<ulong, int> PlayerKills = new Dictionary<ulong, int>();
@@ -56,6 +56,37 @@ namespace Shootopia
         protected virtual void OnEnable()
         {
             Instance = this;
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            base.OnNetworkSpawn();
+            if (IsServer && NetworkManager.Singleton != null)
+            {
+                NetworkManager.Singleton.OnClientConnectedCallback += OnBaseClientConnected;
+            }
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            base.OnNetworkDespawn();
+            if (IsServer && NetworkManager.Singleton != null)
+            {
+                NetworkManager.Singleton.OnClientConnectedCallback -= OnBaseClientConnected;
+            }
+        }
+
+        private void OnBaseClientConnected(ulong clientId)
+        {
+            if (!IsServer) return;
+            // Sync all existing player score stats to joining clients
+            foreach (var kvp in PlayerKills)
+            {
+                ulong id = kvp.Key;
+                int kills = kvp.Value;
+                int deaths = PlayerDeaths.TryGetValue(id, out var d) ? d : 0;
+                SyncPlayerStatsClientRpc(id, kills, id, deaths);
+            }
         }
 
         public abstract void OnMatchStart();
@@ -102,31 +133,27 @@ namespace Shootopia
             MatchActive.Value = false;
         }
 
-        private float _timeSinceLastTimeBroadcast = 0f;
-
         protected virtual void Update()
         {
-            if (!IsServer || !MatchInProgress.Value || !MatchActive.Value) return;
+            if (!MatchInProgress.Value || !MatchActive.Value) return;
 
-            MatchTimeRemainingValue -= Time.deltaTime;
-            if (MatchTimeRemainingValue <= 0f)
+            if (IsServer)
             {
-                MatchTimeRemainingValue = 0f;
-                OnMatchEnd();
-            }
-
-            _timeSinceLastTimeBroadcast += Time.deltaTime;
-            if (_timeSinceLastTimeBroadcast >= 1.0f)
-            {
-                _timeSinceLastTimeBroadcast = 0f;
-                BroadcastTimeRemainingClientRpc(MatchTimeRemainingValue);
+                MatchTimeRemaining.Value = Mathf.Max(0f, MatchTimeRemaining.Value - Time.deltaTime);
+                if (MatchTimeRemaining.Value <= 0f)
+                {
+                    OnMatchEnd();
+                }
             }
         }
 
         [ClientRpc]
         public void BroadcastTimeRemainingClientRpc(float timeRemaining)
         {
-            MatchTimeRemainingValue = timeRemaining;
+            if (IsServer)
+            {
+                MatchTimeRemaining.Value = timeRemaining;
+            }
         }
 
         [ClientRpc]

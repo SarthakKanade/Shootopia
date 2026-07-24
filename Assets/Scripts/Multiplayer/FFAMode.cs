@@ -19,12 +19,12 @@ namespace Shootopia
 
             PlayerKills.Clear();
             PlayerDeaths.Clear();
-            MatchTimeRemainingValue = TimeLimit;
+            MatchTimeRemaining.Value = TimeLimit;
             MatchInProgress.Value = true;
             Debug.Log("[FFAMode] Match Started!");
             
             // Broadcast initial time
-            BroadcastTimeRemainingClientRpc(MatchTimeRemainingValue);
+            BroadcastTimeRemainingClientRpc(MatchTimeRemaining.Value);
         }
 
         public override void OnPlayerKilled(ulong killerClientId, ulong victimClientId)
