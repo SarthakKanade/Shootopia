@@ -1,2 +1,9 @@
 fileFormatVersion: 2
 guid: ce912ff9004a44c3a0b8e447b7e7c35c
+AssetOrigin:
+  serializedVersion: 1
+  productId: 286072
+  packageName: Projectiles Advanced Multiplayer - Photon Fusion
+  packageVersion: 
+  assetPath: Assets/ImportedProjectiles/Scripts/Scripts/Utilities/AudioEffect.cs
+  uploadId: 0

@@ -10,5 +10,5 @@ AssetOrigin:
   productId: 286072
   packageName: Projectiles Advanced Multiplayer - Photon Fusion
   packageVersion: 2.0.3
-  assetPath: Assets/Prefabs/Projectiles/PulseProjectile.prefab
+  assetPath: Assets/ImportedProjectiles/Prefabs/Projectiles/PulseProjectile.prefab
   uploadId: 718776

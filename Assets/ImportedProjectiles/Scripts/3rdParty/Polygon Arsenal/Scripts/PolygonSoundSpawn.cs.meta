@@ -1,2 +1,9 @@
 fileFormatVersion: 2
 guid: 5aa5c1e37409a9344a344c0468db383d
+AssetOrigin:
+  serializedVersion: 1
+  productId: 286072
+  packageName: Projectiles Advanced Multiplayer - Photon Fusion
+  packageVersion: 
+  assetPath: Assets/ImportedProjectiles/Scripts/3rdParty/Polygon Arsenal/Scripts/PolygonSoundSpawn.cs
+  uploadId: 0

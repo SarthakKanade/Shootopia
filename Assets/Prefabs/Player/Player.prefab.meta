@@ -5,3 +5,10 @@ PrefabImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 286072
+  packageName: Projectiles Advanced Multiplayer - Photon Fusion
+  packageVersion: 
+  assetPath: Assets/Prefabs/Player/Player.prefab
+  uploadId: 0

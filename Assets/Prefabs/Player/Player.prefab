@@ -2001,16 +2001,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: deae5edf3e7aa43828c4cd56b7023fb3, type: 2}
   - {fileID: 11400000, guid: 5b99f6cb2991f4a4ab05b33e4f05771d, type: 2}
   - {fileID: 11400000, guid: 2c6444050a5a4fbbb9b9518fb14e1724, type: 2}
-  onWeaponExpired: {fileID: 11400000, guid: 4789fd49b0227457cbfcadf56166f6af, type: 2}
-  onDurabilityChanged: {fileID: 11400000, guid: e46981f9a30154180af3e506aa478c46, type: 2}
-  onMaxDurabilityChanged: {fileID: 11400000, guid: bd6b661f132f143dbabc8e87e1ce5c22, type: 2}
+  - {fileID: 11400000, guid: 480c2a5115b7d471483c5273ab31445f, type: 2}
+  - {fileID: 11400000, guid: bfc820da6535f48549fb685282d92ef8, type: 2}
+  - {fileID: 11400000, guid: 9699a5652b0c846d0a8f59ac20d2325a, type: 2}
+  onWeaponExpired: {fileID: 0}
+  onDurabilityChanged: {fileID: 0}
+  onMaxDurabilityChanged: {fileID: 0}
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
   hitRange: 200
-  _fallbackHitscanImpactVFX: {fileID: 3710540494006657454, guid: 82dd764d497c54aedbd13d022688abd1, type: 3}
+  _fallbackHitscanImpactVFX: {fileID: 0}
   _hitscanImpactSound: {fileID: 8300000, guid: 1bea37feb4c6391449543919a3c6cbe5, type: 3}
-  defaultChargeVFXPrefab: {fileID: 472893121703444873, guid: f8f78b07b7bac46d3ae30dc660699320, type: 3}
+  defaultChargeVFXPrefab: {fileID: 0}
   scopeOverlay: {fileID: 3383112620698120021, guid: 7b41fdde6bd0b4c91847882d77d2a970, type: 3}
   playerFollowCamera: {fileID: 0}
 --- !u!114 &4193384357287948399
@@ -2146,8 +2149,8 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   _maxHp: 100
   _totalLives: 3
-  _onHpChanged: {fileID: 11400000, guid: a3d5d48fd2f284535be7075646d90fc3, type: 2}
-  _onPlayerDied: {fileID: 11400000, guid: 4607fe3c5ede7460885ff8a0380f4b99, type: 2}
+  _onHpChanged: {fileID: 0}
+  _onPlayerDied: {fileID: 0}
   _deathVFXPrefab: {fileID: 2512073696466879513, guid: f4b33787de16f4a889514fe33c0d15c2, type: 3}
   _spawnVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
   _deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}

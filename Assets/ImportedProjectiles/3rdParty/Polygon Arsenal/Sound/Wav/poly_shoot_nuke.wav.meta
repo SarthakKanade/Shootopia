@@ -26,5 +26,5 @@ AssetOrigin:
   productId: 286072
   packageName: Projectiles Advanced Multiplayer - Photon Fusion
   packageVersion: 2.0.3
-  assetPath: Assets/3rdParty/Polygon Arsenal/Sound/Wav/poly_shoot_nuke.wav
+  assetPath: Assets/ImportedProjectiles/3rdParty/Polygon Arsenal/Sound/Wav/poly_shoot_nuke.wav
   uploadId: 718776

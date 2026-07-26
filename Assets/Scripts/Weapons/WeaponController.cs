@@ -50,11 +50,14 @@ namespace Shootopia
         private static readonly int HashAimPitch = Animator.StringToHash("AimPitch");
         private static readonly int HashIsFiring = Animator.StringToHash("IsFiring");
         private static readonly int HashShootSpeed = Animator.StringToHash("ShootSpeed");
+        private static readonly int HashIsThrowAiming = Animator.StringToHash("IsThrowAiming");
+        private static readonly int HashThrowRelease = Animator.StringToHash("ThrowRelease");
 
-        // Charging state
+        // Charging / Throwing state
         private bool _isCharging;
         private float _chargeTimer;
         private GameObject _activeChargeVFX;
+        private bool _isAimingTrap;
 
         private readonly NetworkVariable<int> _equippedWeaponIndex = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private int _currentIndex = -1;
@@ -325,7 +328,39 @@ namespace Shootopia
             var data = CurrentAttach.gameplayData;
             if (data == null) return;
 
-            if (data.isCharged)
+            if (data.isTrap || data.category == WeaponCategory.Trap)
+            {
+                if (fireHeld && CanFire(data) && _timeSinceLastShot >= data.FireRate)
+                {
+                    if (!_isAimingTrap)
+                    {
+                        _isAimingTrap = true;
+                        if (animator != null)
+                        {
+                            animator.SetBool(HashIsThrowAiming, true);
+                        }
+                    }
+                }
+                else if (fireReleased && _isAimingTrap)
+                {
+                    _isAimingTrap = false;
+                    if (animator != null)
+                    {
+                        animator.SetBool(HashIsThrowAiming, false);
+                        animator.SetTrigger(HashThrowRelease);
+                    }
+                    FireProjectile(data);
+                }
+                else if (!fireHeld && _isAimingTrap)
+                {
+                    _isAimingTrap = false;
+                    if (animator != null)
+                    {
+                        animator.SetBool(HashIsThrowAiming, false);
+                    }
+                }
+            }
+            else if (data.isCharged)
             {
                 if (fireHeld && CanFire(data) && _timeSinceLastShot >= data.FireRate)
                 {
@@ -756,6 +791,7 @@ namespace Shootopia
         private void CancelCharge()
         {
             _isCharging = false;
+            _isAimingTrap = false;
             _chargeTimer = 0f;
             if (_activeChargeVFX != null)
             {
@@ -765,6 +801,7 @@ namespace Shootopia
             if (animator != null)
             {
                 animator.SetBool(HashIsFiring, false);
+                animator.SetBool(HashIsThrowAiming, false);
                 animator.SetFloat(HashShootSpeed, 1f);
             }
         }

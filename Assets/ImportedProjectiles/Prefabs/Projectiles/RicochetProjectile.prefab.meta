@@ -10,5 +10,5 @@ AssetOrigin:
   productId: 286072
   packageName: Projectiles Advanced Multiplayer - Photon Fusion
   packageVersion: 2.0.3
-  assetPath: Assets/Prefabs/Projectiles/RicochetProjectile.prefab
+  assetPath: Assets/ImportedProjectiles/Prefabs/Projectiles/RicochetProjectile.prefab
   uploadId: 718776
