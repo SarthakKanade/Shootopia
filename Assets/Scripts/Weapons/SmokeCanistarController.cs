@@ -6,6 +6,7 @@ namespace Shootopia
     public class SmokeCanistarController : TrapBase
     {
         [SerializeField] private GameObject smokeCloudPrefab;
+        [SerializeField] private GameObject blastVFXPrefab;
         private Rigidbody rb;
         private bool _activated = false;
         private WeaponSO _data;
@@ -16,18 +17,24 @@ namespace Shootopia
             _blinkLight = GetComponentInChildren<Light>();
         }
 
-        protected override void OnInitialised(WeaponSO data)
+        protected override void OnInitialised(WeaponSO data, Vector3 launchVelocity)
         {
             _data = data;
             rb = GetComponent<Rigidbody>();
             
-            float angle = data != null ? data.throwAngle : 30f;
-            float force = data != null ? data.throwForce : 12f;
-
-            if (_cam != null)
+            if (rb != null)
             {
-                Vector3 throwDir = Quaternion.AngleAxis(-angle, _cam.transform.right) * _cam.transform.forward;
-                rb.AddForce(throwDir * force, ForceMode.VelocityChange);
+                if (launchVelocity.sqrMagnitude > 0.01f)
+                {
+                    rb.linearVelocity = launchVelocity;
+                }
+                else if (_cam != null)
+                {
+                    float angle = data != null ? data.throwAngle : 20f;
+                    float force = data != null ? data.throwForce : 14f;
+                    Vector3 throwDir = Quaternion.AngleAxis(-angle, _cam.transform.right) * _cam.transform.forward;
+                    rb.linearVelocity = throwDir * force;
+                }
             }
 
             StartCoroutine(FuseRoutine());
@@ -61,6 +68,13 @@ namespace Shootopia
         {
             if (_activated) return;
             _activated = true;
+
+            var blastVFX = blastVFXPrefab != null ? blastVFXPrefab : (_data != null ? _data.HitVFXPrefab : null);
+            if (blastVFX != null)
+            {
+                GameObject blast = Instantiate(blastVFX, transform.position, Quaternion.identity);
+                Destroy(blast, 3f);
+            }
             
             if (smokeCloudPrefab != null)
             {

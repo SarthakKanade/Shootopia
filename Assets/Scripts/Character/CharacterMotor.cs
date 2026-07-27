@@ -29,6 +29,7 @@ namespace Shootopia
         public Transform ModelRoot => modelRoot != null ? modelRoot : transform;
         
         public float VerticalVelocity { get; set; }
+        public float MoveSpeedMultiplier { get; set; } = 1f;
         public bool IsGrounded => Controller.isGrounded;
         public PlayerInputIntent InputIntent => input != null ? input.Intent : default;
         public bool IsMoving => InputIntent.Move.sqrMagnitude > 0.01f;
@@ -111,7 +112,7 @@ namespace Shootopia
                 animator.SetFloat(HashSpeed, worldMove.magnitude, animDamp, dt);
             }
 
-            Vector3 velocity = worldMove * (moveSpeed * speedMultiplier) + Vector3.up * VerticalVelocity;
+            Vector3 velocity = worldMove * (moveSpeed * speedMultiplier * MoveSpeedMultiplier) + Vector3.up * VerticalVelocity;
             Controller.Move(velocity * dt);
         }
 

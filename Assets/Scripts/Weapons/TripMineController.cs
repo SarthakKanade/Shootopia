@@ -22,13 +22,24 @@ namespace Shootopia
             rb = GetComponent<Rigidbody>();
         }
 
-        protected override void OnInitialised(WeaponSO data)
+        protected override void OnInitialised(WeaponSO data, Vector3 launchVelocity)
         {
             _data = data;
             
-            // Initial throw force
-            Vector3 throwDir = Camera.main.transform.forward * 6f + Vector3.up * 2f;
-            rb.AddForce(throwDir, ForceMode.VelocityChange);
+            if (rb != null)
+            {
+                if (launchVelocity.sqrMagnitude > 0.01f)
+                {
+                    rb.linearVelocity = launchVelocity;
+                }
+                else if (Camera.main != null)
+                {
+                    float angle = data != null ? data.throwAngle : 20f;
+                    float force = data != null ? data.throwForce : 14f;
+                    Vector3 throwDir = Quaternion.AngleAxis(-angle, Camera.main.transform.right) * Camera.main.transform.forward;
+                    rb.linearVelocity = throwDir * force;
+                }
+            }
 
             if (TripMineManager.Instance != null)
                 TripMineManager.Instance.Register(this);
@@ -83,28 +94,22 @@ namespace Shootopia
         {
             if (!_armed || _exploded) return;
 
-            // Owner check
-            int enterID = GetEntityID(col);
-            if (enterID != _ownerID)
+            var targetHealth = col.GetComponentInParent<PlayerHealth>();
+            if (targetHealth == null) targetHealth = col.GetComponent<PlayerHealth>();
+
+            if (targetHealth != null)
             {
-                // Trigger if it's a damageable target
-                if (col.GetComponent<IDamageable>() != null || col.GetComponentInParent<IDamageable>() != null)
+                bool isOwner = (targetHealth.OwnerClientId == (ulong)_ownerID);
+                bool allowSelfTrigger = (_data != null && _data.selfTrigger);
+                if (!isOwner || allowSelfTrigger)
                 {
                     Explode();
                 }
             }
-        }
-
-        private int GetEntityID(Collider col)
-        {
-            // Owner check: for single player, we check if the object is the player
-            if (col.CompareTag("Player") || col.gameObject.layer == LayerMask.NameToLayer("Player"))
+            else if (col.GetComponent<IDamageable>() != null || col.GetComponentInParent<IDamageable>() != null)
             {
-                return _ownerID; // Assume owner is the player
+                Explode();
             }
-            
-            // For enemies/robots, return something else
-            return _ownerID + 1;
         }
 
         public void Explode()
@@ -137,8 +142,9 @@ namespace Shootopia
                 }
             }
 
-            if (explosionVFX != null)
-                Instantiate(explosionVFX, transform.position, Quaternion.identity);
+            var vfxToSpawn = explosionVFX != null ? explosionVFX : (_data != null ? _data.HitVFXPrefab : null);
+            if (vfxToSpawn != null)
+                Instantiate(vfxToSpawn, transform.position, Quaternion.identity);
 
             if (TripMineManager.Instance != null)
                 TripMineManager.Instance.Unregister(this);

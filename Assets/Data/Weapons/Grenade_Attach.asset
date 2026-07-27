@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bee6774991be4bd58b8472d7b1cdae9, type: 3}
   m_Name: Grenade_Attach
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponAttachSO
-  stanceId: 0
+  stanceId: 2
   gameplayData: {fileID: 11400000, guid: da62f256ca3f64b3b92c7e175473da21, type: 2}
   visualPrefab: {fileID: 6946868526940099668, guid: 45cf26138b82b48a68eed8c135226ea4, type: 3}
-  equipLocalPos: {x: 0, y: 0, z: 0}
+  equipLocalPos: {x: 0.05, y: 0.02, z: 0.02}
   equipLocalEuler: {x: 0, y: 0, z: 0}
   muzzleChildName: Muzzle
   gripRChildName: GripR
   gripLChildName: GripL
   snapRightGripToHand: 0
-  rightHandWeight: 1
-  leftHandWeight: 1
+  rightHandWeight: 0
+  leftHandWeight: 0
   leftElbowHint: {x: -0.3, y: -0.2, z: 0.2}
   rightElbowHint: {x: 0.3, y: -0.2, z: -0.1}

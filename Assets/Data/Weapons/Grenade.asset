@@ -16,7 +16,7 @@ MonoBehaviour:
   weaponName: Explosive Grenade
   Damage: 65
   FireRate: 0.5
-  HitVFXPrefab: {fileID: 0}
+  HitVFXPrefab: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10

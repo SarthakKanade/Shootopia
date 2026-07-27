@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bee6774991be4bd58b8472d7b1cdae9, type: 3}
   m_Name: TripMine_Attach
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponAttachSO
-  stanceId: 0
+  stanceId: 2
   gameplayData: {fileID: 11400000, guid: 977df16517d08403a999d7f3ad9fe492, type: 2}
-  visualPrefab: {fileID: 6351393920676449012, guid: 2966e81f7d51c43cfab838f4a26ec062, type: 3}
-  equipLocalPos: {x: 0, y: 0, z: 0}
+  visualPrefab: {fileID: 5241664843036424858, guid: 0333e187623ff42799fb7e41b7622d0a, type: 3}
+  equipLocalPos: {x: 0.05, y: 0.02, z: 0.02}
   equipLocalEuler: {x: 0, y: 0, z: 0}
   muzzleChildName: Muzzle
   gripRChildName: GripR
   gripLChildName: GripL
   snapRightGripToHand: 0
-  rightHandWeight: 1
-  leftHandWeight: 1
+  rightHandWeight: 0
+  leftHandWeight: 0
   leftElbowHint: {x: -0.3, y: -0.2, z: 0.2}
   rightElbowHint: {x: 0.3, y: -0.2, z: -0.1}

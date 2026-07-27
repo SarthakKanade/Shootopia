@@ -24,14 +24,25 @@ namespace Shootopia
             _ownerID = ownerID;
 
             float radius = _data != null ? _data.cloudRadius : 5f;
-            GetComponent<SphereCollider>().radius = radius;
+            var sc = GetComponent<SphereCollider>();
+            if (sc == null) sc = gameObject.AddComponent<SphereCollider>();
+            sc.isTrigger = true;
+            sc.radius = radius;
             
             // Adjust particle system radius if needed
             var ps = GetComponentInChildren<ParticleSystem>();
             if (ps != null)
             {
                 var shape = ps.shape;
-                shape.radius = radius;
+                if (shape.shapeType == ParticleSystemShapeType.Box)
+                {
+                    shape.scale = new Vector3(radius * 2f, radius * 2f, radius * 2f);
+                }
+                else
+                {
+                    shape.radius = radius;
+                }
+                if (!ps.isPlaying) ps.Play();
             }
 
             StartCoroutine(ExpandRoutine());
@@ -63,7 +74,9 @@ namespace Shootopia
         {
             if (_dissipating) return;
 
-            if (col.TryGetComponent(out IDamageable t))
+            var t = col.GetComponentInParent<IDamageable>();
+            if (t == null) t = col.GetComponent<IDamageable>();
+            if (t != null && !_inCloud.Contains(t))
             {
                 _inCloud.Add(t);
             }
@@ -93,7 +106,9 @@ namespace Shootopia
 
         private void OnTriggerExit(Collider col)
         {
-            if (col.TryGetComponent(out IDamageable t))
+            var t = col.GetComponentInParent<IDamageable>();
+            if (t == null) t = col.GetComponent<IDamageable>();
+            if (t != null)
             {
                 StartCoroutine(RemoveDelay(t));
             }
@@ -126,12 +141,14 @@ namespace Shootopia
 
         private void TickDamage()
         {
-            if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.LocalClientId != (ulong)_ownerID)
+            if (Unity.Netcode.NetworkManager.Singleton != null && !Unity.Netcode.NetworkManager.Singleton.IsServer)
             {
                 return;
             }
 
-            float dmg = _data != null ? (_data.damagePerSecond * (_data.tickRate > 0 ? _data.tickRate : 0.5f)) : 5f;
+            float dps = (_data != null && _data.damagePerSecond > 0f) ? _data.damagePerSecond : (_data != null && _data.Damage > 0 ? _data.Damage : 15f);
+            float tickInterval = (_data != null && _data.tickRate > 0f) ? _data.tickRate : 0.5f;
+            float dmg = dps * tickInterval;
             
             for (int i = _inCloud.Count - 1; i >= 0; i--)
             {
@@ -149,7 +166,7 @@ namespace Shootopia
                         if (ph2 != null) ph2.LastAttackerClientId = (ulong)_ownerID;
                     }
 
-                    target.TakeDamage(dmg, DamageType.Environment);
+                    target.TakeDamage(dmg, DamageType.Environment, _data);
                 }
                 else
                 {

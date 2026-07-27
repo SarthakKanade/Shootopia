@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1016890173436767387}
   - component: {fileID: 6871282494393218181}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: BlinkLight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -111,7 +111,7 @@ GameObject:
   - component: {fileID: 1397534075085071899}
   - component: {fileID: 4650235588364260445}
   - component: {fileID: 1532424508699606197}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: GrenadePrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -251,6 +251,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4aed82bd210f494db5bd05348ab217e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.GrenadeController
-  explosionVFX: {fileID: 7724123057456981663, guid: 4fcee8a5ab334435faa8c84531a52b3d, type: 3}
+  explosionVFX: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
   _blinkLight: {fileID: 0}
   impulseSource: {fileID: 0}

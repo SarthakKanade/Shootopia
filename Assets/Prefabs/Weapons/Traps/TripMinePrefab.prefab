@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 1933706894047212123}
   - component: {fileID: 9114403613898308276}
   - component: {fileID: 4922707270244937813}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -28,8 +28,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.18, y: 0.03, z: 0.18}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.5, y: 0.375, z: 1.5}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 6959170080822576389}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -103,7 +103,7 @@ GameObject:
   - component: {fileID: 660865400638532953}
   - component: {fileID: 2692099176284672291}
   - component: {fileID: 2954770477222611268}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: TripMinePrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -209,4 +209,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.TripMineController
   _proximitySensor: {fileID: 2692099176284672291}
   _armRing: {fileID: 4922707270244937813}
-  explosionVFX: {fileID: 2512073696466879513, guid: f4b33787de16f4a889514fe33c0d15c2, type: 3}
+  explosionVFX: {fileID: 899829158140259175, guid: 508f7826b1eb67c4d9c2967bd7153489, type: 3}

@@ -16,12 +16,13 @@ MonoBehaviour:
   weaponName: Trip Mine
   Damage: 75
   FireRate: 0.5
-  HitVFXPrefab: {fileID: 0}
+  HitVFXPrefab: {fileID: 899829158140259175, guid: 508f7826b1eb67c4d9c2967bd7153489, type: 3}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
   ZoomRotationSpeed: 0.3
   MagazineSize: 12
+  handedness: 1
   category: 5
   durabilityType: 2
   maxUses: 2

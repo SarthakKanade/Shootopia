@@ -16,7 +16,7 @@ MonoBehaviour:
   weaponName: Smoke Canister
   Damage: 1
   FireRate: 0.5
-  HitVFXPrefab: {fileID: 0}
+  HitVFXPrefab: {fileID: 100748, guid: cd4d7020429cde74db076ffa72495419, type: 3}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
@@ -60,7 +60,7 @@ MonoBehaviour:
   requiresADSToFire: 0
   adsFOV: 60
   adsMoveSpeedMult: 1
-  damagePerSecond: 0
+  damagePerSecond: 15
   maxRange: 0
   coneAngle: 0
   fuelDuration: 0

@@ -58,6 +58,9 @@ namespace Shootopia
         private float _chargeTimer;
         private GameObject _activeChargeVFX;
         private bool _isAimingTrap;
+        private bool _inTrapCooldown;
+        private Coroutine _cooldownRoutine;
+        private ThrowableTrajectoryPredictor _trajectoryPredictor;
 
         private readonly NetworkVariable<int> _equippedWeaponIndex = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private int _currentIndex = -1;
@@ -109,6 +112,8 @@ namespace Shootopia
             if (motor == null) motor = GetComponent<CharacterMotor>();
             if (input == null) input = GetComponent<PlayerInputRouter>();
             _aimRig = GetComponent<PlayerAimRig>();
+            _trajectoryPredictor = GetComponent<ThrowableTrajectoryPredictor>();
+            if (_trajectoryPredictor == null) _trajectoryPredictor = gameObject.AddComponent<ThrowableTrajectoryPredictor>();
 
             // Scope overlay and camera FOV are HUD/local-owner concerns.
             // Instantiated in OnNetworkSpawn once IsOwner is known.
@@ -282,6 +287,13 @@ namespace Shootopia
                 return;
             }
 
+            // Throwable traps use Unarmed stance (2f) for all standard movement states
+            if (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.isTrap || CurrentAttach.gameplayData.category == WeaponCategory.Trap))
+            {
+                animator.SetFloat(HashStance, 2f);
+                return;
+            }
+
             // Test logic specifically for the Sniper as requested
             if (CurrentAttach.name.Contains("Sniper"))
             {
@@ -307,6 +319,61 @@ namespace Shootopia
             animator.SetFloat(HashAimPitch, pitch01, 0.1f, Time.deltaTime);
         }
 
+        public void GetTrapLaunchParameters(WeaponSO data, out Vector3 launchOrigin, out Vector3 launchVel)
+        {
+            float angle = (data != null && data.throwAngle > 0f) ? data.throwAngle : 20f;
+            float force = (data != null && data.throwForce > 0f) ? data.throwForce : 14f;
+
+            Transform camTrans = Camera.main != null ? Camera.main.transform : transform;
+            launchOrigin = transform.position + Vector3.up * 1.5f + camTrans.forward * 0.5f;
+
+            Vector3 launchDir = Quaternion.AngleAxis(-angle, camTrans.right) * camTrans.forward;
+            launchVel = launchDir * force;
+        }
+
+        private void CancelTrapAim()
+        {
+            _isAimingTrap = false;
+            if (animator != null)
+            {
+                animator.SetBool(HashIsThrowAiming, false);
+                animator.SetFloat(HashShootSpeed, 1f);
+                animator.CrossFade("Empty", 0.15f, -1);
+            }
+            if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
+            if (_trajectoryPredictor != null) _trajectoryPredictor.HideTrajectory();
+        }
+
+        private IEnumerator ResetAnimationToIdleRoutine()
+        {
+            yield return new WaitForSeconds(0.35f);
+            if (animator != null)
+            {
+                animator.SetFloat(HashShootSpeed, 1f);
+                animator.CrossFade("Locomotion", 0.15f, 0);
+                animator.CrossFade("Empty", 0.15f, 1);
+            }
+        }
+
+        private IEnumerator TrapCooldownRoutine()
+        {
+            _inTrapCooldown = true;
+            yield return new WaitForSeconds(1.0f); // 1 second cooldown
+            _inTrapCooldown = false;
+
+            if (CurrentAttach != null && CurrentAttach.gameplayData != null)
+            {
+                if (CurrentDurabilityValue > 0)
+                {
+                    if (_currentVisual != null) _currentVisual.SetActive(true);
+                }
+                else
+                {
+                    ExpireWeapon();
+                }
+            }
+        }
+
         private void HandleFire()
         {
             _timeSinceLastShot += Time.deltaTime;
@@ -330,6 +397,12 @@ namespace Shootopia
 
             if (data.isTrap || data.category == WeaponCategory.Trap)
             {
+                if (_inTrapCooldown)
+                {
+                    if (_isAimingTrap) CancelTrapAim();
+                    return;
+                }
+
                 if (fireHeld && CanFire(data) && _timeSinceLastShot >= data.FireRate)
                 {
                     if (!_isAimingTrap)
@@ -338,7 +411,21 @@ namespace Shootopia
                         if (animator != null)
                         {
                             animator.SetBool(HashIsThrowAiming, true);
+                            animator.SetFloat(HashShootSpeed, 1f);
+                            animator.CrossFade("ThrowBall_Prep", 0.05f, -1, 0f);
                         }
+                        if (motor != null)
+                        {
+                            motor.MoveSpeedMultiplier = 0.25f; // 25% speed penalty while aiming
+                        }
+                    }
+
+
+                    // Update trajectory line & impact marker in real time
+                    if (_trajectoryPredictor != null)
+                    {
+                        GetTrapLaunchParameters(data, out Vector3 launchOrigin, out Vector3 launchVel);
+                        _trajectoryPredictor.UpdateTrajectory(launchOrigin, launchVel);
                     }
                 }
                 else if (fireReleased && _isAimingTrap)
@@ -348,16 +435,28 @@ namespace Shootopia
                     {
                         animator.SetBool(HashIsThrowAiming, false);
                         animator.SetTrigger(HashThrowRelease);
+                        animator.SetFloat(HashShootSpeed, 1f);
+                        animator.CrossFade("ThrowBall_Release", 0.02f, -1, 0f);
                     }
-                    FireProjectile(data);
+                    if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
+                    if (_trajectoryPredictor != null) _trajectoryPredictor.HideTrajectory();
+
+                    // Hide in-hand visual mesh immediately upon throw
+                    if (_currentVisual != null) _currentVisual.SetActive(false);
+
+                    GetTrapLaunchParameters(data, out Vector3 trapOrigin, out Vector3 trapVel);
+                    FireProjectile(data, trapOrigin, trapVel);
+
+                    // Reset animation back to idle immediately after throw gesture (0.35s), independent of cooldown
+                    StartCoroutine(ResetAnimationToIdleRoutine());
+
+                    // Begin 1-second throwable cooldown
+                    if (_cooldownRoutine != null) StopCoroutine(_cooldownRoutine);
+                    _cooldownRoutine = StartCoroutine(TrapCooldownRoutine());
                 }
                 else if (!fireHeld && _isAimingTrap)
                 {
-                    _isAimingTrap = false;
-                    if (animator != null)
-                    {
-                        animator.SetBool(HashIsThrowAiming, false);
-                    }
+                    CancelTrapAim();
                 }
             }
             else if (data.isCharged)
@@ -471,23 +570,23 @@ namespace Shootopia
             }
         }
 
-        private void FireProjectile(WeaponSO data)
+        private void FireProjectile(WeaponSO data, Vector3? customOrigin = null, Vector3? customVel = null)
         {
             _timeSinceLastShot = 0f;
 
-            Vector3 origin = Muzzle != null ? Muzzle.position : transform.position;
+            Vector3 origin = customOrigin.HasValue ? customOrigin.Value : (Muzzle != null ? Muzzle.position : transform.position);
             Vector3 aimPoint = Aim != null ? Aim.AimPoint : origin + transform.forward * 100f;
-            Vector3 dir = (aimPoint - origin);
+            Vector3 dir = customVel.HasValue ? customVel.Value.normalized : (aimPoint - origin).normalized;
             if (dir.sqrMagnitude < 0.0001f) dir = Muzzle != null ? Muzzle.forward : transform.forward;
-            Quaternion rot = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            Vector3 launchVel = customVel.HasValue ? customVel.Value : (dir * (data.throwForce > 0f ? data.throwForce : 14f));
 
             // Replicate firing, projectile spawning, and VFX to all clients
-            FireProjectileRpc(_currentIndex, origin, rot);
+            FireProjectileRpc(_currentIndex, origin, rot, launchVel);
 
             // Send to server for authoritative validation
             if (IsOwner)
             {
-                FireWeaponServerRpc(origin, dir.normalized, data.name);
+                FireWeaponServerRpc(origin, dir, data.name);
             }
 
             if (data.projectilePrefab != null)
@@ -496,7 +595,10 @@ namespace Shootopia
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
                 var tb = proj.GetComponent<TrapBase>();
-                if (tb != null) tb.Initialise((int)OwnerClientId, Camera.main, data);
+                if (tb != null)
+                {
+                    tb.Initialise((int)OwnerClientId, Camera.main, data, launchVel);
+                }
             }
             else
             {
@@ -522,7 +624,7 @@ namespace Shootopia
         }
 
         [Rpc(SendTo.ClientsAndHost)]
-        private void FireProjectileRpc(int weaponIndex, Vector3 origin, Quaternion rotation)
+        private void FireProjectileRpc(int weaponIndex, Vector3 origin, Quaternion rotation, Vector3 velocity)
         {
             // Owner already fired locally to ensure instant feedback
             if (IsOwner) return;
@@ -539,7 +641,7 @@ namespace Shootopia
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
                 var tb = proj.GetComponent<TrapBase>();
-                if (tb != null) tb.Initialise((int)OwnerClientId, Camera.main, data);
+                if (tb != null) tb.Initialise((int)OwnerClientId, null, data, velocity);
             }
             else
             {
@@ -680,6 +782,10 @@ namespace Shootopia
 
         public void Equip(int index)
         {
+            CancelTrapAim();
+            if (_cooldownRoutine != null) { StopCoroutine(_cooldownRoutine); _cooldownRoutine = null; }
+            _inTrapCooldown = false;
+
             if (loadout == null || index < 0 || index >= loadout.Length)
             {
                 if (IsOwner)
@@ -693,7 +799,7 @@ namespace Shootopia
                 {
                     animator.SetBool(HashIsFiring, false);
                     animator.SetFloat(HashShootSpeed, 1f);
-                    animator.SetFloat(HashStance, 0f); // Default stance
+                    animator.SetFloat(HashStance, 2f);
                 }
                 if (_isADSActive && IsOwner) ExitADS();
 
@@ -733,35 +839,63 @@ namespace Shootopia
                 _currentVisual.transform.localRotation = Quaternion.Euler(attach.equipLocalEuler);
                 _currentVisual.transform.localScale = Vector3.one;
 
+                // Disable physics, colliders, and trap execution scripts on the in-hand visual copy
+                var rbs = _currentVisual.GetComponentsInChildren<Rigidbody>(true);
+                foreach (var rb in rbs) rb.isKinematic = true;
+
+                var cols = _currentVisual.GetComponentsInChildren<Collider>(true);
+                foreach (var c in cols) c.enabled = false;
+
+                var traps = _currentVisual.GetComponentsInChildren<TrapBase>(true);
+                foreach (var t in traps) t.enabled = false;
+
                 Muzzle = FindChild(_currentVisual.transform, attach.muzzleChildName);
                 GripR = FindChild(_currentVisual.transform, attach.gripRChildName);
                 GripL = FindChild(_currentVisual.transform, attach.gripLChildName);
                 _muzzleFlash = _currentVisual.GetComponentInChildren<ParticleSystem>(true);
 
-                // Slide the gun so the right grip sits exactly on the hand socket.
-                // Keeps the orientation from equipLocalEuler; only corrects position.
-                // The right hand then holds the gun by construction (no right-hand IK needed).
                 if (attach.snapRightGripToHand && GripR != null)
                 {
                     Vector3 gripInSocket = weaponSocket.InverseTransformPoint(GripR.position);
                     _currentVisual.transform.localPosition -= gripInSocket;
                 }
-                }
+            }
 
-                if (animator != null)
-                {
-                    // Stance is driven by the weapon's handedness (OneHanded -> HandGun, TwoHanded -> AR).
-                    // attach.stanceId is only a fallback when there is no gameplay data.
-                    float stance = attach.stanceId;
-                    if (attach.gameplayData != null)
-                        stance = attach.gameplayData.handedness == Shootopia.WeaponHandedness.OneHanded ? 1f : 0f;
-                    animator.SetFloat(HashStance, stance);
-                }
-
-                _timeSinceLastShot = float.MaxValue; // allow immediate first shot
+            if (animator != null)
+            {
+                float stance = attach.stanceId;
                 if (attach.gameplayData != null)
-                InitDurability(attach.gameplayData);
+                {
+                    if (attach.gameplayData.isTrap || attach.gameplayData.category == WeaponCategory.Trap)
+                        stance = 2f;
+                    else
+                        stance = attach.gameplayData.handedness == Shootopia.WeaponHandedness.OneHanded ? 1f : 0f;
                 }
+                animator.SetFloat(HashStance, stance);
+            }
+
+            _timeSinceLastShot = float.MaxValue; // allow immediate first shot
+            if (attach.gameplayData != null)
+                InitDurability(attach.gameplayData);
+        }
+
+        private void CancelCharge()
+        {
+            _isCharging = false;
+            CancelTrapAim();
+            _chargeTimer = 0f;
+            if (_activeChargeVFX != null)
+            {
+                Destroy(_activeChargeVFX);
+                _activeChargeVFX = null;
+            }
+            if (animator != null)
+            {
+                animator.SetBool(HashIsFiring, false);
+                animator.SetBool(HashIsThrowAiming, false);
+                animator.SetFloat(HashShootSpeed, 1f);
+            }
+        }
 
         /// <summary>
         /// Executed when the unarmed strike event ('Hit') fires, dealing damage to targets in front.
@@ -785,24 +919,6 @@ namespace Shootopia
                     }
                     damageable.TakeDamage(25f, DamageType.Melee, null);
                 }
-            }
-        }
-
-        private void CancelCharge()
-        {
-            _isCharging = false;
-            _isAimingTrap = false;
-            _chargeTimer = 0f;
-            if (_activeChargeVFX != null)
-            {
-                Destroy(_activeChargeVFX);
-                _activeChargeVFX = null;
-            }
-            if (animator != null)
-            {
-                animator.SetBool(HashIsFiring, false);
-                animator.SetBool(HashIsThrowAiming, false);
-                animator.SetFloat(HashShootSpeed, 1f);
             }
         }
 

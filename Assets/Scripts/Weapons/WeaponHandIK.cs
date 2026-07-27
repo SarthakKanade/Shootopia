@@ -31,7 +31,8 @@ namespace Shootopia
             var attach = weapon.CurrentAttach;
 
             // --- Left hand -> GripL (support hand) ---
-            float lw = (armed && weapon.GripL != null && attach != null) ? attach.leftHandWeight : 0f;
+            bool isTrap = attach != null && attach.gameplayData != null && (attach.gameplayData.isTrap || attach.gameplayData.category == WeaponCategory.Trap);
+            float lw = (armed && weapon.GripL != null && attach != null && !isTrap) ? attach.leftHandWeight : 0f;
             animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, lw);
             animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, lw);
             if (lw > 0.001f)
@@ -40,9 +41,8 @@ namespace Shootopia
                 animator.SetIKRotation(AvatarIKGoal.LeftHand, weapon.GripL.rotation);
             }
 
-            // --- Right hand -> GripR (only if requested; default 0 since the gun is
-            //     snapped into the right hand, which avoids a parent/child feedback loop) ---
-            float rw = (armed && weapon.GripR != null && attach != null) ? attach.rightHandWeight : 0f;
+            // --- Right hand -> GripR ---
+            float rw = (armed && weapon.GripR != null && attach != null && !isTrap) ? attach.rightHandWeight : 0f;
             animator.SetIKPositionWeight(AvatarIKGoal.RightHand, rw);
             animator.SetIKRotationWeight(AvatarIKGoal.RightHand, rw);
             if (rw > 0.001f)

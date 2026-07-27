@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5512633914797229485}
   - component: {fileID: 6463115948077856206}
   - component: {fileID: 6893153145104867223}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: SmokeCanistar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -96,7 +96,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a78641cf801524f0fadb031341b265c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.SmokeCanistarController
-  smokeCloudPrefab: {fileID: 3470193367042686354, guid: 830bf41874a7948b48803d0536d1a60f, type: 3}
+  smokeCloudPrefab: {fileID: 1435432228786720082, guid: 363da6d9c6ed0403580669b93627c67a, type: 3}
 --- !u!1 &1977986954870202949
 GameObject:
   m_ObjectHideFlags: 0
@@ -107,7 +107,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8221792573721019488}
   - component: {fileID: 8044184803918733262}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: BlinkLight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -205,7 +205,7 @@ GameObject:
   - component: {fileID: 2641906877094349008}
   - component: {fileID: 7696036415140143555}
   - component: {fileID: 8477614880007018493}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
