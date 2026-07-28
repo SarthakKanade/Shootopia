@@ -17,5 +17,6 @@ namespace Shootopia
         public bool Roll;        // edge-triggered
         public bool Jump;        // edge-triggered
         public bool SwapWeapon;  // edge-triggered
+        public bool ToggleShield; // edge-triggered (Y key for testing)
     }
 }

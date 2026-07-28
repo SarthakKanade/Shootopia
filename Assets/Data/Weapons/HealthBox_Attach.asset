@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bee6774991be4bd58b8472d7b1cdae9, type: 3}
+  m_Name: HealthBox_Attach
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponAttachSO
+  stanceId: 2
+  gameplayData: {fileID: 11400000, guid: 4e0af8739d3464648b19b45cd59efa8f, type: 2}
+  visualPrefab: {fileID: 0}
+  equipLocalPos: {x: 0, y: 0, z: 0}
+  equipLocalEuler: {x: 0, y: 0, z: 0}
+  muzzleChildName: 
+  gripRChildName: 
+  gripLChildName: 
+  snapRightGripToHand: 0
+  rightHandWeight: 0
+  leftHandWeight: 0
+  leftElbowHint: {x: -0.3, y: -0.2, z: 0.2}
+  rightElbowHint: {x: 0.3, y: -0.2, z: -0.1}

@@ -32,7 +32,10 @@ namespace Shootopia
 
             // --- Left hand -> GripL (support hand) ---
             bool isTrap = attach != null && attach.gameplayData != null && (attach.gameplayData.isTrap || attach.gameplayData.category == WeaponCategory.Trap);
-            float lw = (armed && weapon.GripL != null && attach != null && !isTrap) ? attach.leftHandWeight : 0f;
+            bool isMelee = attach != null && (attach.stanceId == 3 || (attach.gameplayData != null && attach.gameplayData.name.Contains("Knife")));
+
+            // --- Left hand -> GripL (support hand) ---
+            float lw = (armed && weapon.GripL != null && attach != null && !isTrap && !isMelee) ? attach.leftHandWeight : 0f;
             animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, lw);
             animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, lw);
             if (lw > 0.001f)
@@ -42,7 +45,7 @@ namespace Shootopia
             }
 
             // --- Right hand -> GripR ---
-            float rw = (armed && weapon.GripR != null && attach != null && !isTrap) ? attach.rightHandWeight : 0f;
+            float rw = (armed && weapon.GripR != null && attach != null && !isTrap && !isMelee) ? attach.rightHandWeight : 0f;
             animator.SetIKPositionWeight(AvatarIKGoal.RightHand, rw);
             animator.SetIKRotationWeight(AvatarIKGoal.RightHand, rw);
             if (rw > 0.001f)

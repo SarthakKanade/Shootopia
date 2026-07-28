@@ -111,7 +111,7 @@ namespace Shootopia
             PlayerDeaths[victimId] = victimDeaths;
         }
 
-        public int GetPlayerKills(ulong clientId)
+        public virtual int GetPlayerKills(ulong clientId)
         {
             return PlayerKills.TryGetValue(clientId, out var k) ? k : 0;
         }

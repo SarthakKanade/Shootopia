@@ -77,6 +77,14 @@ namespace Shootopia
                     // Pull force magnitude
                     float pullMag = _data.pullForce * Time.fixedDeltaTime;
                     
+                    // Check if target has active forcefield shield (immune to void black hole pull!)
+                    var playerShield = c.GetComponentInParent<PlayerShield>();
+                    if (playerShield == null) playerShield = c.GetComponent<PlayerShield>();
+                    if (playerShield != null && playerShield.IsShieldActive)
+                    {
+                        continue; // Full immunity to Void pull & continuous void damage
+                    }
+
                     // Apply movement to CharacterController (Player)
                     if (c.TryGetComponent<CharacterController>(out var cc))
                     {

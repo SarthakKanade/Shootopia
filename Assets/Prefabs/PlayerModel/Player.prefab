@@ -2030,6 +2030,7 @@ GameObject:
   - component: {fileID: 3536743027351902061}
   - component: {fileID: 7679714562528034799}
   - component: {fileID: 4111803751308288155}
+  - component: {fileID: 1532468733608136440}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -2190,6 +2191,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 480c2a5115b7d471483c5273ab31445f, type: 2}
   - {fileID: 11400000, guid: bfc820da6535f48549fb685282d92ef8, type: 2}
   - {fileID: 11400000, guid: 9699a5652b0c846d0a8f59ac20d2325a, type: 2}
+  - {fileID: 11400000, guid: afd2bf80bfcc442388a57a00d46160f0, type: 2}
+  - {fileID: 11400000, guid: 8b94421a7c7aa4bd985a2cd3a612f6db, type: 2}
+  - {fileID: 11400000, guid: dc21ae42783e74ca197e0f90cb3f343b, type: 2}
   onWeaponExpired: {fileID: 0}
   onDurabilityChanged: {fileID: 0}
   onMaxDurabilityChanged: {fileID: 0}
@@ -2341,3 +2345,21 @@ MonoBehaviour:
   _spawnVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
   _deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
   _spawnSound: {fileID: 8300000, guid: ec59e51e0db22d1419b26fdedddf218d, type: 3}
+--- !u!114 &1532468733608136440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6245397629552963378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cb2ff7aca9464268aaa370f6e39b203, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerShield
+  ShowTopMostFoldoutHeaderGroup: 1
+  maxShieldHp: 100
+  maxShieldDuration: 15
+  shieldSpherePrefab: {fileID: 8454452663822484918, guid: 2cc3673ed7cfd4e4192f2f1d2396c673, type: 3}
+  shieldActivateSound: {fileID: 0}
+  shieldBreakSound: {fileID: 0}

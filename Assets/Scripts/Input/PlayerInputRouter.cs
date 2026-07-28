@@ -153,6 +153,7 @@ namespace Shootopia
                 if (kb.spaceKey.wasPressedThisFrame) intent.Jump = true;
                 if (kb.oKey.wasPressedThisFrame) intent.Roll = true;
                 if (kb.qKey.wasPressedThisFrame) intent.SwapWeapon = true;
+                if (kb.yKey.wasPressedThisFrame) intent.ToggleShield = true;
             }
             if (pad != null)
             {

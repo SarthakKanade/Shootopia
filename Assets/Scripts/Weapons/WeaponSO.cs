@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Shootopia
 {
-    public enum WeaponCategory { Default, Control, Burst, Precision, Chaos, Trap }
+    public enum WeaponCategory { Default, Control, Burst, Precision, Chaos, Trap, Melee }
     public enum DurabilityType { Ammo, TimeBased, Uses }
     public enum WeaponHandedness { OneHanded, TwoHanded }
 

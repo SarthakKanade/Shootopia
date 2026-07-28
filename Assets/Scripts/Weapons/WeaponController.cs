@@ -67,6 +67,8 @@ namespace Shootopia
         private GameObject _currentVisual;
         private PlayerAimRig _aimRig;
         private ParticleSystem _muzzleFlash;
+        private Transform _neckTransform;
+        private Quaternion _initialNeckRotation;
 
         // Firing / durability runtime
         private float _timeSinceLastShot;
@@ -123,6 +125,22 @@ namespace Shootopia
             if (motor != null)
             {
                 _originalMoveSpeed = motor.moveSpeed;
+            }
+
+            _neckTransform = FindChild(transform, "neck_01");
+            if (_neckTransform == null) _neckTransform = FindChild(transform, "head");
+            if (_neckTransform != null) _initialNeckRotation = _neckTransform.localRotation;
+        }
+
+        private void LateUpdate()
+        {
+            // Freeze neck rotation to static during knife animation / knife stance
+            if (CurrentAttach != null && (CurrentAttach.stanceId == 3 || (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.category == WeaponCategory.Melee || CurrentAttach.gameplayData.name.Contains("Knife")))))
+            {
+                if (_neckTransform != null)
+                {
+                    _neckTransform.localRotation = _initialNeckRotation;
+                }
             }
         }
 
@@ -294,6 +312,13 @@ namespace Shootopia
                 return;
             }
 
+            // Knife / Melee stance (3f): uses Unarmed locomotion (Layer 0) and Knife Slash (Layer 1)
+            if (CurrentAttach.stanceId == 3 || (CurrentAttach.gameplayData != null && CurrentAttach.gameplayData.name.Contains("Knife")))
+            {
+                animator.SetFloat(HashStance, 3f);
+                return;
+            }
+
             // Test logic specifically for the Sniper as requested
             if (CurrentAttach.name.Contains("Sniper"))
             {
@@ -385,15 +410,40 @@ namespace Shootopia
 
             if (!IsArmed)
             {
-                if (animator != null)
+                if (firePressed && _timeSinceLastShot >= 0.4f)
                 {
-                    animator.SetBool(HashIsFiring, firePressed);
+                    _timeSinceLastShot = 0f;
+                    if (animator != null)
+                    {
+                        animator.Play("Shoot", 1, 0f);
+                        StartCoroutine(TriggerShootAnimationOnce());
+                    }
+                    PerformMeleeHit(25f, null);
                 }
                 return;
             }
 
             var data = CurrentAttach.gameplayData;
             if (data == null) return;
+
+            bool isKnifeOrMelee = CurrentAttach.stanceId == 3 ||
+                                  (data != null && (data.category == WeaponCategory.Melee || data.name.Contains("Knife") || CurrentAttach.name.Contains("Knife")));
+
+            if (isKnifeOrMelee)
+            {
+                if (firePressed && CanFire(data) && _timeSinceLastShot >= data.FireRate)
+                {
+                    _timeSinceLastShot = 0f;
+                    if (animator != null)
+                    {
+                        animator.Play("Shoot", 1, 0f);
+                        StartCoroutine(TriggerShootAnimationOnce());
+                    }
+                    PerformMeleeHit(data.Damage > 0 ? data.Damage : 50f, data);
+                    DecrementDurability(data);
+                }
+                return;
+            }
 
             if (data.isTrap || data.category == WeaponCategory.Trap)
             {
@@ -539,10 +589,10 @@ namespace Shootopia
                         FireProjectile(data);
                         if (animator != null)
                         {
+                            animator.Play("Shoot", 1, 0f);
                             if (isAuto)
                             {
                                 animator.SetBool(HashIsFiring, true);
-                                animator.Play("Shoot", 1, 0f); // Play shoot animation on every shot in hold
                             }
                             else
                             {
@@ -579,6 +629,7 @@ namespace Shootopia
             Vector3 dir = customVel.HasValue ? customVel.Value.normalized : (aimPoint - origin).normalized;
             if (dir.sqrMagnitude < 0.0001f) dir = Muzzle != null ? Muzzle.forward : transform.forward;
             Vector3 launchVel = customVel.HasValue ? customVel.Value : (dir * (data.throwForce > 0f ? data.throwForce : 14f));
+            Quaternion rot = Quaternion.LookRotation(dir, Vector3.up);
 
             // Replicate firing, projectile spawning, and VFX to all clients
             FireProjectileRpc(_currentIndex, origin, rot, launchVel);
@@ -813,6 +864,19 @@ namespace Shootopia
             var attach = loadout[index];
             if (attach == null) return;
 
+            if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Health") || attach.name.Contains("Health")))
+            {
+                var hp = GetComponent<PlayerHealth>();
+                if (hp == null) hp = GetComponentInParent<PlayerHealth>();
+                if (hp != null)
+                {
+                    hp.Heal(50f);
+                    Debug.Log($"[WeaponController] Health Box equipped by Client {OwnerClientId}! Restored 50 HP.");
+                }
+                ExpireWeapon();
+                return;
+            }
+
             if (IsOwner)
             {
                 _equippedWeaponIndex.Value = index;
@@ -864,7 +928,11 @@ namespace Shootopia
             if (animator != null)
             {
                 float stance = attach.stanceId;
-                if (attach.gameplayData != null)
+                if (attach.stanceId == 3 || (attach.gameplayData != null && attach.gameplayData.name.Contains("Knife")))
+                {
+                    stance = 3f;
+                }
+                else if (attach.gameplayData != null)
                 {
                     if (attach.gameplayData.isTrap || attach.gameplayData.category == WeaponCategory.Trap)
                         stance = 2f;
@@ -898,28 +966,61 @@ namespace Shootopia
         }
 
         /// <summary>
-        /// Executed when the unarmed strike event ('Hit') fires, dealing damage to targets in front.
+        /// Executed when performing a melee hit (punch or knife slash). Uses a close-range spherecast around aim direction.
         /// </summary>
-        public void OnMeleeHit()
+        public void PerformMeleeHit(float damage = 25f, WeaponSO weaponUsed = null)
         {
-            Vector3 origin = transform.position + Vector3.up * 1.0f;
-            Vector3 direction = transform.forward;
-            float meleeRange = 2.0f;
-            float meleeRadius = 0.5f;
+            if (!IsOwner) return;
 
-            if (Physics.SphereCast(origin, meleeRadius, direction, out RaycastHit hit, meleeRange, hitMask, QueryTriggerInteraction.Ignore))
+            Vector3 origin = transform.position + Vector3.up * 1.2f;
+            Vector3 aimDir = transform.forward;
+
+            if (Aim != null && Aim.AimPoint != Vector3.zero)
             {
-                if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+                Vector3 dirToAim = (Aim.AimPoint - origin).normalized;
+                if (dirToAim.sqrMagnitude > 0.001f) aimDir = dirToAim;
+            }
+
+            float meleeRange = 2.5f;   // Close to body melee range
+            float meleeRadius = 0.8f;  // Forgiving spherecast radius (close to body)
+
+            RaycastHit[] hits = Physics.SphereCastAll(origin, meleeRadius, aimDir, meleeRange, hitMask, QueryTriggerInteraction.Ignore);
+
+            foreach (var hit in hits)
+            {
+                if (hit.collider.gameObject == gameObject || hit.collider.transform.IsChildOf(transform))
+                    continue;
+
+                var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
+                if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
+
+                var damageable = hit.collider.GetComponent<IDamageable>();
+                if (damageable == null && targetHealth != null) damageable = targetHealth;
+                if (damageable == null) damageable = hit.collider.GetComponentInParent<IDamageable>();
+
+                if (damageable != null)
                 {
-                    var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
-                    if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
                     if (targetHealth != null)
                     {
                         targetHealth.LastAttackerClientId = OwnerClientId;
                     }
-                    damageable.TakeDamage(25f, DamageType.Melee, null);
+                    damageable.TakeDamage(damage, DamageType.Melee, weaponUsed);
+                    Debug.Log($"[WeaponController] Melee Hit registered on {hit.collider.name} for {damage} damage! (Weapon: {(weaponUsed != null ? weaponUsed.weaponName : "Punch")})");
+                    break;
                 }
             }
+        }
+
+        public void OnMeleeHit()
+        {
+            float damage = 25f;
+            WeaponSO data = null;
+            if (CurrentAttach != null && CurrentAttach.gameplayData != null)
+            {
+                data = CurrentAttach.gameplayData;
+                if (data.Damage > 0) damage = data.Damage;
+            }
+            PerformMeleeHit(damage, data);
         }
 
         private IEnumerator TriggerShootAnimationOnce()

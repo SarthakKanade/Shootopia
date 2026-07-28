@@ -81,7 +81,7 @@ namespace Shootopia
             Debug.Log($"[FFA Client] Sync: Player {clientId} has {kills} kills");
         }
 
-        public int GetPlayerKills(ulong clientId)
+        public override int GetPlayerKills(ulong clientId)
         {
             return PlayerKills.TryGetValue(clientId, out int kills) ? kills : 0;
         }

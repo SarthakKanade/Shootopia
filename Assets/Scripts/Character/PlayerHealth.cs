@@ -125,8 +125,20 @@ namespace Shootopia
             }
         }
 
+        float damageToApply = amount;
+        var shield = GetComponent<PlayerShield>();
+        if (shield != null && shield.IsShieldActive)
+        {
+            damageToApply = shield.AbsorbDamage(damageToApply);
+            if (damageToApply <= 0f)
+            {
+                // Damage fully absorbed by shield
+                return;
+            }
+        }
+
         float previousHp = _currentHp.Value;
-        _currentHp.Value = Mathf.Max(_currentHp.Value - amount, 0f);
+        _currentHp.Value = Mathf.Max(_currentHp.Value - damageToApply, 0f);
         float actualDamage = previousHp - _currentHp.Value;
         Debug.Log($"[PlayerHealth] Player {OwnerClientId} took {amount} damage from Attacker {attackerClientId} (Type: {type}, Weapon: {weaponName}). Remaining HP: {_currentHp.Value}");
 
@@ -347,6 +359,9 @@ namespace Shootopia
         }
     }
 
+    /// <summary>
+    /// Restores health up to max HP on the server.
+    /// </summary>
     public void Heal(float amount)
     {
         HealServerRpc(amount);
