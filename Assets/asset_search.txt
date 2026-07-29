@@ -1,0 +1,2 @@
+Found asset: Assets/DuNguyn/Loot Box/Model/Loot box/SM_LootBox_01.fbx
+Found asset: Assets/DuNguyn/Loot Box/Prefabs/SM_LootBox_01.prefab

@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e8e722281d744eb8a36134ac3bb3915, type: 3}
+  m_Name: Chest3_AdvancedWeapons
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.LootTableSO
+  entries:
+  - displayName: Pistol
+    weaponAttach: {fileID: 11400000, guid: 45041bdad7f2d4034ab95eeb833308cb, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 30
+  - displayName: Area Blaster
+    weaponAttach: {fileID: 11400000, guid: 624c16460891d46509dab2c1f5f4a21e, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 25
+  - displayName: Sniper
+    weaponAttach: {fileID: 11400000, guid: 5b99f6cb2991f4a4ab05b33e4f05771d, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 20
+  - displayName: Trick Shot
+    weaponAttach: {fileID: 11400000, guid: 2c6444050a5a4fbbb9b9518fb14e1724, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 15
+  - displayName: Flame Gun
+    weaponAttach: {fileID: 11400000, guid: aac9b8927e9be4279b2e82eaf7de2b85, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 15
+  - displayName: Freeze Gun
+    weaponAttach: {fileID: 11400000, guid: deae5edf3e7aa43828c4cd56b7023fb3, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 10
+  - displayName: Void Gun
+    weaponAttach: {fileID: 11400000, guid: 5cb78cd89da9a42969cc97a4550b8f22, type: 2}
+    customPreviewPrefab: {fileID: 0}
+    dropWeight: 4

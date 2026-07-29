@@ -48,7 +48,7 @@ namespace Shootopia
         private void UpdateCursorLock()
         {
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            bool shouldLock = lockCursor && activeScene == "GameScene";
+            bool shouldLock = lockCursor && (activeScene == "GameScene" || activeScene == "Shootopia_Sandbox");
 
             if (shouldLock)
             {

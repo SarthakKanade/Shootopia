@@ -1,0 +1,1 @@
+Source Prefab Path: Assets/DuNguyn/Loot Box/Prefabs/SM_LootBox_01.prefab

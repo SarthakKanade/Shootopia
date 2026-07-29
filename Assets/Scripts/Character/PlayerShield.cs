@@ -161,6 +161,21 @@ namespace Shootopia
             ActivateShieldInternal();
         }
 
+        public void GrantShield(float customShieldHp = 75f)
+        {
+            GrantShieldServerRpc(customShieldHp);
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        public void GrantShieldServerRpc(float customShieldHp = 75f, RpcParams rpcParams = default)
+        {
+            if (!IsServer) return;
+            _currentShieldHp.Value = customShieldHp;
+            _shieldTimer = 0f;
+            _isShieldActive.Value = true;
+            Debug.Log($"[PlayerShield] Custom shield granted for Player {OwnerClientId} ({customShieldHp} HP, 15s duration)");
+        }
+
         private void ActivateShieldInternal()
         {
             _currentShieldHp.Value = maxShieldHp;

@@ -1,0 +1,6 @@
+RESOURCES PREFAB #1 ('Assets/Resources/LootBoxes/LootBox_Chest1.prefab'):
+   Loaded pObj: null
+RESOURCES PREFAB #2 ('Assets/Resources/LootBoxes/LootBox_Chest2.prefab'):
+   Loaded pObj: null
+RESOURCES PREFAB #3 ('Assets/Resources/LootBoxes/LootBox_Chest3.prefab'):
+   Loaded pObj: null

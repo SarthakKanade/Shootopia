@@ -1,0 +1,6 @@
+PREFAB ON DISK #1 ('Assets/Prefabs/LootBoxes/LootBox_Chest1_Defense.prefab'):
+   Loaded pObj: null
+PREFAB ON DISK #2 ('Assets/Prefabs/LootBoxes/LootBox_Chest2_Traps.prefab'):
+   Loaded pObj: null
+PREFAB ON DISK #3 ('Assets/Prefabs/LootBoxes/LootBox_Chest3_Weapons.prefab'):
+   Loaded pObj: null

@@ -39,7 +39,12 @@ namespace Shootopia
 
             if (SessionManager.Instance == null)
             {
-                Debug.LogWarning("[NetworkBootstrapper] SessionManager.Instance is null. Waiting...");
+                Debug.LogWarning("[NetworkBootstrapper] SessionManager.Instance is null. Auto-starting Host for local testing...");
+                if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
+                {
+                    _isInitializing = true;
+                    NetworkManager.Singleton.StartHost();
+                }
                 return;
             }
 

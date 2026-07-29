@@ -831,6 +831,70 @@ namespace Shootopia
             Equip(next);
         }
 
+        public void EquipByAttachSO(WeaponAttachSO attach)
+        {
+            if (attach == null) return;
+
+            int index = -1;
+            if (loadout != null)
+            {
+                for (int i = 0; i < loadout.Length; i++)
+                {
+                    if (loadout[i] == attach || (loadout[i] != null && loadout[i].name == attach.name))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+            }
+
+            if (index < 0)
+            {
+                int currentLen = loadout != null ? loadout.Length : 0;
+                System.Array.Resize(ref loadout, currentLen + 1);
+                index = currentLen;
+                loadout[index] = attach;
+            }
+
+            Equip(index);
+        }
+
+        /// <summary>
+        /// Replaces whatever weapon is currently in hand with a fresh copy of the
+        /// given WeaponAttachSO. Always results in full ammo / durability because
+        /// we force-overwrite the loadout slot and re-equip from scratch.
+        /// Used by loot box Chest 2 and Chest 3.
+        /// </summary>
+        public void ReplaceCurrentWeapon(WeaponAttachSO attach)
+        {
+            if (attach == null) return;
+
+            // Use the current slot, or slot 0 if nothing is equipped
+            int slot = _currentIndex >= 0 ? _currentIndex : 0;
+
+            // Ensure loadout array is large enough
+            if (loadout == null || loadout.Length == 0)
+            {
+                loadout = new WeaponAttachSO[1];
+                slot = 0;
+            }
+            else if (slot >= loadout.Length)
+            {
+                slot = 0;
+            }
+
+            // Tear down current weapon first so Equip treats it as fresh
+            Equip(-1);
+
+            // Overwrite the slot with the new weapon
+            loadout[slot] = attach;
+
+            // Equip the fresh weapon — Equip() initialises ammo/durability from scratch
+            Equip(slot);
+
+            Debug.Log($"[WeaponController] ReplaceCurrentWeapon: slot {slot} → {attach.name}");
+        }
+
         public void Equip(int index)
         {
             CancelTrapAim();
