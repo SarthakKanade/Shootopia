@@ -300,8 +300,21 @@ namespace Shootopia
             }
         }
 
+        private bool _isBusy = false;
+
+        private void SetCreateButtonsEnabled(bool enabled)
+        {
+            bool hasName = _roomNameInput != null && !string.IsNullOrEmpty(_roomNameInput.value);
+            if (_createPublicButton != null) _createPublicButton.SetEnabled(enabled && hasName);
+            if (_createPrivateButton != null) _createPrivateButton.SetEnabled(enabled && hasName);
+        }
+
         private async void CreatePublicRoom()
         {
+            if (_isBusy) return;
+            _isBusy = true;
+            SetCreateButtonsEnabled(false);
+
             string roomName = _roomNameInput != null ? _roomNameInput.value : "Public Room";
             if (string.IsNullOrEmpty(roomName)) roomName = "Public Room";
 
@@ -319,10 +332,19 @@ namespace Shootopia
             {
                 Debug.LogError($"[LobbyUIBridge] Create public room failed: {ex.Message}");
             }
+            finally
+            {
+                _isBusy = false;
+                SetCreateButtonsEnabled(true);
+            }
         }
 
         private async void CreatePrivateRoom()
         {
+            if (_isBusy) return;
+            _isBusy = true;
+            SetCreateButtonsEnabled(false);
+
             string roomName = _roomNameInput != null ? _roomNameInput.value : "Private Room";
             if (string.IsNullOrEmpty(roomName)) roomName = "Private Room";
 
@@ -339,6 +361,11 @@ namespace Shootopia
             catch (Exception ex)
             {
                 Debug.LogError($"[LobbyUIBridge] Create private room failed: {ex.Message}");
+            }
+            finally
+            {
+                _isBusy = false;
+                SetCreateButtonsEnabled(true);
             }
         }
 

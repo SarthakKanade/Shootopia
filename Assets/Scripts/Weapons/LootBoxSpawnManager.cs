@@ -108,7 +108,34 @@ namespace Shootopia
 
             if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
 
-            var availablePoints = new List<Transform>(spawnPoints);
+            // Find any pre-placed or existing chests in scene
+            var existingChests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
+            var occupiedPositions = new List<Vector3>();
+            foreach (var c in existingChests)
+            {
+                if (c != null && !_activeChests.Contains(c.gameObject))
+                {
+                    occupiedPositions.Add(c.transform.position);
+                }
+            }
+
+            var availablePoints = new List<Transform>();
+            foreach (var pt in spawnPoints)
+            {
+                if (pt == null) continue;
+                bool isOccupied = false;
+                foreach (var occPos in occupiedPositions)
+                {
+                    if (Vector3.Distance(pt.position, occPos) < 3f)
+                    {
+                        isOccupied = true;
+                        break;
+                    }
+                }
+                if (!isOccupied) availablePoints.Add(pt);
+            }
+
+            if (availablePoints.Count < 3) availablePoints = new List<Transform>(spawnPoints);
 
             // Spawn Chest 1 (Defense)
             if (chest1DefensePrefab != null && availablePoints.Count > 0)
@@ -164,24 +191,80 @@ namespace Shootopia
             Debug.Log($"[LootBoxSpawnManager] Spawned {name} at {position}");
         }
 
-        public Vector3 GetRandomUnoccupiedSpawnPosition(Vector3 currentPos)
+        public Vector3 GetRandomUnoccupiedSpawnPosition(Vector3 currentPos, LootBoxController requestingChest = null)
         {
+            if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
             if (spawnPoints.Count == 0) return currentPos;
 
-            var candidates = new List<Transform>();
+            // Gather positions of all active chests currently in scene (excluding the requesting chest)
+            var activeChests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
+            var occupiedPositions = new List<Vector3>();
+
+            foreach (var chest in activeChests)
+            {
+                if (chest == null) continue;
+                if (requestingChest != null && chest == requestingChest) continue;
+                
+                // If chest is currently at or near currentPos, ignore (it is relocating from here)
+                if (Vector3.Distance(chest.transform.position, currentPos) < 0.5f) continue;
+
+                occupiedPositions.Add(chest.transform.position);
+            }
+
+            var candidatePoints = new List<Transform>();
             foreach (var pt in spawnPoints)
             {
-                if (Vector3.Distance(pt.position, currentPos) > 3f)
+                if (pt == null) continue;
+
+                // Skip spawn point if it is the chest's current (old) location
+                if (Vector3.Distance(pt.position, currentPos) < 3f) continue;
+
+                // Check if ANY OTHER active chest is currently occupying this spawn point
+                bool isOccupied = false;
+                foreach (var occPos in occupiedPositions)
                 {
-                    candidates.Add(pt);
+                    if (Vector3.Distance(pt.position, occPos) < 3f)
+                    {
+                        isOccupied = true;
+                        break;
+                    }
+                }
+
+                if (!isOccupied)
+                {
+                    candidatePoints.Add(pt);
                 }
             }
 
-            if (candidates.Count > 0)
+            // Fallback: If all points were < 3f from old position, allow old position IF not occupied by another chest
+            if (candidatePoints.Count == 0)
             {
-                return candidates[Random.Range(0, candidates.Count)].position;
+                foreach (var pt in spawnPoints)
+                {
+                    if (pt == null) continue;
+                    bool isOccupied = false;
+                    foreach (var occPos in occupiedPositions)
+                    {
+                        if (Vector3.Distance(pt.position, occPos) < 3f)
+                        {
+                            isOccupied = true;
+                            break;
+                        }
+                    }
+
+                    if (!isOccupied)
+                    {
+                        candidatePoints.Add(pt);
+                    }
+                }
             }
-            return spawnPoints[Random.Range(0, spawnPoints.Count)].position;
+
+            if (candidatePoints.Count > 0)
+            {
+                return candidatePoints[Random.Range(0, candidatePoints.Count)].position;
+            }
+
+            return currentPos;
         }
     }
 }

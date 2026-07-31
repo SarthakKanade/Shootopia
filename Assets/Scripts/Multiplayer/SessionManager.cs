@@ -45,6 +45,8 @@ namespace Shootopia
             }
         }
 
+        private bool _isProcessingSession = false;
+
         private void ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
         {
             response.Approved = true;
@@ -57,6 +59,14 @@ namespace Shootopia
         /// </summary>
         public async Task CreateSession(string sessionName, bool isPublic, int maxPlayers, string gameMode)
         {
+            if (_isProcessingSession)
+            {
+                Debug.LogWarning("[SessionManager] CreateSession request ignored: A session operation is already in progress.");
+                return;
+            }
+
+            _isProcessingSession = true;
+
             try
             {
                 Debug.Log($"[SessionManager] Creating session '{sessionName}' (Public: {isPublic}, MaxPlayers: {maxPlayers}, Mode: {gameMode})...");
@@ -78,9 +88,23 @@ namespace Shootopia
                 // Configure connection protocol using Relay networking
                 options.WithRelayNetwork();
 
-                // Create the session through UGS
-                _currentSession = await MultiplayerService.Instance.CreateSessionAsync(options);
-                SubscribeToSessionEvents(_currentSession);
+                // Create the session through UGS with retry for transient WebSocket connection drops
+                int maxRetries = 2;
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    try
+                    {
+                        _currentSession = await MultiplayerService.Instance.CreateSessionAsync(options);
+                        SubscribeToSessionEvents(_currentSession);
+                        break;
+                    }
+                    catch (Exception ex) when (ex.Message.Contains("connection was lost") || ex.Message.Contains("subscribe") || ex.Message.Contains("dropped"))
+                    {
+                        if (attempt == maxRetries) throw;
+                        Debug.LogWarning($"[SessionManager] CreateSession attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
+                        await Task.Delay(1000);
+                    }
+                }
                 
                 Debug.Log($"[SessionManager] Session created successfully. Join Code: {_currentSession.Code}, Session ID: {_currentSession.Id}");
                 OnSessionCreated?.Invoke();
@@ -92,6 +116,10 @@ namespace Shootopia
                 OnSessionError?.Invoke(errMsg);
                 throw;
             }
+            finally
+            {
+                _isProcessingSession = false;
+            }
         }
 
         /// <summary>
@@ -99,6 +127,14 @@ namespace Shootopia
         /// </summary>
         public async Task JoinByCode(string joinCode)
         {
+            if (_isProcessingSession)
+            {
+                Debug.LogWarning("[SessionManager] JoinByCode request ignored: A session operation is already in progress.");
+                return;
+            }
+
+            _isProcessingSession = true;
+
             try
             {
                 Debug.Log($"[SessionManager] Joining session by code '{joinCode}'...");
@@ -108,8 +144,22 @@ namespace Shootopia
                     Type = "default-session"
                 };
 
-                _currentSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode, options);
-                SubscribeToSessionEvents(_currentSession);
+                int maxRetries = 2;
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    try
+                    {
+                        _currentSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode, options);
+                        SubscribeToSessionEvents(_currentSession);
+                        break;
+                    }
+                    catch (Exception ex) when (ex.Message.Contains("connection was lost") || ex.Message.Contains("subscribe") || ex.Message.Contains("dropped"))
+                    {
+                        if (attempt == maxRetries) throw;
+                        Debug.LogWarning($"[SessionManager] JoinByCode attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
+                        await Task.Delay(1000);
+                    }
+                }
                 
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
                 OnSessionJoined?.Invoke();
@@ -121,6 +171,10 @@ namespace Shootopia
                 OnSessionError?.Invoke(errMsg);
                 throw;
             }
+            finally
+            {
+                _isProcessingSession = false;
+            }
         }
 
         /// <summary>
@@ -128,6 +182,14 @@ namespace Shootopia
         /// </summary>
         public async Task JoinById(string sessionId)
         {
+            if (_isProcessingSession)
+            {
+                Debug.LogWarning("[SessionManager] JoinById request ignored: A session operation is already in progress.");
+                return;
+            }
+
+            _isProcessingSession = true;
+
             try
             {
                 Debug.Log($"[SessionManager] Joining session by ID '{sessionId}'...");
@@ -137,9 +199,23 @@ namespace Shootopia
                     Type = "default-session"
                 };
 
-                _currentSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, options);
-                SubscribeToSessionEvents(_currentSession);
-                
+                int maxRetries = 2;
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    try
+                    {
+                        _currentSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, options);
+                        SubscribeToSessionEvents(_currentSession);
+                        break;
+                    }
+                    catch (Exception ex) when (ex.Message.Contains("connection was lost") || ex.Message.Contains("subscribe") || ex.Message.Contains("dropped"))
+                    {
+                        if (attempt == maxRetries) throw;
+                        Debug.LogWarning($"[SessionManager] JoinById attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
+                        await Task.Delay(1000);
+                    }
+                }
+
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
                 OnSessionJoined?.Invoke();
             }
@@ -149,6 +225,10 @@ namespace Shootopia
                 Debug.LogError($"[SessionManager] {errMsg}");
                 OnSessionError?.Invoke(errMsg);
                 throw;
+            }
+            finally
+            {
+                _isProcessingSession = false;
             }
         }
 

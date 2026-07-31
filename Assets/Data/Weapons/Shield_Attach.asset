@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponAttachSO
   stanceId: 2
   gameplayData: {fileID: 11400000, guid: 201a0c1fda66a4e419a0772ec67d5a4f, type: 2}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 8454452663822484918, guid: 2cc3673ed7cfd4e4192f2f1d2396c673, type: 3}
   equipLocalPos: {x: 0, y: 0, z: 0}
   equipLocalEuler: {x: 0, y: 0, z: 0}
   muzzleChildName: 

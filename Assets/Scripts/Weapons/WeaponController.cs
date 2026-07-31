@@ -62,7 +62,41 @@ namespace Shootopia
         private Coroutine _cooldownRoutine;
         private ThrowableTrajectoryPredictor _trajectoryPredictor;
 
-        private readonly NetworkVariable<int> _equippedWeaponIndex = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        private readonly NetworkVariable<Unity.Collections.FixedString64Bytes> _equippedAttachName = new NetworkVariable<Unity.Collections.FixedString64Bytes>("", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private static System.Collections.Generic.Dictionary<string, WeaponAttachSO> _attachCache;
+
+        public static WeaponAttachSO GetAttachByName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            if (_attachCache == null)
+            {
+                _attachCache = new System.Collections.Generic.Dictionary<string, WeaponAttachSO>();
+                var allAttaches = Resources.LoadAll<WeaponAttachSO>("");
+                foreach (var a in allAttaches)
+                {
+                    if (a != null && !string.IsNullOrEmpty(a.name) && !_attachCache.ContainsKey(a.name))
+                    {
+                        _attachCache[a.name] = a;
+                    }
+                }
+#if UNITY_EDITOR
+                var guids = UnityEditor.AssetDatabase.FindAssets("t:Shootopia.WeaponAttachSO");
+                foreach (var g in guids)
+                {
+                    string path = UnityEditor.AssetDatabase.GUIDToAssetPath(g);
+                    var a = UnityEditor.AssetDatabase.LoadAssetAtPath<Shootopia.WeaponAttachSO>(path);
+                    if (a != null && !string.IsNullOrEmpty(a.name) && !_attachCache.ContainsKey(a.name))
+                    {
+                        _attachCache[a.name] = a;
+                    }
+                }
+#endif
+            }
+
+            _attachCache.TryGetValue(name, out var result);
+            return result;
+        }
+
         private int _currentIndex = -1;
         private GameObject _currentVisual;
         private PlayerAimRig _aimRig;
@@ -117,11 +151,6 @@ namespace Shootopia
             _trajectoryPredictor = GetComponent<ThrowableTrajectoryPredictor>();
             if (_trajectoryPredictor == null) _trajectoryPredictor = gameObject.AddComponent<ThrowableTrajectoryPredictor>();
 
-            // Scope overlay and camera FOV are HUD/local-owner concerns.
-            // Instantiated in OnNetworkSpawn once IsOwner is known.
-
-            // playerFollowCamera and defaultFOV are only needed by the local owner.
-            // Do NOT cache them here; wait until OnNetworkSpawn so IsOwner is valid.
             if (motor != null)
             {
                 _originalMoveSpeed = motor.moveSpeed;
@@ -144,13 +173,13 @@ namespace Shootopia
             }
         }
 
-            private IAimProvider Aim => motor != null ? motor.Aim : null;
+        private IAimProvider Aim => motor != null ? motor.Aim : null;
 
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
 
-            _equippedWeaponIndex.OnValueChanged += OnEquippedWeaponChanged;
+            _equippedAttachName.OnValueChanged += OnEquippedAttachNameChanged;
 
             if (IsOwner)
             {
@@ -168,29 +197,31 @@ namespace Shootopia
                     _scopeOverlayInstance.SetActive(false);
                 }
 
-                if (loadout != null && loadout.Length > 0)
-                    Equip(0);
-            }
-            else
-            {
-                if (_equippedWeaponIndex.Value >= 0)
+                if (loadout != null && loadout.Length > 0 && loadout[0] != null)
                 {
-                    Equip(_equippedWeaponIndex.Value);
+                    EquipNetworkedWeapon(loadout[0].name);
                 }
+            }
+
+            string currentNetName = _equippedAttachName.Value.ToString();
+            if (!string.IsNullOrEmpty(currentNetName))
+            {
+                EquipAttachByNameLocal(currentNetName, forceFresh: false);
             }
         }
 
         public override void OnNetworkDespawn()
         {
             base.OnNetworkDespawn();
-            _equippedWeaponIndex.OnValueChanged -= OnEquippedWeaponChanged;
+            _equippedAttachName.OnValueChanged -= OnEquippedAttachNameChanged;
         }
 
-        private void OnEquippedWeaponChanged(int previousValue, int newValue)
+        private void OnEquippedAttachNameChanged(Unity.Collections.FixedString64Bytes previousValue, Unity.Collections.FixedString64Bytes newValue)
         {
-            if (!IsOwner)
+            string newName = newValue.ToString();
+            if (!string.IsNullOrEmpty(newName))
             {
-                Equip(newValue);
+                EquipAttachByNameLocal(newName, forceFresh: false);
             }
         }
 
@@ -819,7 +850,15 @@ namespace Shootopia
 
         private void ExpireWeapon()
         {
-            Equip(-1);
+            if (IsServer)
+            {
+                _equippedAttachName.Value = "";
+                ForceEquipWeaponRpc("");
+            }
+            else
+            {
+                EquipAttachByNameLocal("", forceFresh: true);
+            }
             onWeaponExpired?.Raise();
             onDurabilityChanged?.Raise(0f);
         }
@@ -828,85 +867,81 @@ namespace Shootopia
         {
             if (loadout == null || loadout.Length == 0) return;
             int next = (_currentIndex + 1) % loadout.Length;
-            Equip(next);
+            if (loadout[next] != null)
+            {
+                _currentIndex = next;
+                EquipNetworkedWeapon(loadout[next].name);
+            }
+        }
+
+        public void EquipNetworkedWeapon(string attachName)
+        {
+            if (string.IsNullOrEmpty(attachName)) return;
+
+            if (IsServer)
+            {
+                _equippedAttachName.Value = attachName;
+                ForceEquipWeaponRpc(attachName);
+            }
+            else
+            {
+                RequestEquipServerRpc(attachName);
+            }
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void RequestEquipServerRpc(string attachName)
+        {
+            if (!IsServer) return;
+            _equippedAttachName.Value = attachName;
+            ForceEquipWeaponRpc(attachName);
+        }
+
+        [Rpc(SendTo.Everyone)]
+        private void ForceEquipWeaponRpc(string attachName)
+        {
+            EquipAttachByNameLocal(attachName, forceFresh: true);
         }
 
         public void EquipByAttachSO(WeaponAttachSO attach)
         {
             if (attach == null) return;
-
-            int index = -1;
-            if (loadout != null)
-            {
-                for (int i = 0; i < loadout.Length; i++)
-                {
-                    if (loadout[i] == attach || (loadout[i] != null && loadout[i].name == attach.name))
-                    {
-                        index = i;
-                        break;
-                    }
-                }
-            }
-
-            if (index < 0)
-            {
-                int currentLen = loadout != null ? loadout.Length : 0;
-                System.Array.Resize(ref loadout, currentLen + 1);
-                index = currentLen;
-                loadout[index] = attach;
-            }
-
-            Equip(index);
+            EquipNetworkedWeapon(attach.name);
         }
 
         /// <summary>
         /// Replaces whatever weapon is currently in hand with a fresh copy of the
-        /// given WeaponAttachSO. Always results in full ammo / durability because
-        /// we force-overwrite the loadout slot and re-equip from scratch.
+        /// given WeaponAttachSO. Always results in full ammo / durability.
+        /// Replicates authoritatively to all clients.
         /// Used by loot box Chest 2 and Chest 3.
         /// </summary>
         public void ReplaceCurrentWeapon(WeaponAttachSO attach)
         {
             if (attach == null) return;
-
-            // Use the current slot, or slot 0 if nothing is equipped
-            int slot = _currentIndex >= 0 ? _currentIndex : 0;
-
-            // Ensure loadout array is large enough
-            if (loadout == null || loadout.Length == 0)
-            {
-                loadout = new WeaponAttachSO[1];
-                slot = 0;
-            }
-            else if (slot >= loadout.Length)
-            {
-                slot = 0;
-            }
-
-            // Tear down current weapon first so Equip treats it as fresh
-            Equip(-1);
-
-            // Overwrite the slot with the new weapon
-            loadout[slot] = attach;
-
-            // Equip the fresh weapon — Equip() initialises ammo/durability from scratch
-            Equip(slot);
-
-            Debug.Log($"[WeaponController] ReplaceCurrentWeapon: slot {slot} → {attach.name}");
+            EquipNetworkedWeapon(attach.name);
         }
 
         public void Equip(int index)
         {
-            CancelTrapAim();
-            if (_cooldownRoutine != null) { StopCoroutine(_cooldownRoutine); _cooldownRoutine = null; }
-            _inTrapCooldown = false;
-
-            if (loadout == null || index < 0 || index >= loadout.Length)
+            if (loadout != null && index >= 0 && index < loadout.Length && loadout[index] != null)
             {
-                if (IsOwner)
-                {
-                    _equippedWeaponIndex.Value = -1;
-                }
+                _currentIndex = index;
+                EquipNetworkedWeapon(loadout[index].name);
+            }
+            else
+            {
+                ExpireWeapon();
+            }
+        }
+
+        public void EquipAttachByNameLocal(string attachName, bool forceFresh = false)
+        {
+            if (string.IsNullOrEmpty(attachName))
+            {
+                CancelTrapAim();
+                if (_cooldownRoutine != null) { StopCoroutine(_cooldownRoutine); _cooldownRoutine = null; }
+                _inTrapCooldown = false;
+
                 if (_timeRoutine != null) { StopCoroutine(_timeRoutine); _timeRoutine = null; }
 
                 CancelCharge();
@@ -925,8 +960,15 @@ namespace Shootopia
                 _currentIndex = -1;
                 return;
             }
-            var attach = loadout[index];
+
+            var attach = GetAttachByName(attachName);
             if (attach == null) return;
+
+            if (!forceFresh && CurrentAttach == attach && _currentVisual != null) return;
+
+            CancelTrapAim();
+            if (_cooldownRoutine != null) { StopCoroutine(_cooldownRoutine); _cooldownRoutine = null; }
+            _inTrapCooldown = false;
 
             if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Health") || attach.name.Contains("Health")))
             {
@@ -941,11 +983,6 @@ namespace Shootopia
                 return;
             }
 
-            if (IsOwner)
-            {
-                _equippedWeaponIndex.Value = index;
-            }
-
             CancelCharge();
             if (animator != null)
             {
@@ -957,8 +994,32 @@ namespace Shootopia
             if (_currentVisual != null) Destroy(_currentVisual);
             Muzzle = GripR = GripL = null;
 
-            _currentIndex = index;
             CurrentAttach = attach;
+
+            // Reset durability & stats for new weapon
+            var data = attach.gameplayData;
+            if (data != null)
+            {
+                if (_timeRoutine != null) { StopCoroutine(_timeRoutine); _timeRoutine = null; }
+
+                float max = 0f;
+                switch (data.durabilityType)
+                {
+                    case DurabilityType.Ammo:
+                        _currentAmmo = data.MagazineSize; max = data.MagazineSize;
+                        onDurabilityChanged?.Raise(_currentAmmo);
+                        break;
+                    case DurabilityType.Uses:
+                        _currentUses = data.maxUses; max = data.maxUses;
+                        onDurabilityChanged?.Raise(_currentUses);
+                        break;
+                    case DurabilityType.TimeBased:
+                        _timeRemaining = data.weaponDuration; max = data.weaponDuration;
+                        _timeRoutine = StartCoroutine(TimeBasedRoutine());
+                        break;
+                }
+                onMaxDurabilityChanged?.Raise(max);
+            }
 
             if (attach.visualPrefab != null && weaponSocket != null)
             {
@@ -967,7 +1028,6 @@ namespace Shootopia
                 _currentVisual.transform.localRotation = Quaternion.Euler(attach.equipLocalEuler);
                 _currentVisual.transform.localScale = Vector3.one;
 
-                // Disable physics, colliders, and trap execution scripts on the in-hand visual copy
                 var rbs = _currentVisual.GetComponentsInChildren<Rigidbody>(true);
                 foreach (var rb in rbs) rb.isKinematic = true;
 
@@ -992,23 +1052,18 @@ namespace Shootopia
             if (animator != null)
             {
                 float stance = attach.stanceId;
-                if (attach.stanceId == 3 || (attach.gameplayData != null && attach.gameplayData.name.Contains("Knife")))
+                if (attach.stanceId == 3 || (data != null && (data.category == WeaponCategory.Melee || data.name.Contains("Knife"))))
                 {
                     stance = 3f;
                 }
-                else if (attach.gameplayData != null)
+                else if (data != null)
                 {
-                    if (attach.gameplayData.isTrap || attach.gameplayData.category == WeaponCategory.Trap)
-                        stance = 2f;
-                    else
-                        stance = attach.gameplayData.handedness == Shootopia.WeaponHandedness.OneHanded ? 1f : 0f;
+                    stance = data.handedness == WeaponHandedness.OneHanded ? 1f : 0f;
                 }
                 animator.SetFloat(HashStance, stance);
             }
 
-            _timeSinceLastShot = float.MaxValue; // allow immediate first shot
-            if (attach.gameplayData != null)
-                InitDurability(attach.gameplayData);
+            Debug.Log($"[WeaponController] Player {OwnerClientId} equipped '{attach.name}' (Local)");
         }
 
         private void CancelCharge()

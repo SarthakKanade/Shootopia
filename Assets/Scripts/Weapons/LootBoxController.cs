@@ -153,20 +153,20 @@ namespace Shootopia
 
             if (chestType == LootChestType.Chest1_Defense)
             {
-                // Always acquirable: heal first if needed, then always grant a fresh 75HP shield
                 if (health.GetCurrentHp() < health.GetMaxHp())
                 {
+                    // Player has less than full health: heal player completely back to MAX HP
                     health.Heal(health.GetMaxHp());
                     Debug.Log($"[LootBoxController] Player restored to MAX HP from Chest 1!");
+                    successfullyLooted = true;
                 }
-
-                // Always grant a fresh shield (replaces old one, resets timer + durability)
-                if (shield != null)
+                else if (shield != null)
                 {
+                    // Player is already at full health: grant fresh 75 HP Shield
                     shield.GrantShield(75f);
                     Debug.Log($"[LootBoxController] Player granted fresh 75 HP Shield from Chest 1!");
+                    successfullyLooted = true;
                 }
-                successfullyLooted = true;
             }
             else
             {
@@ -215,7 +215,7 @@ namespace Shootopia
             Vector3 newPos = transform.position;
             if (LootBoxSpawnManager.Instance != null)
             {
-                newPos = LootBoxSpawnManager.Instance.GetRandomUnoccupiedSpawnPosition(transform.position);
+                newPos = LootBoxSpawnManager.Instance.GetRandomUnoccupiedSpawnPosition(transform.position, this);
             }
             else
             {
@@ -236,8 +236,27 @@ namespace Shootopia
 
                 if (spawnObjects != null && spawnObjects.Length > 0)
                 {
-                    var targetObj = spawnObjects[Random.Range(0, spawnObjects.Length)];
-                    if (targetObj != null) newPos = targetObj.transform.position;
+                    var otherChests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
+                    var validCandidates = new System.Collections.Generic.List<GameObject>();
+                    foreach (var sp in spawnObjects)
+                    {
+                        if (sp == null) continue;
+                        bool occupied = false;
+                        foreach (var oc in otherChests)
+                        {
+                            if (oc != null && oc != this && Vector3.Distance(sp.transform.position, oc.transform.position) < 3f)
+                            {
+                                occupied = true;
+                                break;
+                            }
+                        }
+                        if (!occupied) validCandidates.Add(sp);
+                    }
+
+                    if (validCandidates.Count > 0)
+                    {
+                        newPos = validCandidates[Random.Range(0, validCandidates.Count)].transform.position;
+                    }
                 }
             }
 

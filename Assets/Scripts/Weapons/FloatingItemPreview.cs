@@ -30,12 +30,12 @@ namespace Shootopia
 
         private void Update()
         {
-            // Continuous Y-axis rotation
+            // Continuous Y-axis rotation in fixed place (no vertical bobbing/hovering)
             transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.World);
-
-            // Smooth sine wave vertical bobbing
-            float newY = _initialLocalPos.y + Mathf.Sin(Time.time * bobSpeed) * bobHeight;
-            transform.localPosition = new Vector3(_initialLocalPos.x, newY, _initialLocalPos.z);
+            if (_initialLocalPos != Vector3.zero)
+            {
+                transform.localPosition = _initialLocalPos;
+            }
         }
 
         /// <summary>
@@ -50,10 +50,41 @@ namespace Shootopia
             _currentPreviewInstance = Instantiate(visualPrefab, transform);
             _currentPreviewInstance.transform.localPosition = Vector3.zero;
             _currentPreviewInstance.transform.localRotation = Quaternion.identity;
-            _currentPreviewInstance.transform.localScale = previewScale;
+            _currentPreviewInstance.transform.localScale = Vector3.one;
 
             var renderers = _currentPreviewInstance.GetComponentsInChildren<Renderer>(true);
             foreach (var rend in renderers) rend.enabled = true;
+
+            // Calculate bounding box of item preview to scale it comparable to the lootbox size (~1.3 world units)
+            Bounds combinedBounds = new Bounds();
+            bool hasBounds = false;
+            foreach (var rend in renderers)
+            {
+                if (!hasBounds)
+                {
+                    combinedBounds = rend.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combinedBounds.Encapsulate(rend.bounds);
+                }
+            }
+
+            if (hasBounds)
+            {
+                float maxExtent = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
+                if (maxExtent > 0.001f)
+                {
+                    float targetWorldSize = 1.3f; // Desired max dimension in world units
+                    Vector3 parentLossy = transform.lossyScale;
+                    float avgParentScale = (parentLossy.x + parentLossy.y + parentLossy.z) / 3f;
+                    if (avgParentScale < 0.001f) avgParentScale = 1f;
+
+                    float finalLocalScale = targetWorldSize / (maxExtent * avgParentScale);
+                    _currentPreviewInstance.transform.localScale = Vector3.one * finalLocalScale;
+                }
+            }
 
             // Strip physics & interaction scripts from the display visual copy
             var colliders = _currentPreviewInstance.GetComponentsInChildren<Collider>(true);

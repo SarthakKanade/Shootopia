@@ -6,6 +6,7 @@ TagManager:
   tags:
   - CinemachineTarget
   - AllyBot
+  - LootSpawnPoint
   layers:
   - Default
   - TransparentFX
