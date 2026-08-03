@@ -151,6 +151,45 @@ namespace Shootopia
         }
 
         /// <summary>
+        /// Plays a looping or sustained SFX attached to a target transform with configurable pitch and volume.
+        /// </summary>
+        public AudioSource PlayLoopingSFX(AudioClip clip, Transform targetTransform, float volumeScale = 1f, float pitch = 1f)
+        {
+            if (clip == null) return null;
+
+            AudioSource source = GetNextAvailableSource();
+            if (source == null) return null;
+
+            if (targetTransform != null)
+            {
+                source.transform.position = targetTransform.position;
+                source.transform.SetParent(targetTransform);
+            }
+
+            source.spatialBlend = 1f;
+            source.loop = true;
+            source.pitch = pitch;
+            source.volume = Mathf.Clamp01(_masterVolume * _sfxVolume * volumeScale);
+            source.clip = clip;
+            source.Play();
+            return source;
+        }
+
+        /// <summary>
+        /// Stops a looping SFX source and resets it back to the audio pool container.
+        /// </summary>
+        public void StopLoopingSFX(AudioSource source)
+        {
+            if (source != null)
+            {
+                source.Stop();
+                source.loop = false;
+                source.pitch = 1f;
+                source.transform.SetParent(transform);
+            }
+        }
+
+        /// <summary>
         /// Plays BGM music with an optional linear crossfade transition.
         /// </summary>
         public void PlayMusic(AudioClip clip, float fadeSeconds = 1.5f)

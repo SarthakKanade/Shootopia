@@ -63,14 +63,12 @@ namespace Shootopia
                             if (ph2 != null) ph2.LastAttackerClientId = attackerId;
                         }
 
-                        if (dist <= 1.5f)
-                        {
-                            t.TakeDamage(_weaponData.Damage, DamageType.Projectile, _weaponData);
-                        }
-                        else
-                        {
-                            t.TakeDamage(_weaponData.splashDamage, DamageType.Projectile, _weaponData);
-                        }
+                        float normalizedDist = Mathf.Clamp01(dist / (_weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f));
+                        float maxDamage = _weaponData.Damage;
+                        float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
+                        float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+
+                        t.TakeDamage(calculatedDamage, DamageType.Projectile, _weaponData);
                     }
                 }
             }

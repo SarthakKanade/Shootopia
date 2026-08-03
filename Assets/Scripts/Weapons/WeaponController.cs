@@ -56,7 +56,10 @@ namespace Shootopia
         // Charging / Throwing state
         private bool _isCharging;
         private float _chargeTimer;
+        private float _punchTimer;
         private GameObject _activeChargeVFX;
+        private AudioSource _activeChargeAudioSource;
+        [SerializeField] private GameObject vfxImplosionPrefab;
         private bool _isAimingTrap;
         private bool _inTrapCooldown;
         private Coroutine _cooldownRoutine;
@@ -101,8 +104,8 @@ namespace Shootopia
         private GameObject _currentVisual;
         private PlayerAimRig _aimRig;
         private ParticleSystem _muzzleFlash;
-        private Transform _neckTransform;
-        private Quaternion _initialNeckRotation;
+        private Transform _headTransform;
+        private Quaternion _initialHeadRotation;
 
         // Firing / durability runtime
         private float _timeSinceLastShot;
@@ -156,19 +159,21 @@ namespace Shootopia
                 _originalMoveSpeed = motor.moveSpeed;
             }
 
-            _neckTransform = FindChild(transform, "neck_01");
-            if (_neckTransform == null) _neckTransform = FindChild(transform, "head");
-            if (_neckTransform != null) _initialNeckRotation = _neckTransform.localRotation;
+            _headTransform = FindChild(transform, "head");
+            if (_headTransform != null) _initialHeadRotation = _headTransform.localRotation;
         }
 
         private void LateUpdate()
         {
-            // Freeze neck rotation to static during knife animation / knife stance
-            if (CurrentAttach != null && (CurrentAttach.stanceId == 3 || (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.category == WeaponCategory.Melee || CurrentAttach.gameplayData.name.Contains("Knife")))))
+            bool isKnife = CurrentAttach != null && (CurrentAttach.stanceId == 3 || (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.category == WeaponCategory.Melee || CurrentAttach.gameplayData.name.Contains("Knife"))));
+            bool isFiringOrCharging = _isCharging || _isAimingTrap || (animator != null && (animator.GetBool(HashIsFiring) || animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot")));
+
+            // Freeze/lock head rotation ONLY during movement while firing, charging, or using knife
+            if (isKnife || isFiringOrCharging)
             {
-                if (_neckTransform != null)
+                if (_headTransform != null)
                 {
-                    _neckTransform.localRotation = _initialNeckRotation;
+                    _headTransform.localRotation = _initialHeadRotation;
                 }
             }
         }
@@ -227,8 +232,19 @@ namespace Shootopia
 
         private void Update()
         {
-            // Only the owning client drives input, firing, ADS, and camera FOV.
-            if (!IsOwner) return;
+            _timeSinceLastShot += Time.deltaTime;
+            if (_punchTimer > 0f) _punchTimer -= Time.deltaTime;
+
+            // Update charge visuals for remote players across all clients
+            if (!IsOwner)
+            {
+                if (_isCharging && CurrentAttach != null && CurrentAttach.gameplayData != null)
+                {
+                    _chargeTimer += Time.deltaTime;
+                    UpdateChargeVisual(CurrentAttach.gameplayData);
+                }
+                return;
+            }
             if (input == null) return;
 
             // Weapon control gating
@@ -333,7 +349,7 @@ namespace Shootopia
             if (CurrentAttach == null)
             {
                 float cur = animator.GetFloat(HashStance);
-                if (cur != 2.0f && cur != 2.5f)
+                if (cur != 2.0f)
                 {
                     animator.SetFloat(HashStance, 2.0f);
                 }
@@ -436,8 +452,6 @@ namespace Shootopia
 
         private void HandleFire()
         {
-            _timeSinceLastShot += Time.deltaTime;
-
             bool fireHeld = input.Intent.Fire;
             bool firePressed = fireHeld && !_lastFire;
             bool fireReleased = !fireHeld && _lastFire;
@@ -448,12 +462,16 @@ namespace Shootopia
                 if (firePressed && _timeSinceLastShot >= 0.4f)
                 {
                     _timeSinceLastShot = 0f;
+                    _punchTimer = 0.65f;
                     if (animator != null)
                     {
+                        // Always use Punch Right (Stance = 2.0f) exclusively for unarmed punches
+                        animator.SetFloat(HashStance, 2.0f);
                         animator.Play("Shoot", 1, 0f);
                         StartCoroutine(TriggerShootAnimationOnce());
                     }
-                    PerformMeleeHit(25f, null);
+                    // Delay hit infliction to frame 30 (0.5s) of the punch animation
+                    StartCoroutine(DelayedMeleeHitRoutine(0.5f, 25f, null));
                 }
                 return;
             }
@@ -550,25 +568,14 @@ namespace Shootopia
                 {
                     if (!_isCharging)
                     {
-                        // Start charging
-                        _isCharging = true;
-                        _chargeTimer = 0f;
-                        if (defaultChargeVFXPrefab != null && Muzzle != null && !CurrentAttach.name.Contains("Sniper"))
-                        {
-                            _activeChargeVFX = Instantiate(defaultChargeVFXPrefab, Muzzle);
-                            _activeChargeVFX.transform.localPosition = Vector3.zero;
-                            _activeChargeVFX.transform.localRotation = Quaternion.identity;
-                        }
-                        if (animator != null)
-                        {
-                            animator.SetBool(HashIsFiring, true);
-                            animator.SetFloat(HashShootSpeed, 0f); // Freeze at the first frame (aim/prep stance)
-                        }
+                        // Start charging across network
+                        StartCharge(data);
                     }
                     else
                     {
                         // Progress charge
                         _chargeTimer += Time.deltaTime;
+                        UpdateChargeVisual(data);
                     }
                 }
                 else if (fireReleased && _isCharging)
@@ -1092,7 +1099,69 @@ namespace Shootopia
             Debug.Log($"[WeaponController] Player {OwnerClientId} equipped '{attach.name}' (Local)");
         }
 
+        private void StartCharge(WeaponSO data)
+        {
+            if (IsSpawned)
+            {
+                StartChargeRpc();
+            }
+            else
+            {
+                StartChargeLocal();
+            }
+        }
+
+        [Rpc(SendTo.Everyone)]
+        private void StartChargeRpc()
+        {
+            StartChargeLocal();
+        }
+
+        private void StartChargeLocal()
+        {
+            _isCharging = true;
+            _chargeTimer = 0f;
+            var data = CurrentAttach != null ? CurrentAttach.gameplayData : null;
+            if (data != null)
+            {
+                StartChargeVisual(data);
+
+                // Play charge SFX hum (uses chargeClip or fallback drawClip as placeholder)
+                if (data.chargeTime > 0f && data.audio != null && AudioManager.Instance != null && Muzzle != null)
+                {
+                    AudioClip clip = data.audio.chargeClip != null ? data.audio.chargeClip : data.audio.drawClip;
+                    if (clip != null)
+                    {
+                        _activeChargeAudioSource = AudioManager.Instance.PlayLoopingSFX(clip, Muzzle, 0.75f, 0.8f);
+                    }
+                }
+            }
+            if (animator != null)
+            {
+                animator.SetBool(HashIsFiring, true);
+                animator.SetFloat(HashShootSpeed, 0f); // Freeze at the first frame (aim/prep stance)
+            }
+        }
+
         private void CancelCharge()
+        {
+            if (IsSpawned)
+            {
+                CancelChargeRpc();
+            }
+            else
+            {
+                CancelChargeLocal();
+            }
+        }
+
+        [Rpc(SendTo.Everyone)]
+        private void CancelChargeRpc()
+        {
+            CancelChargeLocal();
+        }
+
+        private void CancelChargeLocal()
         {
             _isCharging = false;
             CancelTrapAim();
@@ -1102,12 +1171,247 @@ namespace Shootopia
                 Destroy(_activeChargeVFX);
                 _activeChargeVFX = null;
             }
+            if (_activeChargeAudioSource != null)
+            {
+                if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.StopLoopingSFX(_activeChargeAudioSource);
+                }
+                _activeChargeAudioSource = null;
+            }
             if (animator != null)
             {
                 animator.SetBool(HashIsFiring, false);
                 animator.SetBool(HashIsThrowAiming, false);
                 animator.SetFloat(HashShootSpeed, 1f);
             }
+        }
+
+        private void StartChargeVisual(WeaponSO data)
+        {
+            if (Muzzle == null || data == null || data.chargeTime <= 0f) return;
+
+            // Clean up old charge visual if existing
+            if (_activeChargeVFX != null)
+            {
+                Destroy(_activeChargeVFX);
+                _activeChargeVFX = null;
+            }
+
+            Color chargeColor = GetProjectileColor(data);
+
+            // Container object attached to Muzzle
+            _activeChargeVFX = new GameObject("ChargeVFXContainer");
+            _activeChargeVFX.transform.SetParent(Muzzle, false);
+            _activeChargeVFX.transform.localPosition = Vector3.zero;
+            _activeChargeVFX.transform.localRotation = Quaternion.identity;
+            _activeChargeVFX.transform.localScale = Vector3.one;
+
+            // 1. Refined Translucent Glowing Charge Sphere
+            GameObject sphereObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphereObj.name = "ChargeVisualSphere";
+            sphereObj.transform.SetParent(_activeChargeVFX.transform, false);
+            sphereObj.transform.localPosition = Vector3.zero;
+            sphereObj.transform.localRotation = Quaternion.identity;
+            sphereObj.transform.localScale = Vector3.one * 0.02f;
+
+            Collider col = sphereObj.GetComponent<Collider>();
+            if (col != null) DestroyImmediate(col);
+
+            MeshRenderer mr = sphereObj.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Standard");
+
+                Material mat = new Material(shader);
+                mat.name = "ChargeSphere_RefinedMat";
+
+                Color baseCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, 0.25f);
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseCol);
+                if (mat.HasProperty("_Color")) mat.SetColor("_Color", baseCol);
+
+                mat.EnableKeyword("_EMISSION");
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.SetColor("_EmissionColor", chargeColor * 3.5f);
+                }
+
+                // Enable alpha blending / transparency
+                if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1); // 1 = Transparent in URP
+                if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0); // 0 = Alpha blend
+                if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0);
+
+                mr.material = mat;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+            }
+
+            // 2. Instantiate Implosion VFX (vfx_Implosion_01.prefab)
+            GameObject prefabToUse = vfxImplosionPrefab;
+            if (prefabToUse == null)
+            {
+#if UNITY_EDITOR
+                prefabToUse = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Implosion_01.prefab");
+#endif
+            }
+
+            if (prefabToUse != null)
+            {
+                GameObject implosionInst = Instantiate(prefabToUse, _activeChargeVFX.transform, false);
+                implosionInst.name = "ImplosionVFX";
+                implosionInst.transform.localPosition = Vector3.zero;
+                implosionInst.transform.localRotation = Quaternion.identity;
+                implosionInst.transform.localScale = Vector3.one * 0.175f;
+
+                // Tint particle systems in the implosion prefab to match projectile color
+                ParticleSystem[] particles = implosionInst.GetComponentsInChildren<ParticleSystem>(true);
+                foreach (ParticleSystem ps in particles)
+                {
+                    var main = ps.main;
+                    Color pCol = chargeColor;
+                    pCol.a = main.startColor.color.a > 0.01f ? main.startColor.color.a : 0.8f;
+                    main.startColor = pCol;
+                }
+            }
+        }
+
+        private void UpdateChargeVisual(WeaponSO data)
+        {
+            if (data == null || data.chargeTime <= 0f) return;
+
+            float t = Mathf.Clamp01(_chargeTimer / data.chargeTime);
+
+            // Pitch-bend active charge audio from 0.8 pitch up to 1.6 pitch as charge builds
+            if (_activeChargeAudioSource != null)
+            {
+                _activeChargeAudioSource.pitch = Mathf.Lerp(0.8f, 1.6f, t);
+            }
+
+            if (_activeChargeVFX == null) return;
+
+            Transform sphereTr = _activeChargeVFX.transform.Find("ChargeVisualSphere");
+            if (sphereTr != null)
+            {
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+                float maxSphereScale = 0.28f;
+                float currentScale = Mathf.Lerp(0.02f, maxSphereScale, smoothT);
+
+                // Dynamically scale and pulse
+                if (t >= 1.0f)
+                {
+                    float pulse = Mathf.Sin(Time.time * 18f) * 0.015f;
+                    sphereTr.localScale = Vector3.one * (maxSphereScale + pulse);
+                }
+                else
+                {
+                    sphereTr.localScale = Vector3.one * currentScale;
+                }
+
+                // Update sphere material alpha and emission intensity as charge builds up
+                MeshRenderer mr = sphereTr.GetComponent<MeshRenderer>();
+                if (mr != null && mr.material != null)
+                {
+                    Color chargeColor = GetProjectileColor(data);
+                    float alpha = Mathf.Lerp(0.2f, 0.65f, smoothT);
+                    Color baseCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, alpha);
+
+                    if (mr.material.HasProperty("_BaseColor")) mr.material.SetColor("_BaseColor", baseCol);
+                    if (mr.material.HasProperty("_Color")) mr.material.SetColor("_Color", baseCol);
+
+                    if (mr.material.HasProperty("_EmissionColor"))
+                    {
+                        float emMult = Mathf.Lerp(1.5f, 4.0f, smoothT);
+                        mr.material.SetColor("_EmissionColor", chargeColor * emMult);
+                    }
+                }
+            }
+
+            // Adjust implosion particle simulation scale (halved to 0.1f -> 0.25f)
+            Transform implosionTr = _activeChargeVFX.transform.Find("ImplosionVFX");
+            if (implosionTr != null)
+            {
+                float implosionScale = Mathf.Lerp(0.1f, 0.25f, t);
+                implosionTr.localScale = Vector3.one * implosionScale;
+            }
+        }
+
+        private Color GetProjectileColor(WeaponSO data)
+        {
+            if (data == null) return new Color(0.3f, 0.7f, 1.0f, 0.9f);
+
+            string nameLower = (data.weaponName + " " + (data.name ?? "")).ToLowerInvariant();
+
+            // Special refined theme color matching
+            if (nameLower.Contains("void") || nameLower.Contains("gravity"))
+            {
+                return new Color(0.55f, 0.08f, 0.95f, 0.7f); // Deep Cosmic Purple/Black Void
+            }
+            if (nameLower.Contains("area") || nameLower.Contains("blaster") || nameLower.Contains("explosive"))
+            {
+                return new Color(1.0f, 0.25f, 0.02f, 0.7f); // Fiery Red-Orange Blast
+            }
+            if (nameLower.Contains("freeze") || nameLower.Contains("cryo") || nameLower.Contains("ice"))
+            {
+                return new Color(0.15f, 0.85f, 1.0f, 0.65f); // Ice Cyan Frost
+            }
+            if (nameLower.Contains("trick") || nameLower.Contains("ricochet") || nameLower.Contains("bounce"))
+            {
+                return new Color(0.15f, 1.0f, 0.35f, 0.65f); // Neon Radioactive Green
+            }
+            if (nameLower.Contains("sniper"))
+            {
+                return new Color(1.0f, 0.85f, 0.15f, 0.7f); // Golden Amber / Electric Yellow
+            }
+
+            // 1. Try to extract color directly from the projectilePrefab materials or renderers
+            if (data.projectilePrefab != null)
+            {
+                Renderer[] renderers = data.projectilePrefab.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in renderers)
+                {
+                    if (r == null || r.sharedMaterials == null) continue;
+                    foreach (Material mat in r.sharedMaterials)
+                    {
+                        if (mat == null) continue;
+
+                        if (mat.HasProperty("_EmissionColor"))
+                        {
+                            Color em = mat.GetColor("_EmissionColor");
+                            if (em.r > 0.05f || em.g > 0.05f || em.b > 0.05f)
+                            {
+                                float maxCh = Mathf.Max(em.r, Mathf.Max(em.g, em.b));
+                                if (maxCh > 1f) em /= maxCh;
+                                em.a = 0.8f;
+                                return em;
+                            }
+                        }
+
+                        if (mat.HasProperty("_BaseColor"))
+                        {
+                            Color baseCol = mat.GetColor("_BaseColor");
+                            if (baseCol.a > 0.05f && (baseCol.r > 0.05f || baseCol.g > 0.05f || baseCol.b > 0.05f))
+                            {
+                                baseCol.a = 0.8f;
+                                return baseCol;
+                            }
+                        }
+
+                        if (mat.HasProperty("_Color"))
+                        {
+                            Color col = mat.GetColor("_Color");
+                            if (col.a > 0.05f && (col.r > 0.05f || col.g > 0.05f || col.b > 0.05f))
+                            {
+                                col.a = 0.8f;
+                                return col;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return new Color(0.3f, 0.7f, 1.0f, 0.8f); // Electric Blue fallback
         }
 
         /// <summary>
@@ -1166,6 +1470,12 @@ namespace Shootopia
                 if (data.Damage > 0) damage = data.Damage;
             }
             PerformMeleeHit(damage, data);
+        }
+
+        private IEnumerator DelayedMeleeHitRoutine(float delaySeconds, float damage, WeaponSO weaponUsed)
+        {
+            yield return new WaitForSeconds(delaySeconds);
+            PerformMeleeHit(damage, weaponUsed);
         }
 
         private IEnumerator TriggerShootAnimationOnce()

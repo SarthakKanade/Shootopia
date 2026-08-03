@@ -13,5 +13,6 @@ namespace Shootopia
         public AudioClip reloadClip;
         public AudioClip emptyClickClip;
         public AudioClip drawClip;
+        public AudioClip chargeClip;
     }
 }

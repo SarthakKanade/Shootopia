@@ -162,27 +162,90 @@ namespace Shootopia
 
         private void HandleImpact(RaycastHit hit)
         {
-            // Apply Damage
-            if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+            Vector3 poc = hit.point;
+
+            // Check if weapon is explosive or has splash blast radius configured
+            bool isSplashWeapon = _weaponData != null && (_weaponData.isExplosive || _weaponData.blastRadius > 0.1f);
+
+            if (isSplashWeapon)
             {
-                if (IsOwnerProjectile())
+                float blastRadius = _weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f;
+                float maxDamage = _weaponData.Damage;
+                float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
+
+                Collider[] hitColliders = Physics.OverlapSphere(poc, blastRadius);
+                System.Collections.Generic.HashSet<IDamageable> processedTargets = new System.Collections.Generic.HashSet<IDamageable>();
+
+                foreach (Collider c in hitColliders)
                 {
-                    ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
-                    if (_owner != null)
-                    {
-                        var netObj = _owner.GetComponent<NetworkObject>();
-                        if (netObj != null) attackerId = netObj.OwnerClientId;
-                    }
+                    if (c == null) continue;
 
-                    var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
-                    if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
-                    if (targetHealth != null)
-                    {
-                        targetHealth.LastAttackerClientId = attackerId;
-                    }
+                    // Ignore shooter unless self-damage is explicitly enabled
+                    if (_weaponData != null && !_weaponData.selfDamage && _owner != null && c.transform.root == _owner.transform.root)
+                        continue;
 
-                    float damage = _weaponData != null ? _weaponData.Damage : 10f;
-                    damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
+                    IDamageable targetDamageable = c.GetComponentInParent<IDamageable>();
+                    if (targetDamageable == null) targetDamageable = c.GetComponent<IDamageable>();
+
+                    if (targetDamageable != null && !processedTargets.Contains(targetDamageable))
+                    {
+                        processedTargets.Add(targetDamageable);
+
+                        if (IsOwnerProjectile())
+                        {
+                            ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
+                            if (_owner != null)
+                            {
+                                var netObj = _owner.GetComponent<NetworkObject>();
+                                if (netObj != null) attackerId = netObj.OwnerClientId;
+                            }
+
+                            var targetHealth = c.GetComponentInParent<PlayerHealth>();
+                            if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                            if (targetHealth != null)
+                            {
+                                targetHealth.LastAttackerClientId = attackerId;
+                            }
+
+                            // Calculate distance from Point of Contact (POC) to target's center
+                            Vector3 targetCenterPos = c.bounds.center;
+                            float distToPOC = Vector3.Distance(poc, targetCenterPos);
+
+                            // Normalize distance: 0 at POC -> 1 at blastRadius edge limit
+                            float normalizedDist = Mathf.Clamp01(distToPOC / blastRadius);
+
+                            // Concentrated 100% damage at POC center, decreasing smoothly to min splash damage as distance increases
+                            float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+
+                            targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Direct hit damage for non-splash projectiles
+                if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+                {
+                    if (IsOwnerProjectile())
+                    {
+                        ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
+                        if (_owner != null)
+                        {
+                            var netObj = _owner.GetComponent<NetworkObject>();
+                            if (netObj != null) attackerId = netObj.OwnerClientId;
+                        }
+
+                        var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>();
+                        if (targetHealth == null) targetHealth = hit.collider.GetComponent<PlayerHealth>();
+                        if (targetHealth != null)
+                        {
+                            targetHealth.LastAttackerClientId = attackerId;
+                        }
+
+                        float damage = _weaponData != null ? _weaponData.Damage : 10f;
+                        damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
+                    }
                 }
             }
 
