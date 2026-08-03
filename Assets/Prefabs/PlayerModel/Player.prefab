@@ -2145,6 +2145,8 @@ MonoBehaviour:
   dashSpeed: 10
   rollSpeed: 8
   animDamp: 0.1
+  playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
+  footstepInterval: 0.38
 --- !u!114 &7141895846445295742
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2341,6 +2343,7 @@ MonoBehaviour:
   _totalLives: 3
   _onHpChanged: {fileID: 0}
   _onPlayerDied: {fileID: 0}
+  _playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
   _deathVFXPrefab: {fileID: 2512073696466879513, guid: f4b33787de16f4a889514fe33c0d15c2, type: 3}
   _spawnVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
   _deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}

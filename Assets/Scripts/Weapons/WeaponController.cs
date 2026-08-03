@@ -332,7 +332,11 @@ namespace Shootopia
 
             if (CurrentAttach == null)
             {
-                animator.SetFloat(HashStance, 2f);
+                float cur = animator.GetFloat(HashStance);
+                if (cur != 2.0f && cur != 2.5f)
+                {
+                    animator.SetFloat(HashStance, 2.0f);
+                }
                 return;
             }
 
@@ -617,6 +621,11 @@ namespace Shootopia
 
                     if (wantFire && CanFire(data) && _timeSinceLastShot >= data.FireRate)
                     {
+                        if (CurrentAttach == null && animator != null)
+                        {
+                            float randPunch = UnityEngine.Random.value > 0.5f ? 2.0f : 2.5f;
+                            animator.SetFloat(HashStance, randPunch);
+                        }
                         FireProjectile(data);
                         if (animator != null)
                         {
@@ -664,6 +673,12 @@ namespace Shootopia
 
             // Replicate firing, projectile spawning, and VFX to all clients
             FireProjectileRpc(_currentIndex, origin, rot, launchVel);
+
+            // Locally predicted fire audio for the shooter
+            if (data != null && data.audio != null && data.audio.fireClip != null && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFXAtPosition(data.audio.fireClip, origin);
+            }
 
             // Send to server for authoritative validation
             if (IsOwner)
@@ -716,6 +731,12 @@ namespace Shootopia
             if (attach == null) return;
             var data = attach.gameplayData;
             if (data == null) return;
+
+            // Remote clients fire audio
+            if (data.audio != null && data.audio.fireClip != null && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFXAtPosition(data.audio.fireClip, origin);
+            }
 
             if (data.projectilePrefab != null)
             {
@@ -1019,6 +1040,11 @@ namespace Shootopia
                         break;
                 }
                 onMaxDurabilityChanged?.Raise(max);
+
+                if (data.audio != null && data.audio.drawClip != null && AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlaySFXAtPosition(data.audio.drawClip, transform.position);
+                }
             }
 
             if (attach.visualPrefab != null && weaponSocket != null)

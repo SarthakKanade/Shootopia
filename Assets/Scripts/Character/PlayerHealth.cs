@@ -26,6 +26,7 @@ namespace Shootopia
         public NetworkVariable<int> DeathCount => _deathCount;
 
         [Header("Combat Feel / Juice [CombatFeedback]")]
+        [SerializeField] private PlayerAudioSO _playerAudioConfig;
         [SerializeField] private GameObject _deathVFXPrefab;
         [SerializeField] private GameObject _spawnVFXPrefab;
         [SerializeField] private AudioClip _deathSound;
@@ -68,6 +69,15 @@ namespace Shootopia
     {
         Debug.Log($"[PlayerHealth] OnHpValueChanged: {previousValue} -> {newValue}");
         _onHpChanged?.Raise(newValue);
+
+        if (newValue < previousValue && IsOwner && AudioManager.Instance != null)
+        {
+            AudioClip hitClip = (_playerAudioConfig != null && _playerAudioConfig.hitTakenClip != null) ? _playerAudioConfig.hitTakenClip : null;
+            if (hitClip != null)
+            {
+                AudioManager.Instance.PlaySFX2D(hitClip);
+            }
+        }
     }
 
     /// <summary>
@@ -244,6 +254,11 @@ namespace Shootopia
     {
         Debug.Log($"[CombatFeedback] NotifyHitConfirmedClientRpc received. IsKill: {isKill}");
         OnLocalPlayerHitConfirmed?.Invoke(isKill);
+
+        if (AudioManager.Instance != null && _playerAudioConfig != null && _playerAudioConfig.hitMarkerClip != null)
+        {
+            AudioManager.Instance.PlaySFX2D(_playerAudioConfig.hitMarkerClip);
+        }
     }
 
     [ClientRpc]
@@ -253,12 +268,22 @@ namespace Shootopia
 
         _onPlayerDied?.Raise();
 
-        // Spawn death VFX and play sound
+        // Spawn death VFX
         if (_deathVFXPrefab != null)
         {
             Instantiate(_deathVFXPrefab, transform.position, Quaternion.identity);
         }
-        if (_deathSound != null)
+
+        // Play death sound on dying player's client only (not broadcast to all — avoids audio spam in FFA)
+        if (IsOwner && AudioManager.Instance != null)
+        {
+            AudioClip deathClip = (_playerAudioConfig != null && _playerAudioConfig.deathClip != null) ? _playerAudioConfig.deathClip : _deathSound;
+            if (deathClip != null)
+            {
+                AudioManager.Instance.PlaySFX2D(deathClip);
+            }
+        }
+        else if (_deathSound != null && AudioManager.Instance == null)
         {
             AudioSource.PlayClipAtPoint(_deathSound, transform.position, 1f);
         }

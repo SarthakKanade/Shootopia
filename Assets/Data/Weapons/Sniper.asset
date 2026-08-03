@@ -17,6 +17,7 @@ MonoBehaviour:
   Damage: 200
   FireRate: 1.8
   HitVFXPrefab: {fileID: 0}
+  audio: {fileID: 11400000, guid: e438c981eb52c4490b3c95e32ee09647, type: 2}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10

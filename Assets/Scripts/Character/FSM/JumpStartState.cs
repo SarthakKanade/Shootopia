@@ -9,6 +9,7 @@ namespace Shootopia.FSM
         public override void EnterState()
         {
             Ctx.Animator.SetTrigger(CharacterMotor.HashJump);
+            Ctx.PlayJumpAudio();
 
             // Apply upward launch velocity immediately.
             Ctx.VerticalVelocity = Mathf.Sqrt(Ctx.JumpForce * -2f * Ctx.Gravity);

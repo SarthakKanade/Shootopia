@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e632695dd0fe44e7ab489ade77fdb8d8, type: 3}
+  m_Name: PlayerAudioConfig
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerAudioSO
+  hitTakenClip: {fileID: 8300000, guid: 7438ba2da6b74d845950fa5a7e42a74c, type: 3}
+  hitMarkerClip: {fileID: 8300000, guid: d4bcb5c56d9c70c48998d3943e83f1cf, type: 3}
+  deathClip: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
+  footstepClip: {fileID: 8300000, guid: 13bc6d0940a8b47b692a5f7a4b2edcbb, type: 3}
+  jumpClip: {fileID: 8300000, guid: 429d9b13579cf46328e3e1a9b10f2604, type: 3}

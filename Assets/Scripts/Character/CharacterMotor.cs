@@ -38,7 +38,14 @@ namespace Shootopia
         public float DashSpeed => dashSpeed;
         public float RollSpeed => rollSpeed;
 
+        [Header("Audio Configuration")]
+        [SerializeField] private PlayerAudioSO playerAudioConfig;
+        [SerializeField] private float footstepInterval = 0.38f;
+        private float _footstepTimer = 0f;
+
         private readonly NetworkVariable<Quaternion> _modelRotation = new NetworkVariable<Quaternion>(Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
+        public PlayerAudioSO AudioConfig => playerAudioConfig;
 
         // FSM Context
         public BaseState CurrentState { get; set; }
@@ -70,6 +77,9 @@ namespace Shootopia
 
         private void Update()
         {
+            float dt = Time.deltaTime;
+            UpdateFootsteps(dt);
+
             // Only the owning client drives FSM, input, and animator triggers.
             if (!IsOwner)
             {
@@ -77,7 +87,6 @@ namespace Shootopia
                 return;
             }
             if (input == null) return;
-            float dt = Time.deltaTime;
 
             // Handle independent upper body logic directly
             if (animator != null)
@@ -87,6 +96,41 @@ namespace Shootopia
             }
 
             CurrentState?.UpdateStates(dt);
+        }
+
+        public void PlayJumpAudio()
+        {
+            if (AudioManager.Instance == null) return;
+            AudioClip clip = (playerAudioConfig != null && playerAudioConfig.jumpClip != null) ? playerAudioConfig.jumpClip : null;
+            if (clip != null)
+            {
+                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position);
+            }
+        }
+
+        private void UpdateFootsteps(float dt)
+        {
+            if (AudioManager.Instance == null) return;
+            if (Controller == null || !Controller.isGrounded) return;
+
+            Vector3 horizontalVel = new Vector3(Controller.velocity.x, 0f, Controller.velocity.z);
+            if (horizontalVel.sqrMagnitude > 0.2f)
+            {
+                _footstepTimer += dt;
+                if (_footstepTimer >= footstepInterval)
+                {
+                    _footstepTimer = 0f;
+                    AudioClip clip = (playerAudioConfig != null && playerAudioConfig.footstepClip != null) ? playerAudioConfig.footstepClip : null;
+                    if (clip != null)
+                    {
+                        AudioManager.Instance.PlaySFXAtPosition(clip, transform.position);
+                    }
+                }
+            }
+            else
+            {
+                _footstepTimer = footstepInterval * 0.5f;
+            }
         }
 
         public void ApplyMovementAndRotation(float dt, float speedMultiplier = 1f)

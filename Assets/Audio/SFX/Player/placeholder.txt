@@ -1,0 +1,2 @@
+# Placeholder file to preserve directory structure in version control
+# Drop real audio assets under Assets/Audio/SFX/Player/
