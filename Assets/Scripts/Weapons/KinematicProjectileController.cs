@@ -218,6 +218,32 @@ namespace Shootopia
                             float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
 
                             targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
+
+                            // Freeze Gun handling: Direct hit = 5s complete freeze; Splash hit = POC distance-dependent slow
+                            bool isFreezeWeapon = _weaponData != null && (_weaponData.freezeDuration > 0f || _weaponData.maxSlowPercent > 0f ||
+                                (_weaponData.weaponName != null && _weaponData.weaponName.ToLower().Contains("freeze")) ||
+                                (_weaponData.name != null && _weaponData.name.ToLower().Contains("freezegun")));
+
+                            if (isFreezeWeapon && targetHealth != null)
+                            {
+                                bool isDirectHit = (c.gameObject == hit.collider.gameObject || c.transform == hit.collider.transform || c.transform.root == hit.collider.transform.root || distToPOC <= 0.45f);
+
+                                if (isDirectHit)
+                                {
+                                    // Direct hit at POC: Completely freezes player for 5 seconds
+                                    targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                                }
+                                else
+                                {
+                                    // Splash hit: Speed slow depends on distance from POC
+                                    float maxSlow = _weaponData != null && _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
+                                    float minSlow = _weaponData != null && _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
+                                    float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
+                                    float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
+
+                                    targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
+                                }
+                            }
                         }
                     }
                 }
@@ -241,6 +267,27 @@ namespace Shootopia
                         if (targetHealth != null)
                         {
                             targetHealth.LastAttackerClientId = attackerId;
+
+                            bool isFreezeWeapon = _weaponData != null && (_weaponData.freezeDuration > 0f || _weaponData.maxSlowPercent > 0f ||
+                                (_weaponData.weaponName != null && _weaponData.weaponName.ToLower().Contains("freeze")) ||
+                                (_weaponData.name != null && _weaponData.name.ToLower().Contains("freezegun")));
+
+                            if (isFreezeWeapon)
+                            {
+                                // Direct hit: Completely freezes player for 5 seconds
+                                targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                            }
+
+                            bool isFireWeapon = _weaponData != null && (_weaponData.afterburnDuration > 0f || _weaponData.afterburnDPS > 0f ||
+                                (_weaponData.weaponName != null && (_weaponData.weaponName.ToLower().Contains("flame") || _weaponData.weaponName.ToLower().Contains("fire"))) ||
+                                (_weaponData.name != null && (_weaponData.name.ToLower().Contains("flame") || _weaponData.name.ToLower().Contains("fire"))));
+
+                            if (isFireWeapon)
+                            {
+                                float burnDuration = _weaponData != null && _weaponData.afterburnDuration > 0f ? _weaponData.afterburnDuration : 5.0f;
+                                float burnDPS = _weaponData != null && _weaponData.afterburnDPS > 0f ? _weaponData.afterburnDPS : 5.0f;
+                                targetHealth.ApplyBurnEffect(burnDuration, burnDPS, _weaponData);
+                            }
                         }
 
                         float damage = _weaponData != null ? _weaponData.Damage : 10f;

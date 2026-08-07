@@ -69,6 +69,33 @@ namespace Shootopia
                         float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
 
                         t.TakeDamage(calculatedDamage, DamageType.Projectile, _weaponData);
+
+                        PlayerHealth targetHealth = t as PlayerHealth;
+                        if (targetHealth == null && t is MonoBehaviour mbTarget)
+                        {
+                            targetHealth = mbTarget.GetComponentInParent<PlayerHealth>();
+                            if (targetHealth == null) targetHealth = mbTarget.GetComponent<PlayerHealth>();
+                        }
+
+                        if (targetHealth != null)
+                        {
+                            bool isDirectHit = dist <= 0.45f;
+                            if (isDirectHit)
+                            {
+                                // Direct hit at POC: Completely freezes player for 5 seconds
+                                targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                            }
+                            else
+                            {
+                                // Splash hit: Speed slow depends on distance from POC
+                                float maxSlow = _weaponData != null && _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
+                                float minSlow = _weaponData != null && _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
+                                float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
+                                float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
+
+                                targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
+                            }
+                        }
                     }
                 }
             }

@@ -118,6 +118,20 @@ namespace Shootopia
 
         private void ApplyAfterburn(IDamageable target)
         {
+            if (target == null) return;
+            float duration = _so != null && _so.afterburnDuration > 0f ? _so.afterburnDuration : 5.0f;
+            float dps = _so != null && _so.afterburnDPS > 0f ? _so.afterburnDPS : 5.0f;
+
+            if (target is PlayerHealth ph)
+            {
+                ph.ApplyBurnEffect(duration, dps, _so);
+            }
+            else if (target is MonoBehaviour mb)
+            {
+                var ph2 = mb.GetComponentInParent<PlayerHealth>();
+                if (ph2 == null) ph2 = mb.GetComponent<PlayerHealth>();
+                if (ph2 != null) ph2.ApplyBurnEffect(duration, dps, _so);
+            }
         }
     }
 }

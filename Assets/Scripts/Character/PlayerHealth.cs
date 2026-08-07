@@ -418,5 +418,189 @@ namespace Shootopia
         transform.position = position;
         if (cc != null) cc.enabled = true;
     }
+
+    private Coroutine _freezeRoutine;
+    private bool _isFrozen = false;
+    public bool IsFrozen => _isFrozen;
+
+    /// <summary>
+    /// Applies freeze or slow status effect.
+    /// If isDirectHit is true: 100% complete freeze (MoveSpeedMultiplier = 0) for 5 seconds.
+    /// If isDirectHit is false: Applies proportional speed slow based on distance to POC.
+    /// </summary>
+    public void ApplyFreezeEffect(float duration, float slowPercent, bool isDirectHit)
+    {
+        ApplyFreezeRpc(duration, slowPercent, isDirectHit);
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void ApplyFreezeRpc(float duration, float slowPercent, bool isDirectHit)
+    {
+        if (_freezeRoutine != null)
+        {
+            StopCoroutine(_freezeRoutine);
+        }
+        _freezeRoutine = StartCoroutine(FreezeRoutine(duration, slowPercent, isDirectHit));
+    }
+
+    private static MaterialPropertyBlock _statusMPB;
+    private static MaterialPropertyBlock StatusMPB
+    {
+        get
+        {
+            if (_statusMPB == null) _statusMPB = new MaterialPropertyBlock();
+            return _statusMPB;
+        }
+    }
+
+    private IEnumerator FreezeRoutine(float duration, float slowPercent, bool isDirectHit)
+    {
+        CharacterMotor motor = GetComponent<CharacterMotor>();
+        Animator anim = GetComponentInChildren<Animator>();
+
+        _isFrozen = isDirectHit;
+
+        if (motor != null)
+        {
+            if (isDirectHit)
+            {
+                // 100% complete freeze
+                motor.MoveSpeedMultiplier = 0f;
+            }
+            else
+            {
+                // Proportional slow multiplier (e.g., 80% slow -> MoveSpeedMultiplier = 0.20f)
+                float mult = Mathf.Clamp01(1f - slowPercent);
+                motor.MoveSpeedMultiplier = mult;
+            }
+        }
+
+        if (anim != null)
+        {
+            if (isDirectHit)
+            {
+                anim.speed = 0f; // Freeze animation pose completely in place
+            }
+            else
+            {
+                float mult = Mathf.Clamp01(1f - slowPercent);
+                anim.speed = Mathf.Clamp(mult, 0.15f, 1f); // Slow-motion animation matching movement speed!
+            }
+        }
+
+        // Apply Light Translucent Bluish Frost Ice Visual Indicator via MaterialPropertyBlock
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        Color iceTint = new Color(0.55f, 0.85f, 1.0f, 0.65f); // Light translucent ice blue
+        Color iceEmission = new Color(0.18f, 0.55f, 0.90f) * 1.5f; // Cool frost glow
+
+        MaterialPropertyBlock mpb = StatusMPB;
+        mpb.Clear();
+        mpb.SetColor("_BaseColor", iceTint);
+        mpb.SetColor("_Color", iceTint);
+        mpb.SetColor("_EmissionColor", iceEmission);
+
+        foreach (var r in renderers)
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+            r.SetPropertyBlock(mpb);
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        // Instant restoration of original material properties without memory allocations
+        foreach (var r in renderers)
+        {
+            if (r != null && !(r is ParticleSystemRenderer))
+            {
+                r.SetPropertyBlock(null);
+            }
+        }
+
+        if (motor != null)
+        {
+            motor.MoveSpeedMultiplier = 1f;
+        }
+        if (anim != null)
+        {
+            anim.speed = 1f;
+        }
+
+        _isFrozen = false;
+        _freezeRoutine = null;
+    }
+
+    private Coroutine _burnRoutine;
+    private bool _isBurning = false;
+    public bool IsBurning => _isBurning;
+
+    /// <summary>
+    /// Applies 5-second burning status effect with passive Damage-Over-Time (DoT) and fiery visual tint.
+    /// </summary>
+    public void ApplyBurnEffect(float duration = 5.0f, float dps = 5.0f, WeaponSO weaponUsed = null)
+    {
+        ApplyBurnRpc(duration, dps);
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void ApplyBurnRpc(float duration, float dps)
+    {
+        if (_burnRoutine != null)
+        {
+            StopCoroutine(_burnRoutine);
+        }
+        _burnRoutine = StartCoroutine(BurnRoutine(duration, dps));
+    }
+
+    private IEnumerator BurnRoutine(float duration, float dps)
+    {
+        _isBurning = true;
+
+        // Apply Fiery Orange/Red Burn Visual Indicator via MaterialPropertyBlock
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        Color burnTint = new Color(1.0f, 0.35f, 0.05f, 0.9f); // Fiery orange/red
+        Color burnEmission = new Color(2.0f, 0.5f, 0.05f) * 1.5f; // Fiery emission glow
+
+        MaterialPropertyBlock mpb = StatusMPB;
+        mpb.Clear();
+        mpb.SetColor("_BaseColor", burnTint);
+        mpb.SetColor("_Color", burnTint);
+        mpb.SetColor("_EmissionColor", burnEmission);
+
+        foreach (var r in renderers)
+        {
+            if (r == null || r is ParticleSystemRenderer) continue;
+            r.SetPropertyBlock(mpb);
+        }
+
+        float elapsed = 0f;
+        float tickInterval = 0.5f;
+        float damagePerTick = dps * tickInterval;
+
+        while (elapsed < duration)
+        {
+            yield return new WaitForSeconds(tickInterval);
+            elapsed += tickInterval;
+
+            if (_isDead) break;
+
+            // Apply passive burn damage on server
+            if (IsServer)
+            {
+                TakeDamageServerRpc(damagePerTick, DamageType.Environment, "FireBurn", LastAttackerClientId);
+            }
+        }
+
+        // Instant restoration of original material properties
+        foreach (var r in renderers)
+        {
+            if (r != null && !(r is ParticleSystemRenderer))
+            {
+                r.SetPropertyBlock(null);
+            }
+        }
+
+        _isBurning = false;
+        _burnRoutine = null;
+    }
 }
 }
