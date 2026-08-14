@@ -17,15 +17,27 @@ namespace Shootopia
         [SerializeField] private Animator animator;
         [SerializeField] private WeaponController weapon;
 
+        private PlayerHealth _playerHealth;
+
         private void Awake()
         {
             if (animator == null) animator = GetComponent<Animator>();
             if (weapon == null) weapon = GetComponentInParent<WeaponController>();
+            if (_playerHealth == null) _playerHealth = GetComponentInParent<PlayerHealth>();
         }
 
         private void OnAnimatorIK(int layerIndex)
         {
             if (animator == null || weapon == null) return;
+
+            if (_playerHealth != null && _playerHealth.IsDead)
+            {
+                animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, 0f);
+                animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, 0f);
+                animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 0f);
+                animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 0f);
+                return;
+            }
 
             bool armed = weapon.IsArmed;
             var attach = weapon.CurrentAttach;

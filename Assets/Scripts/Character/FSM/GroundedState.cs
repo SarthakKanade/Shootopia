@@ -7,7 +7,10 @@ namespace Shootopia.FSM
         public override void EnterState()
         {
             InitializeSubState();
-            Ctx.Animator.SetBool(CharacterMotor.HashGrounded, true);
+            if (!Ctx.IsInLava)
+            {
+                Ctx.Animator.SetBool(CharacterMotor.HashGrounded, true);
+            }
         }
 
         public override void UpdateState(float dt)
@@ -30,7 +33,7 @@ namespace Shootopia.FSM
             // If we fall off a ledge (or the jump impulse pushes us up and un-grounds us),
             // promote to Airborne where gravity is integrated. The Jump animation trigger
             // fired in JumpStartState is not cleared by Airborne, so the jump anim still plays.
-            if (!Ctx.IsGrounded)
+            if (!Ctx.IsGrounded || Ctx.IsInLava)
             {
                 SwitchState(Factory.Airborne());
             }

@@ -190,7 +190,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3583957037
+  GlobalObjectIdHash: 2431763305
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -1007,7 +1007,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f52c11bd171a4656a0c92c1a5a66752, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WaitingRoomController
-  gameplaySceneName: GameScene
+  gameplaySceneName: Map1
   uiDocument: {fileID: 0}
 --- !u!114 &1963485588
 MonoBehaviour:

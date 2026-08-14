@@ -16,8 +16,8 @@ namespace Shootopia
         [Header("Movement")]
         public float moveSpeed = 4f;
         public float rotationSpeed = 900f;
-        public float gravity = -20f;
-        public float jumpForce = 8f;
+        public float gravity = -32f;
+        public float jumpForce = 2.0f;
         public float dashSpeed = 10f;
         public float rollSpeed = 8f;
         public float animDamp = 0.1f;
@@ -30,6 +30,15 @@ namespace Shootopia
         
         public float VerticalVelocity { get; set; }
         public float MoveSpeedMultiplier { get; set; } = 1f;
+        private readonly NetworkVariable<bool> _isInLava = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        public bool IsInLava
+        {
+            get => _isInLava.Value;
+            set
+            {
+                if (IsOwner) _isInLava.Value = value;
+            }
+        }
         public bool IsGrounded => Controller.isGrounded;
         public PlayerInputIntent InputIntent => input != null ? input.Intent : default;
         public bool IsMoving => InputIntent.Move.sqrMagnitude > 0.01f;
@@ -79,6 +88,26 @@ namespace Shootopia
         {
             float dt = Time.deltaTime;
             UpdateFootsteps(dt);
+
+            // Handle fall animation when sinking in lava across all clients
+            if (_isInLava.Value && animator != null)
+            {
+                animator.SetBool(HashGrounded, false);
+                animator.SetBool(HashIsFiring, false);
+                var health = GetComponent<PlayerHealth>();
+                bool isDead = health != null && health.IsDead;
+
+                if (!isDead)
+                {
+                    bool isCurrentJumpAir = animator.GetCurrentAnimatorStateInfo(0).IsName("JumpAir");
+                    bool isNextJumpAir = animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsName("JumpAir");
+
+                    if (!isCurrentJumpAir && !isNextJumpAir)
+                    {
+                        animator.CrossFadeInFixedTime("JumpAir", 0.15f, 0);
+                    }
+                }
+            }
 
             // Only the owning client drives FSM, input, and animator triggers.
             if (!IsOwner)

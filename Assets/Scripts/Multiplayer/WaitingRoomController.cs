@@ -18,7 +18,7 @@ namespace Shootopia
         public static bool IsLobbyMenuOpen { get; private set; } = true;
 
         [Header("Scene Configuration")]
-        [SerializeField] private string gameplaySceneName = "GameScene";
+        [SerializeField] private string gameplaySceneName = "Map1";
         [SerializeField] private UIDocument uiDocument;
 
         private VisualElement _root;

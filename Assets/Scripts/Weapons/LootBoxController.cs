@@ -43,6 +43,9 @@ namespace Shootopia
 
         private void Awake()
         {
+            var rootRenderer = GetComponent<MeshRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
             if (floatingPreview == null && previewPivot != null)
             {
                 floatingPreview = previewPivot.GetComponent<FloatingItemPreview>();
@@ -51,6 +54,8 @@ namespace Shootopia
                     floatingPreview = previewPivot.gameObject.AddComponent<FloatingItemPreview>();
                 }
             }
+
+            ResetLidBones();
         }
 
         public override void OnNetworkSpawn()
@@ -101,9 +106,11 @@ namespace Shootopia
             UpdateVisualState();
         }
 
+        private bool _isOpening = false;
+
         private void OnTriggerEnter(Collider other)
         {
-            if (!_isAvailable.Value) return;
+            if (!_isAvailable.Value || _isOpening) return;
 
             var health = other.GetComponentInParent<PlayerHealth>();
             if (health == null) health = other.GetComponent<PlayerHealth>();
@@ -116,7 +123,7 @@ namespace Shootopia
 
             if (IsServer || !IsSpawned)
             {
-                ExecuteLootForPlayer(health.gameObject);
+                StartCoroutine(OpenChestAndGrantLootRoutine(health.gameObject));
             }
             else
             {
@@ -131,17 +138,86 @@ namespace Shootopia
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void RequestLootServerRpc(ulong playerNetworkObjectId)
         {
-            if (!IsServer || !_isAvailable.Value) return;
+            if (!IsServer || !_isAvailable.Value || _isOpening) return;
 
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.SpawnManager != null && NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(playerNetworkObjectId, out var playerNetObj))
             {
-                ExecuteLootForPlayer(playerNetObj.gameObject);
+                StartCoroutine(OpenChestAndGrantLootRoutine(playerNetObj.gameObject));
+            }
+        }
+
+        private IEnumerator OpenChestAndGrantLootRoutine(GameObject playerObj)
+        {
+            _isOpening = true;
+
+            // Trigger open VFX, SFX, and lid opening animation across all clients
+            TriggerLootEffectsClientRpc(transform.position);
+
+            float duration = 0.6f;
+
+            // Also clear floating preview on server
+            if (floatingPreview != null)
+            {
+                floatingPreview.ClearPreview();
+            }
+
+            yield return new WaitForSeconds(duration);
+
+            // Grant loot item to player
+            ExecuteLootForPlayer(playerObj);
+
+            yield return new WaitForSeconds(0.2f);
+
+            _isOpening = false;
+            _isAvailable.Value = false;
+            StartCoroutine(CooldownRoutine());
+        }
+
+        private System.Collections.Generic.List<Transform> GetLidBones()
+        {
+            var bones = new System.Collections.Generic.List<Transform>();
+            if (chestMeshObject == null) return bones;
+
+            var allTransforms = chestMeshObject.GetComponentsInChildren<Transform>(true);
+            foreach (var t in allTransforms)
+            {
+                if (t.name == "UP" || t.name == "Left" || t.name == "Right" || t.name == "Rotation" || t.name == "Down")
+                {
+                    bones.Add(t);
+                }
+            }
+            return bones;
+        }
+
+        private void ResetLidBones()
+        {
+            if (chestMeshObject != null)
+            {
+                var anim = chestMeshObject.GetComponentInChildren<Animator>(true);
+                if (anim != null)
+                {
+                    anim.speed = 0f;
+                    anim.Play(0, 0, 0f);
+                    anim.Update(0f);
+                    return;
+                }
+            }
+
+            var lidBones = GetLidBones();
+            foreach (var b in lidBones)
+            {
+                if (b.name == "Down") b.localRotation = Quaternion.Euler(89.98f, 0f, 0f);
+                else if (b.name == "Rotation") b.localRotation = Quaternion.Euler(90f, 270f, 0f);
+                else if (b.name == "UP" && chestType == LootChestType.Chest3_AdvancedWeapons) b.localRotation = Quaternion.Euler(89.98f, 0f, 0f);
+                else if (b.name == "UP" && chestType == LootChestType.Chest2_TrapsAndStarters) b.localRotation = Quaternion.Euler(359.12f, 180f, 180f);
+                else if (b.name == "UP") b.localRotation = Quaternion.Euler(0.62f, 180f, 180f);
+                else if (b.name == "Left" || b.name == "Right") b.localRotation = Quaternion.Euler(0.62f, 180f, 180f);
             }
         }
 
         private void ExecuteLootForPlayer(GameObject playerObj)
         {
-            if (playerObj == null || !_isAvailable.Value) return;
+            if (playerObj == null) return;
 
             var health = playerObj.GetComponent<PlayerHealth>();
             var shield = playerObj.GetComponent<PlayerShield>();
@@ -149,52 +225,33 @@ namespace Shootopia
 
             if (health == null) return;
 
-            bool successfullyLooted = false;
-
             if (chestType == LootChestType.Chest1_Defense)
             {
                 if (health.GetCurrentHp() < health.GetMaxHp())
                 {
-                    // Player has less than full health: heal player completely back to MAX HP
                     health.Heal(health.GetMaxHp());
                     Debug.Log($"[LootBoxController] Player restored to MAX HP from Chest 1!");
-                    successfullyLooted = true;
                 }
                 else if (shield != null)
                 {
-                    // Player is already at full health: grant fresh 75 HP Shield
                     shield.GrantShield(75f);
                     Debug.Log($"[LootBoxController] Player granted fresh 75 HP Shield from Chest 1!");
-                    successfullyLooted = true;
                 }
             }
             else
             {
-                // Chest 2 (Traps & Starters) and Chest 3 (Advanced Weapons)
-                // Always acquirable: replaces whatever weapon is currently in hand
                 if (lootTable != null && lootTable.Entries.Count > 0 && weaponCtrl != null)
                 {
                     int index = _currentEntryIndex.Value;
-                    if (index < 0 || index >= lootTable.Entries.Count)
-                    {
-                        index = 0;
-                    }
+                    if (index < 0 || index >= lootTable.Entries.Count) index = 0;
+
                     var entry = lootTable.Entries[index];
                     if (entry != null && entry.weaponAttach != null)
                     {
-                        // Replace the weapon in hand completely — fresh ammo/durability
                         weaponCtrl.ReplaceCurrentWeapon(entry.weaponAttach);
-                        Debug.Log($"[LootBoxController] Player acquired {entry.displayName ?? entry.weaponAttach.name} from {chestType} (replaced weapon in hand)!");
-                        successfullyLooted = true;
+                        Debug.Log($"[LootBoxController] Player acquired {entry.displayName ?? entry.weaponAttach.name} from {chestType}!");
                     }
                 }
-            }
-
-            if (successfullyLooted)
-            {
-                TriggerLootEffectsClientRpc(playerObj.transform.position);
-                _isAvailable.Value = false;
-                StartCoroutine(CooldownRoutine());
             }
         }
 
@@ -293,6 +350,9 @@ namespace Shootopia
 
         private void UpdateVisualState()
         {
+            var rootRenderer = GetComponent<MeshRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
             if (chestMeshObject != null && chestMeshObject != gameObject)
             {
                 chestMeshObject.SetActive(_isAvailable.Value);
@@ -302,6 +362,7 @@ namespace Shootopia
                 var renderers = GetComponentsInChildren<MeshRenderer>(true);
                 foreach (var r in renderers)
                 {
+                    if (r.gameObject == gameObject) { r.enabled = false; continue; }
                     if (floatingPreview != null && r.transform.IsChildOf(floatingPreview.transform)) continue;
                     r.enabled = _isAvailable.Value;
                 }
@@ -312,6 +373,8 @@ namespace Shootopia
                 if (floatingPreview != null) floatingPreview.ClearPreview();
                 return;
             }
+
+            ResetLidBones();
 
             if (floatingPreview == null) return;
 
@@ -354,6 +417,21 @@ namespace Shootopia
         [Rpc(SendTo.Everyone)]
         private void TriggerLootEffectsClientRpc(Vector3 lootPosition)
         {
+            if (chestMeshObject != null)
+            {
+                var anim = chestMeshObject.GetComponentInChildren<Animator>(true);
+                if (anim != null)
+                {
+                    anim.speed = 1.5f;
+                    anim.Play(0, 0, 0f);
+                }
+            }
+
+            if (floatingPreview != null)
+            {
+                floatingPreview.ClearPreview();
+            }
+
             if (lootSound != null)
             {
                 AudioSource.PlayClipAtPoint(lootSound, lootPosition, 1f);

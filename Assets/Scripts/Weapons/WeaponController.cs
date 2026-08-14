@@ -255,7 +255,7 @@ namespace Shootopia
             {
                 isFrozen = WaitingRoomController.IsLobbyMenuOpen;
             }
-            else if (activeSceneName == "GameScene")
+            else if (activeSceneName == "GameScene" || activeSceneName == "Map1")
             {
                 if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
                 {
@@ -478,6 +478,23 @@ namespace Shootopia
 
             var data = CurrentAttach.gameplayData;
             if (data == null) return;
+
+            bool isBounceGun = data != null && (data.name.Contains("Trick") || data.name.Contains("Ricochet") || data.name.Contains("Bounce") || data.maxBounces > 0);
+            if (isBounceGun)
+            {
+                if (fireHeld)
+                {
+                    UpdateBounceLinePreview(data);
+                }
+                else
+                {
+                    HideBounceLinePreview();
+                }
+            }
+            else
+            {
+                HideBounceLinePreview();
+            }
 
             bool isKnifeOrMelee = CurrentAttach.stanceId == 3 ||
                                   (data != null && (data.category == WeaponCategory.Melee || data.name.Contains("Knife") || CurrentAttach.name.Contains("Knife")));
@@ -1187,6 +1204,99 @@ namespace Shootopia
             }
         }
 
+        private LineRenderer _bounceLineRenderer;
+
+        private void SetupBounceLineRenderer()
+        {
+            if (_bounceLineRenderer != null) return;
+            GameObject lineObj = new GameObject("BounceLineRendererContainer");
+            lineObj.transform.SetParent(transform, false);
+            _bounceLineRenderer = lineObj.AddComponent<LineRenderer>();
+            _bounceLineRenderer.useWorldSpace = true;
+            _bounceLineRenderer.startWidth = 0.07f;
+            _bounceLineRenderer.endWidth = 0.03f;
+            _bounceLineRenderer.positionCount = 0;
+            _bounceLineRenderer.enabled = false;
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+            Material lineMat = new Material(shader);
+            Color neonGreen = new Color(0.15f, 1.0f, 0.35f, 0.85f);
+            lineMat.renderQueue = 3000;
+            if (lineMat.HasProperty("_BaseColor")) lineMat.SetColor("_BaseColor", neonGreen);
+            if (lineMat.HasProperty("_Color")) lineMat.SetColor("_Color", neonGreen);
+            _bounceLineRenderer.material = lineMat;
+            _bounceLineRenderer.startColor = neonGreen;
+            _bounceLineRenderer.endColor = neonGreen;
+        }
+
+        private void UpdateBounceLinePreview(WeaponSO data)
+        {
+            SetupBounceLineRenderer();
+            if (_bounceLineRenderer == null) return;
+
+            Vector3 origin;
+            Vector3 aimDir;
+
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                Ray camRay = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+                origin = camRay.origin;
+                aimDir = camRay.direction;
+            }
+            else
+            {
+                origin = Muzzle != null ? Muzzle.position : transform.position + Vector3.up * 1.4f;
+                aimDir = transform.forward;
+                if (Aim != null && Aim.AimPoint != Vector3.zero)
+                {
+                    aimDir = (Aim.AimPoint - origin).normalized;
+                }
+            }
+
+            if (aimDir.sqrMagnitude < 0.001f) aimDir = transform.forward;
+            aimDir.Normalize();
+
+            float firstDist = data != null && data.previewDistance > 0f ? data.previewDistance : 25f;
+            float bounceDist = 15f;
+            LayerMask mask = ~0;
+
+            var points = new System.Collections.Generic.List<Vector3>();
+            points.Add(origin);
+
+            if (Physics.Raycast(origin, aimDir, out RaycastHit hit1, firstDist, mask, QueryTriggerInteraction.Ignore))
+            {
+                points.Add(hit1.point);
+
+                Vector3 bounceDir = Vector3.Reflect(aimDir, hit1.normal).normalized;
+                if (Physics.Raycast(hit1.point + hit1.normal * 0.01f, bounceDir, out RaycastHit hit2, bounceDist, mask, QueryTriggerInteraction.Ignore))
+                {
+                    points.Add(hit2.point);
+                }
+                else
+                {
+                    points.Add(hit1.point + bounceDir * bounceDist);
+                }
+            }
+            else
+            {
+                points.Add(origin + aimDir * firstDist);
+            }
+
+            _bounceLineRenderer.positionCount = points.Count;
+            _bounceLineRenderer.SetPositions(points.ToArray());
+            _bounceLineRenderer.enabled = true;
+        }
+
+        private void HideBounceLinePreview()
+        {
+            if (_bounceLineRenderer != null)
+            {
+                _bounceLineRenderer.enabled = false;
+            }
+        }
+
         private void StartChargeVisual(WeaponSO data)
         {
             if (Muzzle == null || data == null || data.chargeTime <= 0f) return;
@@ -1227,12 +1337,16 @@ namespace Shootopia
 
                 Material mat = new Material(shader);
                 mat.name = "ChargeSphere_RefinedMat";
+                mat.renderQueue = 3000;
 
                 Color baseCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, 0.25f);
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseCol);
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", baseCol);
 
                 mat.EnableKeyword("_EMISSION");
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+
                 if (mat.HasProperty("_EmissionColor"))
                 {
                     mat.SetColor("_EmissionColor", chargeColor * 3.5f);

@@ -179,7 +179,24 @@ namespace Shootopia
                             break;
                         }
                     }
-                    Vector3 pos = Vector3.zero + new Vector3(index * 2f, 0.5f, 0f);
+
+                    Vector3 pos = new Vector3(120.0f + (index * 2f), 15.3f, 2.5f);
+                    if (SpawnPointManager.Instance != null)
+                    {
+                        SpawnPointType spawnType = SpawnPointType.FFA;
+                        if (GameModeBase.Instance is TDMMode tdm)
+                        {
+                            int team = tdm.GetPlayerTeam(clientId);
+                            if (team == 0) spawnType = SpawnPointType.TeamBlue;
+                            else if (team == 1) spawnType = SpawnPointType.TeamRed;
+                        }
+
+                        Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
+                        if (sp != null)
+                        {
+                            pos = sp.position;
+                        }
+                    }
 
                     GameObject playerGo = Instantiate(playerPrefab, pos, Quaternion.identity);
                     var no = playerGo.GetComponent<NetworkObject>();

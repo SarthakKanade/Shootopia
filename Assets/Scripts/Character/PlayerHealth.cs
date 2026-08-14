@@ -35,8 +35,10 @@ namespace Shootopia
         public static event System.Action<bool> OnLocalPlayerHitConfirmed;
 
         private bool _isDead = false;
+        public bool IsDead => _isDead;
         private bool _isInvincible = false;
         private Coroutine _invincibilityFlashRoutine;
+        private Coroutine _deathVFXRoutine;
 
         private void Awake()
         {
@@ -53,6 +55,23 @@ namespace Shootopia
             _currentHp.Value = _maxHp;
             livesRemaining.Value = _totalLives;
             _deathCount.Value = 0;
+
+            if (transform.position.y <= 1.0f && SpawnPointManager.Instance != null)
+            {
+                SpawnPointType spawnType = SpawnPointType.FFA;
+                if (GameModeBase.Instance is TDMMode tdm)
+                {
+                    int team = tdm.GetPlayerTeam(OwnerClientId);
+                    if (team == 0) spawnType = SpawnPointType.TeamBlue;
+                    else if (team == 1) spawnType = SpawnPointType.TeamRed;
+                }
+
+                Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
+                if (sp != null)
+                {
+                    Teleport(sp.position);
+                }
+            }
         }
 
         // Initial UI update
@@ -268,12 +287,6 @@ namespace Shootopia
 
         _onPlayerDied?.Raise();
 
-        // Spawn death VFX
-        if (_deathVFXPrefab != null)
-        {
-            Instantiate(_deathVFXPrefab, transform.position, Quaternion.identity);
-        }
-
         // Play death sound on dying player's client only (not broadcast to all — avoids audio spam in FFA)
         if (IsOwner && AudioManager.Instance != null)
         {
@@ -288,8 +301,33 @@ namespace Shootopia
             AudioSource.PlayClipAtPoint(_deathSound, transform.position, 1f);
         }
 
-        // Hide mesh and disable control locally
+        // Trigger death animation on Animator
+        Animator anim = GetComponentInChildren<Animator>(true);
+        if (anim != null)
+        {
+            if (anim.layerCount > 1)
+            {
+                anim.SetLayerWeight(1, 0f); // Mute upper body layer so it doesn't override full-body death animation
+            }
+            anim.SetTrigger("Die");
+        }
+
+        // Disable player controls locally while keeping renderers visible for the death animation
+        SetPlayerControlsEnabled(false);
+
+        // Hide model after 1 second of playing death animation (no death VFX)
+        if (_deathVFXRoutine != null) StopCoroutine(_deathVFXRoutine);
+        _deathVFXRoutine = StartCoroutine(HideModelAfterDeathRoutine());
+    }
+
+    private IEnumerator HideModelAfterDeathRoutine()
+    {
+        // Wait 1 second after death animation starts
+        yield return new WaitForSeconds(1.0f);
+
+        // Directly hide character renderers — NO VFX
         SetPlayerVisibility(false);
+        _deathVFXRoutine = null;
     }
 
     [ClientRpc]
@@ -297,14 +335,35 @@ namespace Shootopia
     {
         Debug.Log($"[PlayerHealth] RespawnClientRpc received for Player {OwnerClientId}");
 
+        if (_deathVFXRoutine != null)
+        {
+            StopCoroutine(_deathVFXRoutine);
+            _deathVFXRoutine = null;
+        }
+
         // Reposition character safely by temporarily disabling the character controller
         var cc = GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
         transform.position = spawnPosition;
         if (cc != null) cc.enabled = true;
 
-        // Restore visibility and control
+        // Reset animator state back to locomotion
+        Animator anim = GetComponentInChildren<Animator>(true);
+        if (anim != null)
+        {
+            anim.ResetTrigger("Die");
+            anim.CrossFade("Locomotion", 0.1f, 0);
+            if (anim.layerCount > 1)
+            {
+                anim.CrossFade("Empty", 0.1f, 1);
+                anim.SetLayerWeight(1, 1f);
+            }
+        }
+
+        // Restore controls and visibility
+        SetPlayerControlsEnabled(true);
         SetPlayerVisibility(true);
+        RemoveBurnEffect();
 
         // Spawn respawn VFX and play sound
         if (_spawnVFXPrefab != null)
@@ -354,6 +413,23 @@ namespace Shootopia
         _invincibilityFlashRoutine = null;
     }
 
+    private void SetPlayerControlsEnabled(bool enabled)
+    {
+        // Disable/enable character motor movement FSM
+        var motor = GetComponent<CharacterMotor>();
+        if (motor != null)
+        {
+            motor.enabled = enabled;
+        }
+
+        // Disable/enable player input routing
+        var input = GetComponent<PlayerInputRouter>();
+        if (input != null)
+        {
+            input.enabled = enabled;
+        }
+    }
+
     private void SetPlayerVisibility(bool visible)
     {
         if (!visible && _invincibilityFlashRoutine != null)
@@ -362,26 +438,14 @@ namespace Shootopia
             _invincibilityFlashRoutine = null;
         }
 
-        // Hide renderers
+        // Hide/show renderers
         var renderers = GetComponentsInChildren<Renderer>(true);
         foreach (var r in renderers)
         {
             r.enabled = visible;
         }
 
-        // Disable character motor movement FSM
-        var motor = GetComponent<CharacterMotor>();
-        if (motor != null)
-        {
-            motor.enabled = visible;
-        }
-
-        // Disable player input routing
-        var input = GetComponent<PlayerInputRouter>();
-        if (input != null)
-        {
-            input.enabled = visible;
-        }
+        SetPlayerControlsEnabled(visible);
     }
 
     /// <summary>
@@ -539,6 +603,34 @@ namespace Shootopia
     public void ApplyBurnEffect(float duration = 5.0f, float dps = 5.0f, WeaponSO weaponUsed = null)
     {
         ApplyBurnRpc(duration, dps);
+    }
+
+    /// <summary>
+    /// Immediately stops burning status effect and restores original materials.
+    /// </summary>
+    public void RemoveBurnEffect()
+    {
+        RemoveBurnRpc();
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void RemoveBurnRpc()
+    {
+        if (_burnRoutine != null)
+        {
+            StopCoroutine(_burnRoutine);
+            _burnRoutine = null;
+        }
+        _isBurning = false;
+
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        foreach (var r in renderers)
+        {
+            if (r != null && !(r is ParticleSystemRenderer))
+            {
+                r.SetPropertyBlock(null);
+            }
+        }
     }
 
     [Rpc(SendTo.Everyone)]

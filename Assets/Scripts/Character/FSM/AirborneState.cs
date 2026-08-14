@@ -28,7 +28,7 @@ namespace Shootopia.FSM
 
         public override void CheckSwitchStates()
         {
-            if (Ctx.IsGrounded && Ctx.VerticalVelocity <= 0f)
+            if (Ctx.IsGrounded && !Ctx.IsInLava && Ctx.VerticalVelocity <= 0f)
             {
                 SwitchState(Factory.Grounded());
             }

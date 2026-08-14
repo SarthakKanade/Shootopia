@@ -1954,8 +1954,8 @@ MonoBehaviour:
   aimProviderBehaviour: {fileID: 0}
   moveSpeed: 4
   rotationSpeed: 900
-  gravity: -20
-  jumpForce: 8
+  gravity: -32
+  jumpForce: 2
   dashSpeed: 10
   rollSpeed: 8
   animDamp: 0.1
@@ -2022,6 +2022,7 @@ MonoBehaviour:
   defaultChargeVFXPrefab: {fileID: 0}
   scopeOverlay: {fileID: 3383112620698120021, guid: 7b41fdde6bd0b4c91847882d77d2a970, type: 3}
   playerFollowCamera: {fileID: 0}
+  vfxImplosionPrefab: {fileID: 0}
 --- !u!114 &4193384357287948399
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2139,6 +2140,10 @@ MonoBehaviour:
       NameHash: -1169059422
       Synchronize: 1
       ParameterType: 1
+    - name: Die
+      NameHash: 20298039
+      Synchronize: 1
+      ParameterType: 9
   AnimatorParametersExpanded: 0
 --- !u!114 &6220437028767710376
 MonoBehaviour:

@@ -30,6 +30,9 @@ namespace Shootopia
         /// <summary>Optional injected look delta (e.g. mobile right-side drag). Added to device look.</summary>
         public Vector2 ExternalLookDelta { get; set; }
 
+        /// <summary>Disables all player controls (e.g., when sinking in lava).</summary>
+        public bool DisableControls { get; set; } = false;
+
         [Header("Cursor")]
         [SerializeField] private bool lockCursor = true;
         [SerializeField] private float gamepadLookSpeed = 12f; // right-stick deg-ish per frame scale
@@ -48,7 +51,7 @@ namespace Shootopia
         private void UpdateCursorLock()
         {
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            bool shouldLock = lockCursor && (activeScene == "GameScene" || activeScene == "Shootopia_Sandbox");
+            bool shouldLock = lockCursor && (activeScene == "GameScene" || activeScene == "Map1" || activeScene == "Shootopia_Sandbox");
 
             if (shouldLock)
             {
@@ -84,7 +87,7 @@ namespace Shootopia
             {
                 isFrozen = WaitingRoomController.IsLobbyMenuOpen;
             }
-            else if (activeSceneName == "GameScene")
+            else if (activeSceneName == "GameScene" || activeSceneName == "Map1")
             {
                 if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
                 {
@@ -92,7 +95,7 @@ namespace Shootopia
                 }
             }
 
-            if (isFrozen)
+            if (isFrozen || DisableControls)
             {
                 LookDelta = Vector2.zero;
                 if (Mouse.current != null)
