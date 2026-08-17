@@ -1,0 +1,379 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:Style src="../Theme/ShootopiaTheme.uss" />
+    <ui:VisualElement name="MainMenuRoot" class="root-container">
+
+        <!-- ═══ 1. SPACE BACKDROP ═══ -->
+        <ui:VisualElement class="home-space-bg" picking-mode="Ignore" />
+        <ui:VisualElement class="home-overlay-grid" picking-mode="Ignore" />
+
+        <!-- ═══ 2. CENTER 3D AVATAR VIEWPORT ═══ -->
+        <ui:VisualElement name="AvatarStageDisplay" class="center-character-viewport" picking-mode="Ignore" />
+
+        <!-- ═══ 3. TOP HEADER BAR ═══ -->
+        <ui:VisualElement class="header-bar">
+            <!-- Left: Profile Pill -->
+            <ui:Button name="BtnProfilePill" class="profile-pill">
+                <ui:VisualElement name="ProfileAvatarIcon" class="profile-avatar-circle" />
+                <ui:VisualElement class="profile-info-col">
+                    <ui:VisualElement class="profile-name-row">
+                        <ui:Label name="PlayerNameLabel" text="Agent_3293" class="profile-name-text" />
+                        <ui:VisualElement class="profile-edit-icon" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="profile-level-row">
+                        <ui:Label text="LV. 12" class="level-badge-chip" />
+                        <ui:VisualElement class="xp-bar-bg">
+                            <ui:VisualElement class="xp-bar-fill" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:Button>
+
+            <!-- Center: Currency Cluster -->
+            <ui:VisualElement class="currency-cluster">
+                <!-- Coins -->
+                <ui:VisualElement class="currency-chip">
+                    <ui:VisualElement class="currency-icon currency-icon-coin" />
+                    <ui:Label name="CoinAmountLabel" text="2,450" class="currency-val-text" />
+                </ui:VisualElement>
+                <!-- Gems -->
+                <ui:VisualElement class="currency-chip">
+                    <ui:VisualElement class="currency-icon currency-icon-gem" />
+                    <ui:Label name="GemAmountLabel" text="120" class="currency-val-text" />
+                </ui:VisualElement>
+                <!-- Trophies -->
+                <ui:VisualElement class="currency-chip">
+                    <ui:VisualElement class="currency-icon currency-icon-trophy" />
+                    <ui:Label name="TrophyAmountLabel" text="850" class="currency-val-text" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Right: Region & Quick Utility Controls -->
+            <ui:VisualElement class="top-utility-group">
+                <ui:VisualElement class="server-region-tag">
+                    <ui:Label text="🌐 US-East" class="server-region-text" />
+                </ui:VisualElement>
+                <ui:Button name="BtnToggleSound" class="btn-icon-square">
+                    <ui:VisualElement name="SoundIcon" class="icon-inner-sound" />
+                </ui:Button>
+                <ui:Button name="BtnTopSettings" class="btn-icon-square">
+                    <ui:VisualElement class="icon-inner-settings" />
+                </ui:Button>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══ 4. TOP-CENTER LOGO ═══ -->
+        <ui:VisualElement class="logo-banner-container" picking-mode="Ignore">
+            <ui:Label text="SHOOTOPIA" class="logo-main-text" />
+            <ui:Label text="VELOCITY WARS" class="logo-sub-text" />
+        </ui:VisualElement>
+
+        <!-- ═══ 5. LEFT SIDEBAR (CUSTOMIZE & FEATURED EVENT) ═══ -->
+        <ui:VisualElement class="left-sidebar">
+            <!-- Glossy Customize Button -->
+            <ui:Button name="BtnCustomize" class="btn-customize-arcade">
+                <ui:VisualElement class="icon-wrench-customize" />
+                <ui:Label text="CUSTOMIZE" class="btn-customize-text" />
+            </ui:Button>
+
+            <!-- Featured Event Card -->
+            <ui:VisualElement class="event-card-container">
+                <ui:VisualElement class="event-card-header-row">
+                    <ui:VisualElement class="event-crown-icon" />
+                    <ui:Label text="SEASON 1 PASS" class="event-title-text" />
+                </ui:VisualElement>
+                <ui:Label text="Arena Mayhem is LIVE! 2x XP active all weekend." class="event-body-text" />
+                <ui:VisualElement class="event-reward-tag">
+                    <ui:Label text="TIER 4 UNLOCKED" class="event-reward-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══ 6. CENTER-BOTTOM ACTION HUB ═══ -->
+        <ui:VisualElement class="bottom-action-hub">
+            <!-- Main PLAY Button & Side Filter -->
+            <ui:VisualElement class="play-action-row">
+                <ui:Button name="BtnPlayMatch" class="btn-play-arcade">
+                    <ui:VisualElement class="icon-play-white" />
+                    <ui:Label text="PLAY MATCH" class="btn-play-label" />
+                </ui:Button>
+                <ui:Button name="BtnFilterToggle" class="btn-filter-toggle">
+                    <ui:VisualElement class="icon-filter-search" />
+                </ui:Button>
+            </ui:VisualElement>
+
+            <!-- Sub-Actions [ CREATE ROOM ] [ JOIN ROOM ] -->
+            <ui:VisualElement class="sub-actions-row">
+                <ui:Button name="BtnCreateRoom" class="btn-sub-action btn-create-blue">
+                    <ui:VisualElement class="icon-sub-action icon-sub-create" />
+                    <ui:Label text="CREATE" class="btn-sub-action-label" />
+                </ui:Button>
+                <ui:Button name="BtnJoinRoom" class="btn-sub-action btn-join-purple">
+                    <ui:VisualElement class="icon-sub-action icon-sub-join" />
+                    <ui:Label text="JOIN" class="btn-sub-action-label" />
+                </ui:Button>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══ 7. BOTTOM UTILITY BAR ═══ -->
+        <ui:VisualElement class="bottom-bar">
+            <ui:Label text="v0.1.0 Alpha | Shootopia Arcade Studio" class="version-text" />
+            <ui:Button name="BtnQuit" class="btn-quit-game">
+                <ui:VisualElement class="icon-quit-cross" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             MODAL 1: CREATE ROOM
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="ModalCreateRoom" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="modal-frame">
+                <ui:VisualElement class="modal-header-bar">
+                    <ui:Label text="🚀 Create Custom Room" class="modal-title" />
+                    <ui:Button name="BtnCloseCreateRoom" class="btn-modal-close">
+                        <ui:VisualElement class="icon-modal-close" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <!-- Room Name -->
+                <ui:VisualElement class="form-field-group">
+                    <ui:Label text="ROOM NAME" class="form-field-label" />
+                    <ui:TextField name="InputCreateRoomName" value="Cyber Arena" class="arcade-text-input" />
+                </ui:VisualElement>
+
+                <!-- Game Mode Selector -->
+                <ui:VisualElement class="form-field-group">
+                    <ui:Label text="GAME MODE" class="form-field-label" />
+                    <ui:VisualElement class="chip-row">
+                        <ui:Button name="ChipModeFFA" class="mode-chip-btn mode-chip-btn--active" text="Free For All (FFA)" />
+                        <ui:Button name="ChipModeTDM" class="mode-chip-btn" text="Team Deathmatch (TDM)" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Map Info Card -->
+                <ui:VisualElement class="map-preview-card">
+                    <ui:VisualElement>
+                        <ui:Label text="Neon Arena (Map 1)" class="map-card-name" />
+                        <ui:Label text="Classic sci-fi combat arena with jump pads &amp; loot chests." class="map-card-sub" />
+                    </ui:VisualElement>
+                    <ui:Label text="ACTIVE" class="map-badge-active" />
+                </ui:VisualElement>
+
+                <!-- Max Players Slider -->
+                <ui:VisualElement class="slider-control-row">
+                    <ui:Label text="Max Players" class="slider-label" />
+                    <ui:SliderInt name="SliderMaxPlayers" low-value="2" high-value="8" value="4" style="flex-grow: 1; margin: 0 14px;" />
+                    <ui:Label name="LabelMaxPlayers" text="4" class="slider-val-badge" />
+                </ui:VisualElement>
+
+                <!-- Public Toggle -->
+                <ui:VisualElement class="slider-control-row" style="margin-bottom: 16px;">
+                    <ui:Label text="Public (List in Browser)" class="slider-label" />
+                    <ui:Toggle name="TogglePublicRoom" value="true" />
+                </ui:VisualElement>
+
+                <!-- Confirm Button -->
+                <ui:Button name="BtnConfirmCreate" class="btn-modal-confirm" text="🚀  HOST &amp; LAUNCH" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             MODAL 2: JOIN ROOM (BROWSER + CODE TABS)
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="ModalJoinRoom" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="modal-frame" style="width: 660px; max-height: 88%;">
+                <ui:VisualElement class="modal-header-bar">
+                    <ui:Label text="🌐 Join Online Match" class="modal-title" />
+                    <ui:Button name="BtnCloseJoinRoom" class="btn-modal-close">
+                        <ui:VisualElement class="icon-modal-close" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <!-- Tabs: Browse / Code -->
+                <ui:VisualElement class="chip-row" style="margin-bottom: 16px;">
+                    <ui:Button name="TabBtnBrowse" class="mode-chip-btn mode-chip-btn--active" text="Room Browser" />
+                    <ui:Button name="TabBtnCode" class="mode-chip-btn" text="Enter Join Code" />
+                </ui:VisualElement>
+
+                <!-- Tab 1: Room Browser -->
+                <ui:VisualElement name="TabContentBrowse" style="flex-grow: 1;">
+                    <!-- Filter Row -->
+                    <ui:VisualElement style="flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <ui:VisualElement style="flex-direction: row;">
+                            <ui:Button name="ChipFilterAll" class="mode-chip-btn mode-chip-btn--active" text="ALL" style="height: 34px; padding: 0 14px; font-size: 11px;" />
+                            <ui:Button name="ChipFilterFFA" class="mode-chip-btn" text="FFA" style="height: 34px; padding: 0 14px; font-size: 11px;" />
+                            <ui:Button name="ChipFilterTDM" class="mode-chip-btn" text="TDM" style="height: 34px; padding: 0 14px; font-size: 11px;" />
+                        </ui:VisualElement>
+                        <ui:Button name="BtnRefreshRooms" class="mode-chip-btn" text="🔄 Refresh" style="height: 34px; padding: 0 14px; font-size: 11px; flex-grow: 0;" />
+                    </ui:VisualElement>
+
+                    <!-- Scrollable Room List -->
+                    <ui:ScrollView name="RoomListContainer" class="room-list-scroll" />
+
+                    <!-- Empty State -->
+                    <ui:VisualElement name="BrowseEmptyState" class="browser-empty-card" style="display: none;">
+                        <ui:VisualElement class="empty-icon-radar" />
+                        <ui:Label text="No Active Arenas Found" class="empty-text-title" />
+                        <ui:Label text="Be the first commander to host a live match!" class="empty-text-sub" />
+                        <ui:Button name="BtnEmptyCreate" class="btn-sub-action btn-create-blue" style="width: 180px;">
+                            <ui:Label text="CREATE ARENA" class="btn-sub-action-label" />
+                        </ui:Button>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Tab 2: Join By Code -->
+                <ui:VisualElement name="TabContentCode" style="display: none; padding: 16px 0;">
+                    <ui:VisualElement class="map-preview-card" style="margin-bottom: 20px;">
+                        <ui:Label text="Got a room code from a friend? Enter it below to warp directly into their lobby." class="map-card-sub" style="font-size: 13px;" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="form-field-group">
+                        <ui:Label text="6-CHARACTER ROOM CODE" class="form-field-label" />
+                        <ui:TextField name="InputJoinCode" class="arcade-text-input" style="font-size: 24px; -unity-text-align: middle-center; letter-spacing: 4px;" />
+                    </ui:VisualElement>
+
+                    <ui:Button name="BtnSubmitJoinCode" class="btn-modal-confirm" text="⚡  CONNECT TO ROOM" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             MODAL 3: QUICK MATCH FILTER BOTTOM SHEET
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="ModalQuickFilter" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="modal-frame" style="width: 520px;">
+                <ui:VisualElement class="modal-header-bar">
+                    <ui:Label text="🎯 Quick Match Preferences" class="modal-title" />
+                    <ui:Button name="BtnCloseQuickFilter" class="btn-modal-close">
+                        <ui:VisualElement class="icon-modal-close" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="form-field-group">
+                    <ui:Label text="DESIRED GAME MODE" class="form-field-label" />
+                    <ui:VisualElement class="chip-row">
+                        <ui:Button name="ChipQuickAll" class="mode-chip-btn mode-chip-btn--active" text="Any Mode" />
+                        <ui:Button name="ChipQuickFFA" class="mode-chip-btn" text="FFA Only" />
+                        <ui:Button name="ChipQuickTDM" class="mode-chip-btn" text="TDM Only" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:Button name="BtnConfirmQuickFilter" class="btn-modal-confirm" text="🔍  FIND MATCH WITH FILTER" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             MODAL 4: CUSTOMIZE / SKIN PREVIEW
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="ModalCustomize" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="modal-frame" style="width: 520px;">
+                <ui:VisualElement class="modal-header-bar">
+                    <ui:Label text="🔧 Select Battle Rig" class="modal-title" />
+                    <ui:Button name="BtnCloseCustomize" class="btn-modal-close">
+                        <ui:VisualElement class="icon-modal-close" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="form-field-group">
+                    <ui:Label text="CHOOSE CHARACTER SKIN" class="form-field-label" />
+                    <ui:VisualElement class="chip-row">
+                        <ui:Button name="BtnSkinAgent" class="mode-chip-btn mode-chip-btn--active" text="Tactical Agent" />
+                        <ui:Button name="BtnSkinRobot" class="mode-chip-btn" text="Cyber Robot" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="map-preview-card">
+                    <ui:Label text="Your selection updates the 3D diorama in real time." class="map-card-sub" style="font-size: 13px;" />
+                </ui:VisualElement>
+
+                <ui:Button name="BtnDoneCustomize" class="btn-modal-confirm" text="✔  APPLY &amp; RETURN" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             MODAL 5: SETTINGS (AUDIO & CONTROLS)
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="ModalSettings" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="modal-frame" style="width: 560px;">
+                <ui:VisualElement class="modal-header-bar">
+                    <ui:Label text="⚙ Audio &amp; Gameplay Settings" class="modal-title" />
+                    <ui:Button name="BtnCloseSettings" class="btn-modal-close">
+                        <ui:VisualElement class="icon-modal-close" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <!-- Master Volume -->
+                <ui:VisualElement class="slider-control-row">
+                    <ui:Label text="Master Volume" class="slider-label" />
+                    <ui:Slider name="SliderMasterVol" low-value="0" high-value="1" value="0.8" style="flex-grow: 1; margin: 0 14px;" />
+                    <ui:Label name="LabelMasterVol" text="80%" class="slider-val-badge" />
+                </ui:VisualElement>
+
+                <!-- Music Volume -->
+                <ui:VisualElement class="slider-control-row">
+                    <ui:Label text="Music Volume" class="slider-label" />
+                    <ui:Slider name="SliderMusicVol" low-value="0" high-value="1" value="0.6" style="flex-grow: 1; margin: 0 14px;" />
+                    <ui:Label name="LabelMusicVol" text="60%" class="slider-val-badge" />
+                </ui:VisualElement>
+
+                <!-- SFX Volume -->
+                <ui:VisualElement class="slider-control-row">
+                    <ui:Label text="SFX Volume" class="slider-label" />
+                    <ui:Slider name="SliderSFXVol" low-value="0" high-value="1" value="0.8" style="flex-grow: 1; margin: 0 14px;" />
+                    <ui:Label name="LabelSFXVol" text="80%" class="slider-val-badge" />
+                </ui:VisualElement>
+
+                <!-- Mouse Sensitivity -->
+                <ui:VisualElement class="slider-control-row">
+                    <ui:Label text="Mouse Sensitivity" class="slider-label" />
+                    <ui:Slider name="SliderMouseSens" low-value="0.5" high-value="5.0" value="2.0" style="flex-grow: 1; margin: 0 14px;" />
+                    <ui:Label name="LabelMouseSens" text="2.0" class="slider-val-badge" />
+                </ui:VisualElement>
+
+                <!-- Toggles -->
+                <ui:VisualElement class="slider-control-row">
+                    <ui:Label text="Invert Y-Axis" class="slider-label" />
+                    <ui:Toggle name="ToggleInvertY" value="false" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="slider-control-row" style="margin-bottom: 16px;">
+                    <ui:Label text="Fullscreen Mode" class="slider-label" />
+                    <ui:Toggle name="ToggleFullscreen" value="true" />
+                </ui:VisualElement>
+
+                <ui:Button name="BtnApplySettings" class="btn-modal-confirm" text="💾  SAVE SETTINGS" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             MODAL 6: EDIT PROFILE IDENTITY
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="ModalEditProfile" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="modal-frame" style="width: 500px;">
+                <ui:VisualElement class="modal-header-bar">
+                    <ui:Label text="✏ Edit Player Identity" class="modal-title" />
+                    <ui:Button name="BtnCloseProfile" class="btn-modal-close">
+                        <ui:VisualElement class="icon-modal-close" />
+                    </ui:Button>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="form-field-group">
+                    <ui:Label text="CALLSIGN / DISPLAY NAME" class="form-field-label" />
+                    <ui:TextField name="InputDisplayName" value="Agent_3293" class="arcade-text-input" max-length="16" />
+                </ui:VisualElement>
+
+                <ui:Button name="BtnSaveProfile" class="btn-modal-confirm" text="💾  SAVE CALLSIGN" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ═══════════════════════════════════════════════════════
+             BUSY / LOADING OVERLAY
+             ═══════════════════════════════════════════════════════ -->
+        <ui:VisualElement name="BusyOverlay" class="modal-backdrop" style="display: none;">
+            <ui:VisualElement class="busy-overlay-frame">
+                <ui:VisualElement class="busy-spinner-icon" />
+                <ui:Label name="BusyLabel" text="CONNECTING TO ARENA..." class="busy-status-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

@@ -10,9 +10,9 @@ namespace Shootopia
     {
         [Header("Animation Configuration")]
         [SerializeField] private float rotationSpeed = 90f;
-        [SerializeField] private float bobSpeed = 3.0f;
+        [SerializeField] private float bobSpeed = 2.5f;
         [SerializeField] private float bobHeight = 0.08f;
-        [SerializeField] private float targetWorldSize = 0.32f; // Scaled down so weapon previews float neatly above the chest
+        [SerializeField] private float targetWorldSize = 0.45f; // Well-proportioned size floating above chest
 
         private Vector3 _initialLocalPos;
         private GameObject _currentPreviewInstance;
@@ -35,9 +35,9 @@ namespace Shootopia
             _bobTimer += Time.deltaTime * bobSpeed;
             float newY = _initialLocalPos.y + Mathf.Sin(_bobTimer) * bobHeight;
 
-            // Apply floating bobbing and smooth rotation
+            // Apply gentle bobbing motion and smooth local Y-axis rotation
             transform.localPosition = new Vector3(_initialLocalPos.x, newY, _initialLocalPos.z);
-            transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.World);
+            transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.Self);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Shootopia
             _currentPreviewInstance.transform.localRotation = Quaternion.identity;
             _currentPreviewInstance.transform.localScale = Vector3.one;
 
-            // Strip physics, particles, lights, audio, & interaction scripts from cosmetic copy
+            // Strip physics, particles, lights, audio, & interaction scripts from cosmetic preview copy
             var colliders = _currentPreviewInstance.GetComponentsInChildren<Collider>(true);
             foreach (var col in colliders) col.enabled = false;
 
@@ -132,15 +132,12 @@ namespace Shootopia
                 }
             }
 
-            // Enable mesh renderers
+            // Enable mesh renderers for visual display
             foreach (var mr in meshRenderers) mr.enabled = true;
             foreach (var smr in skinnedRenderers) smr.enabled = true;
 
             if (hasBounds)
             {
-                // Center the local mesh pivot
-                _currentPreviewInstance.transform.localPosition = -localBounds.center;
-
                 float maxDimension = Mathf.Max(localBounds.size.x, localBounds.size.y, localBounds.size.z);
                 if (maxDimension > 0.001f)
                 {

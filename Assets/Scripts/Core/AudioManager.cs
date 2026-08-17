@@ -90,7 +90,9 @@ namespace Shootopia
         {
             GameObject musicGo = new GameObject("Music_Source");
             musicGo.transform.SetParent(transform);
+            musicGo.SetActive(true);
             _musicSource = musicGo.AddComponent<AudioSource>();
+            _musicSource.enabled = true;
             _musicSource.playOnAwake = false;
             _musicSource.loop = true;
             _musicSource.spatialBlend = 0f; // 2D Music
@@ -227,9 +229,13 @@ namespace Shootopia
             _musicSource.clip = newClip;
             _musicSource.volume = 0f;
 
-            if (newClip != null)
+            if (newClip != null && _musicSource != null)
             {
-                _musicSource.Play();
+                _musicSource.enabled = true;
+                if (_musicSource.isActiveAndEnabled)
+                {
+                    _musicSource.Play();
+                }
 
                 if (fadeDuration > 0.05f)
                 {

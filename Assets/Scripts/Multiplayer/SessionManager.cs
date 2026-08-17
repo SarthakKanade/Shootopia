@@ -57,7 +57,7 @@ namespace Shootopia
         /// <summary>
         /// Creates a new multiplayer session on the Unity backend.
         /// </summary>
-        public async Task CreateSession(string sessionName, bool isPublic, int maxPlayers, string gameMode)
+        public async Task CreateSession(string sessionName, bool isPublic, int maxPlayers, string gameMode, string mapName = "Map1")
         {
             if (_isProcessingSession)
             {
@@ -69,7 +69,9 @@ namespace Shootopia
 
             try
             {
-                Debug.Log($"[SessionManager] Creating session '{sessionName}' (Public: {isPublic}, MaxPlayers: {maxPlayers}, Mode: {gameMode})...");
+                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+
+                Debug.Log($"[SessionManager] Creating session '{sessionName}' (Public: {isPublic}, MaxPlayers: {maxPlayers}, Mode: {gameMode}, Map: {mapName})...");
                 
                 var options = new SessionOptions
                 {
@@ -79,10 +81,11 @@ namespace Shootopia
                     Type = "default-session"
                 };
 
-                // Add the custom GameMode property for session browsing filters
+                // Add the custom GameMode and MapName properties for session browsing filters
                 options.SessionProperties = new Dictionary<string, SessionProperty>
                 {
-                    { "GameMode", new SessionProperty(gameMode, VisibilityPropertyOptions.Public, PropertyIndex.String1) }
+                    { "GameMode", new SessionProperty(gameMode, VisibilityPropertyOptions.Public, PropertyIndex.String1) },
+                    { "MapName", new SessionProperty(mapName, VisibilityPropertyOptions.Public, PropertyIndex.String2) }
                 };
 
                 // Configure connection protocol using Relay networking
@@ -106,6 +109,14 @@ namespace Shootopia
                     }
                 }
                 
+                // Set local player display name in session metadata
+                if (_currentSession.CurrentPlayer != null)
+                {
+                    string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                    _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
+                    try { await _currentSession.SaveCurrentPlayerDataAsync(); } catch { }
+                }
+
                 Debug.Log($"[SessionManager] Session created successfully. Join Code: {_currentSession.Code}, Session ID: {_currentSession.Id}");
                 OnSessionCreated?.Invoke();
             }
@@ -137,6 +148,8 @@ namespace Shootopia
 
             try
             {
+                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+
                 Debug.Log($"[SessionManager] Joining session by code '{joinCode}'...");
                 
                 var options = new JoinSessionOptions
@@ -161,6 +174,14 @@ namespace Shootopia
                     }
                 }
                 
+                // Set local player display name in session metadata
+                if (_currentSession.CurrentPlayer != null)
+                {
+                    string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                    _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
+                    try { await _currentSession.SaveCurrentPlayerDataAsync(); } catch { }
+                }
+
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
                 OnSessionJoined?.Invoke();
             }
@@ -192,6 +213,8 @@ namespace Shootopia
 
             try
             {
+                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+
                 Debug.Log($"[SessionManager] Joining session by ID '{sessionId}'...");
                 
                 var options = new JoinSessionOptions
@@ -214,6 +237,14 @@ namespace Shootopia
                         Debug.LogWarning($"[SessionManager] JoinById attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
                         await Task.Delay(1000);
                     }
+                }
+
+                // Set local player display name in session metadata
+                if (_currentSession.CurrentPlayer != null)
+                {
+                    string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                    _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
+                    try { await _currentSession.SaveCurrentPlayerDataAsync(); } catch { }
                 }
 
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
@@ -239,6 +270,8 @@ namespace Shootopia
         {
             try
             {
+                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+
                 Debug.Log("[SessionManager] Querying public sessions...");
                 
                 var queryOptions = new QuerySessionsOptions
@@ -372,7 +405,17 @@ namespace Shootopia
                         isReady = true;
                     }
 
-                    states.Add(new PlayerReadyState(player.Id, isReady, player.GetPlayerName()));
+                    string resolvedName = null;
+                    if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var nameProp))
+                    {
+                        resolvedName = nameProp.Value;
+                    }
+                    if (string.IsNullOrEmpty(resolvedName))
+                    {
+                        resolvedName = player.GetPlayerName();
+                    }
+
+                    states.Add(new PlayerReadyState(player.Id, isReady, resolvedName));
                 }
             }
             return states;
@@ -432,6 +475,19 @@ namespace Shootopia
         public ISession GetCurrentSession()
         {
             return _currentSession;
+        }
+
+        /// <summary>
+        /// Returns the map name configured for the current session, or defaults to "Map1".
+        /// </summary>
+        public string GetSessionMapName()
+        {
+            if (_currentSession != null && _currentSession.Properties != null && _currentSession.Properties.TryGetValue("MapName", out var prop))
+            {
+                if (!string.IsNullOrEmpty(prop.Value))
+                    return prop.Value;
+            }
+            return "Map1";
         }
 
         /// <summary>

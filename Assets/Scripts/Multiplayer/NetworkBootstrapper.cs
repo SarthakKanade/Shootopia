@@ -257,6 +257,10 @@ namespace Shootopia
                     if (player == null) continue;
                     if (playerIndex == clientIndex)
                     {
+                        if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var prop) && !string.IsNullOrEmpty(prop.Value))
+                        {
+                            return prop.Value;
+                        }
                         return player.GetPlayerName();
                     }
                     playerIndex++;

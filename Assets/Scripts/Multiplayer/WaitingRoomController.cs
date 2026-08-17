@@ -25,6 +25,7 @@ namespace Shootopia
         private VisualElement _playerListContainer;
         private Button _readyButton;
         private Button _startMatchButton;
+        private Button _leaveLobbyButton;
         private Toggle _visibilityToggle;
         private Label _roomInfoLabel;
 
@@ -55,6 +56,7 @@ namespace Shootopia
             _playerListContainer = _root.Q<VisualElement>("PlayerList");
             _readyButton = _root.Q<Button>("ReadyButton");
             _startMatchButton = _root.Q<Button>("StartMatchButton");
+            _leaveLobbyButton = _root.Q<Button>("BtnLeaveLobby");
             _visibilityToggle = _root.Q<Toggle>("VisibilityToggle");
             _roomInfoLabel = _root.Q<Label>("RoomInfoLabel");
 
@@ -67,6 +69,11 @@ namespace Shootopia
             if (_startMatchButton != null)
             {
                 _startMatchButton.clicked += OnStartMatchClicked;
+            }
+
+            if (_leaveLobbyButton != null)
+            {
+                _leaveLobbyButton.clicked += OnLeaveLobbyClicked;
             }
 
             if (_visibilityToggle != null)
@@ -245,21 +252,62 @@ namespace Shootopia
                     return;
                 }
             }
+            string targetScene = gameplaySceneName;
+            if (SessionManager.Instance != null)
+            {
+                string sessionMap = SessionManager.Instance.GetSessionMapName();
+                if (!string.IsNullOrEmpty(sessionMap))
+                {
+                    targetScene = sessionMap;
+                }
+            }
+
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
-                NetworkManager.Singleton.SceneManager.LoadScene(gameplaySceneName, UnityEngine.SceneManagement.LoadSceneMode.Single);
+                NetworkManager.Singleton.SceneManager.LoadScene(targetScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
             }
             else
             {
-                SceneManager.LoadScene(gameplaySceneName);
+                SceneManager.LoadScene(targetScene);
             }
+        }
+
+        private async void OnLeaveLobbyClicked()
+        {
+            Debug.Log("[WaitingRoomController] Leave Lobby clicked. Shutting down connection...");
+            LoadingScreenManager.ShowOverlay("LEAVING ROOM...");
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+            {
+                try
+                {
+                    NetworkManager.Singleton.Shutdown();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[WaitingRoomController] Network shutdown note: {ex.Message}");
+                }
+            }
+
+            if (SessionManager.Instance != null)
+            {
+                try
+                {
+                    await SessionManager.Instance.LeaveSession();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[WaitingRoomController] Session leave note: {ex.Message}");
+                }
+            }
+
+            SceneManager.LoadScene("Main");
         }
 
         private void OnSessionLeft()
         {
             Debug.Log("[WaitingRoomController] Stored session left. Returning to Main Menu...");
-            // Go back to the first scene or Main Menu
-            SceneManager.LoadScene(0);
+            SceneManager.LoadScene("Main");
         }
 
         private void RefreshLobbyUI()
@@ -277,8 +325,6 @@ namespace Shootopia
             {
                 if (matchStartedProp.Value == "true")
                 {
-                    // Only load scene locally if Netcode is NOT active/listening (as a fallback).
-                    // If Netcode is listening, Netcode's NetworkSceneManager will load the scene automatically.
                     if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening)
                     {
                         Debug.Log("[WaitingRoomController] MatchStarted property is true. Netcode not active, loading gameplay scene locally...");
@@ -326,19 +372,41 @@ namespace Shootopia
                     var playerRow = new VisualElement();
                     playerRow.style.flexDirection = FlexDirection.Row;
                     playerRow.style.justifyContent = Justify.SpaceBetween;
-                    playerRow.style.paddingTop = 4f;
-                    playerRow.style.paddingBottom = 4f;
+                    playerRow.style.alignItems = Align.Center;
+                    playerRow.style.paddingTop = 6f;
+                    playerRow.style.paddingBottom = 6f;
+                    playerRow.style.paddingLeft = 10f;
+                    playerRow.style.paddingRight = 10f;
+                    playerRow.style.marginBottom = 4f;
+                    playerRow.style.backgroundColor = new Color(0.08f, 0.11f, 0.16f, 0.9f);
+                    playerRow.style.borderTopLeftRadius = 6f;
+                    playerRow.style.borderTopRightRadius = 6f;
+                    playerRow.style.borderBottomLeftRadius = 6f;
+                    playerRow.style.borderBottomRightRadius = 6f;
+                    playerRow.style.borderLeftWidth = 3f;
+                    playerRow.style.borderLeftColor = state.isReady ? new Color(0.18f, 0.8f, 0.44f) : new Color(0.9f, 0.3f, 0.23f);
 
                     var nameLabel = new Label(state.displayName);
                     nameLabel.style.fontSize = 14f;
                     nameLabel.style.color = Color.white;
+                    nameLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
 
-                    var statusLabel = new Label(state.isReady ? "Ready" : "Not Ready");
-                    statusLabel.style.fontSize = 14f;
-                    statusLabel.style.color = state.isReady ? Color.green : Color.red;
+                    var statusBadge = new Label(state.isReady ? "READY" : "WAITING");
+                    statusBadge.style.fontSize = 11f;
+                    statusBadge.style.paddingTop = 2f;
+                    statusBadge.style.paddingBottom = 2f;
+                    statusBadge.style.paddingLeft = 6f;
+                    statusBadge.style.paddingRight = 6f;
+                    statusBadge.style.borderTopLeftRadius = 4f;
+                    statusBadge.style.borderTopRightRadius = 4f;
+                    statusBadge.style.borderBottomLeftRadius = 4f;
+                    statusBadge.style.borderBottomRightRadius = 4f;
+                    statusBadge.style.unityFontStyleAndWeight = FontStyle.Bold;
+                    statusBadge.style.color = state.isReady ? new Color(0.18f, 0.8f, 0.44f) : new Color(0.9f, 0.3f, 0.23f);
+                    statusBadge.style.backgroundColor = state.isReady ? new Color(0.18f, 0.8f, 0.44f, 0.2f) : new Color(0.9f, 0.3f, 0.23f, 0.2f);
 
                     playerRow.Add(nameLabel);
-                    playerRow.Add(statusLabel);
+                    playerRow.Add(statusBadge);
                     _playerListContainer.Add(playerRow);
 
                     if (!state.isReady)

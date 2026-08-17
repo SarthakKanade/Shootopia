@@ -12,6 +12,10 @@ namespace Shootopia
     /// </summary>
     public class MultiplayerBootstrapper : MonoBehaviour
     {
+        [Header("Scene Flow")]
+        [SerializeField] private string nextSceneName = "MainMenu";
+        [SerializeField] private bool autoLoadNextScene = true;
+
         [Header("Events")]
         public UnityEvent OnAuthComplete;
 
@@ -25,18 +29,29 @@ namespace Shootopia
                 if (AuthenticationService.Instance.IsSignedIn)
                 {
                     Debug.Log($"[Bootstrapper] Already signed in as: {AuthenticationService.Instance.PlayerId}");
-                    OnAuthComplete?.Invoke();
+                    HandleAuthSuccess();
                     return;
                 }
 
                 Debug.Log("[Bootstrapper] Signing in anonymously...");
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
                 Debug.Log($"[Bootstrapper] Signed in as: {AuthenticationService.Instance.PlayerId}");
-                OnAuthComplete?.Invoke();
+                HandleAuthSuccess();
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[Bootstrapper] Authentication failed: {ex.Message}");
+            }
+        }
+
+        private void HandleAuthSuccess()
+        {
+            OnAuthComplete?.Invoke();
+
+            if (autoLoadNextScene && !string.IsNullOrEmpty(nextSceneName))
+            {
+                Debug.Log($"[Bootstrapper] Auth complete. Warping to {nextSceneName}...");
+                LoadingScreenManager.LoadScene(nextSceneName, "AUTHENTICATION VERIFIED");
             }
         }
     }

@@ -1,18 +1,39 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <ui:VisualElement style="flex-grow: 1; justify-content: center; align-items: center; background-color: rgba(20, 20, 20, 0.85);">
-        <ui:VisualElement class="blocks-modal" style="width: 450px; padding: 25px; background-color: rgb(32, 34, 38); border-radius: 12px; border-width: 2px; border-color: rgb(58, 62, 70);">
-            <ui:Label text="LOBBY WAITING ROOM" class="blocks-header" style="font-size: 24px; -unity-font-style: bold; color: rgb(240, 240, 240); margin-bottom: 8px; text-align: center; letter-spacing: 1px;"/>
-            <ui:Label name="RoomInfoLabel" text="Room Code: ------" style="font-size: 16px; color: rgb(150, 155, 165); margin-bottom: 20px; text-align: center;"/>
+    <ui:Style src="Theme/ShootopiaTheme.uss" />
+    <ui:VisualElement class="root-container modal-backdrop" style="justify-content: center; align-items: center;">
+        
+        <!-- Main Waiting Room Glass Window -->
+        <ui:VisualElement class="modal-window blocks-modal" style="width: 520px; padding: 28px;">
             
-            <ui:Label text="Players in Room:" style="font-size: 14px; color: rgb(180, 185, 195); -unity-font-style: bold; margin-bottom: 8px;"/>
-            <ui:VisualElement name="PlayerList" style="margin-bottom: 25px; min-height: 120px; background-color: rgb(20, 21, 23); padding: 12px; border-radius: 8px; border-width: 1px; border-color: rgb(44, 47, 54);"/>
-            
-            <ui:Toggle name="VisibilityToggle" label="Public Session" value="true" style="color: rgb(220, 225, 235); margin-bottom: 20px; font-size: 14px;"/>
-            
-            <ui:VisualElement style="flex-direction: column; justify-content: center;">
-                <ui:Button name="ReadyButton" text="READY" style="margin-bottom: 12px; height: 45px; font-size: 16px; -unity-font-style: bold; border-radius: 8px; background-color: rgb(88, 101, 242); color: white; border-width: 0;"/>
-                <ui:Button name="StartMatchButton" text="START MATCH" style="height: 45px; font-size: 16px; -unity-font-style: bold; border-radius: 8px; background-color: rgb(35, 165, 90); color: white; border-width: 0;"/>
+            <!-- Header -->
+            <ui:Label text="LOBBY WAITING ROOM" class="text-title" style="margin-bottom: 4px; text-align: center; letter-spacing: 2px; color: rgb(0, 240, 255);" />
+            <ui:VisualElement style="flex-direction: row; justify-content: center; align-items: center; margin-bottom: 20px;">
+                <ui:Label name="RoomInfoLabel" text="ROOM CODE: ------" class="text-subtitle" style="font-size: 15px; color: rgb(255, 196, 40); -unity-font-style: bold; letter-spacing: 2px;" />
             </ui:VisualElement>
+
+            <!-- Map Intel Card -->
+            <ui:VisualElement class="glass-panel-subtle" style="margin-bottom: 16px; padding: 10px 14px; flex-direction: row; justify-content: space-between; align-items: center;">
+                <ui:VisualElement>
+                    <ui:Label text="DEPLOYMENT DESTINATION" class="text-caption" />
+                    <ui:Label text="MAP 1: NEON ARENA" class="text-title" style="font-size: 14px; color: white;" />
+                </ui:VisualElement>
+                <ui:Label text="READY" class="badge badge-public" />
+            </ui:VisualElement>
+            
+            <!-- Player List -->
+            <ui:Label text="COMBATANTS IN ARENA" class="text-caption" style="margin-bottom: 6px;" />
+            <ui:VisualElement name="PlayerList" class="custom-scrollview" style="margin-bottom: 20px; min-height: 140px; max-height: 200px; background-color: rgb(12, 16, 24); padding: 10px; border-radius: 8px; border-width: 1px; border-color: rgba(60, 90, 140, 0.4);" />
+            
+            <!-- Host Controls -->
+            <ui:Toggle name="VisibilityToggle" label="Public Session (Listed in Browser)" value="true" style="color: rgb(220, 230, 245); margin-bottom: 20px; font-size: 13px;" />
+            
+            <!-- Action Buttons -->
+            <ui:VisualElement style="flex-direction: column;">
+                <ui:Button name="ReadyButton" class="btn-primary" text="READY UP" style="margin-bottom: 10px; height: 46px; font-size: 15px;" />
+                <ui:Button name="StartMatchButton" class="btn-primary" text="START MATCH" style="margin-bottom: 10px; height: 46px; font-size: 15px; background-color: rgb(46, 204, 113);" />
+                <ui:Button name="BtnLeaveLobby" class="btn-danger" text="LEAVE ROOM" style="height: 38px; font-size: 13px;" />
+            </ui:VisualElement>
+
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

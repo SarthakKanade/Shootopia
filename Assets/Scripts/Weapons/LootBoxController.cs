@@ -46,6 +46,19 @@ namespace Shootopia
             var rootRenderer = GetComponent<MeshRenderer>();
             if (rootRenderer != null) rootRenderer.enabled = false;
 
+            if (previewPivot == null)
+            {
+                var p = transform.Find("PreviewPivot");
+                if (p != null) previewPivot = p;
+                else
+                {
+                    var pObj = new GameObject("PreviewPivot");
+                    pObj.transform.SetParent(transform, false);
+                    pObj.transform.localPosition = new Vector3(0f, 1.25f, 0f);
+                    previewPivot = pObj.transform;
+                }
+            }
+
             if (floatingPreview == null && previewPivot != null)
             {
                 floatingPreview = previewPivot.GetComponent<FloatingItemPreview>();
@@ -393,9 +406,9 @@ namespace Shootopia
             }
             else
             {
-                int targetIndex = _currentEntryIndex.Value >= 0 ? _currentEntryIndex.Value : 0;
-                if (lootTable != null && targetIndex >= 0 && targetIndex < lootTable.Entries.Count)
+                if (lootTable != null && lootTable.Entries != null && lootTable.Entries.Count > 0)
                 {
+                    int targetIndex = _currentEntryIndex.Value >= 0 && _currentEntryIndex.Value < lootTable.Entries.Count ? _currentEntryIndex.Value : 0;
                     var entry = lootTable.Entries[targetIndex];
                     if (entry != null)
                     {

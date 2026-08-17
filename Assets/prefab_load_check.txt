@@ -1,3 +1,0 @@
-P1: LootBox_Chest1_Defense
-P2: NULL
-P3: NULL

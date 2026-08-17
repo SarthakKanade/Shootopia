@@ -255,10 +255,8 @@ namespace Shootopia
             {
                 _ = SessionManager.Instance.LeaveSession();
             }
-            else
-            {
-                UnityEngine.SceneManagement.SceneManager.LoadScene("Main");
-            }
+            
+            LoadingScreenManager.LoadScene("MainMenu", "WARPING TO COMMAND BASE...");
         }
     }
 }

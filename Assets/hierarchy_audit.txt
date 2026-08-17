@@ -1,8 +1,0 @@
-OBJ: 'SM_LootBox_02_TrapsStarters'
-   Full HIERARCHY Path: 'SM_LootBox_02_TrapsStarters'
-   Outermost Root: SM_LootBox_02_TrapsStarters
-   IsPartOfAnyPrefab: True | IsPartOfModelPrefab: False
-OBJ: 'SM_LootBox_01_Defense'
-   Full HIERARCHY Path: 'SM_LootBox_01_Defense'
-   Outermost Root: SM_LootBox_01_Defense
-   IsPartOfAnyPrefab: True | IsPartOfModelPrefab: False

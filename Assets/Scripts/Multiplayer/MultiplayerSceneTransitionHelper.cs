@@ -12,7 +12,7 @@ namespace Shootopia
     {
         [Header("Scene Configuration")]
         [SerializeField] private string waitingRoomSceneName = "WaitingRoom";
-        [SerializeField] private string mainMenuSceneName = "Main";
+        [SerializeField] private string mainMenuSceneName = "MainMenu";
 
         private void Start()
         {
@@ -41,13 +41,13 @@ namespace Shootopia
         private void LoadWaitingRoom()
         {
             Debug.Log($"[MultiplayerSceneTransitionHelper] Loading waiting room scene: {waitingRoomSceneName}");
-            SceneManager.LoadScene(waitingRoomSceneName);
+            LoadingScreenManager.LoadScene(waitingRoomSceneName, "WARPING TO LOBBY...");
         }
 
         private void LoadMainMenu()
         {
             Debug.Log($"[MultiplayerSceneTransitionHelper] Loading main menu scene: {mainMenuSceneName}");
-            SceneManager.LoadScene(mainMenuSceneName);
+            LoadingScreenManager.LoadScene(mainMenuSceneName, "RETURNING TO COMMAND BASE...");
         }
     }
 }

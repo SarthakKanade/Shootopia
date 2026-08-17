@@ -1,3 +1,0 @@
-Found 0 LootTableSO assets:
-Found 1 LootTable named assets:
- -> Assets/Scripts/Weapons/LootTableSO.cs

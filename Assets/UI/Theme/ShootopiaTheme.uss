@@ -1,0 +1,1091 @@
+/* ==========================================================================
+   SHOOTOPIA MASTER THEME (High-Impact Arcade / Smash Karts Styling)
+   Direct TrueType Fonts, Exact 9-Slice Coordinates, Bold Saturated Palettes,
+   and Responsive Micro-Animations.
+   ========================================================================== */
+
+:root {
+    /* Direct TTF Font Definitions for 100% Reliable Rendering */
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+
+    /* Color Palette */
+    --col-gold-bright:     rgb(255, 215, 40);
+    --col-gold-shadow:     rgb(160, 55, 0);
+    --col-blue-bright:     rgb(45, 145, 255);
+    --col-purple-bright:   rgb(170, 85, 255);
+    --col-text-white:      rgb(255, 255, 255);
+    --col-text-gold:       rgb(255, 220, 60);
+    --col-text-cyan:       rgb(130, 220, 255);
+    --col-text-dark:       rgb(25, 35, 60);
+    --col-scrim:           rgba(8, 18, 48, 0.88);
+
+    /* Radii */
+    --r-pill:  999px;
+    --r-card:  16px;
+    --r-modal: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. ROOT & SPACE BACKDROP
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.root-container {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    font-size: 14px;
+    color: rgb(255, 255, 255);
+    background-color: rgb(12, 32, 85);
+    overflow: hidden;
+}
+
+.home-space-bg {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Background_Images/large/home-background-large.png");
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.home-overlay-grid {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Background_Images/large/background-overlay-large.png");
+    -unity-background-scale-mode: stretch-to-fill;
+    opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. 3D AVATAR CENTER VIEWPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.center-character-viewport {
+    position: absolute;
+    left: 0; right: 0;
+    top: 50px;
+    bottom: 110px;
+    align-self: center;
+    justify-content: center;
+    align-items: center;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. TOP HEADER BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.header-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 72px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    background-color: rgba(8, 20, 56, 0.8);
+    border-bottom-width: 2px;
+    border-bottom-color: rgba(100, 180, 255, 0.4);
+}
+
+/* Profile Pill (Left) */
+.profile-pill {
+    flex-direction: row;
+    align-items: center;
+    height: 52px;
+    padding: 4px 16px 4px 8px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Containers/Large/item-info-container-large.png");
+    -unity-slice-left: 24;
+    -unity-slice-top: 24;
+    -unity-slice-right: 24;
+    -unity-slice-bottom: 24;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    cursor: link;
+    transition-property: scale;
+    transition-duration: 0.15s;
+}
+
+.profile-pill:hover {
+    scale: 1.04 1.04;
+}
+
+.profile-avatar-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/astronaut-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    background-color: rgba(20, 60, 150, 0.85);
+    border-width: 2px;
+    border-color: rgb(255, 215, 50);
+    margin-right: 10px;
+}
+
+.profile-info-col {
+    flex-direction: column;
+    justify-content: center;
+}
+
+.profile-name-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.profile-name-text {
+    font-size: 15px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+    margin-right: 6px;
+}
+
+.profile-edit-icon {
+    width: 14px;
+    height: 14px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/pencil-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    opacity: 0.85;
+}
+
+/* XP / Level Progress Row */
+.profile-level-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.level-badge-chip {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background-color: rgb(255, 175, 20);
+    font-size: 10px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(20, 20, 20);
+    margin-right: 6px;
+}
+
+.xp-bar-bg {
+    width: 80px;
+    height: 8px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/level-bar-empty-large.png");
+    -unity-slice-left: 4;
+    -unity-slice-top: 4;
+    -unity-slice-right: 4;
+    -unity-slice-bottom: 4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.xp-bar-fill {
+    width: 65%;
+    height: 100%;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/level-bar-full-large.png");
+    -unity-slice-left: 4;
+    -unity-slice-top: 4;
+    -unity-slice-right: 4;
+    -unity-slice-bottom: 4;
+}
+
+/* Currency Cluster (Center) */
+.currency-cluster {
+    flex-direction: row;
+    align-items: center;
+}
+
+.currency-chip {
+    flex-direction: row;
+    align-items: center;
+    height: 42px;
+    min-width: 110px;
+    padding: 0 14px 0 8px;
+    margin: 0 6px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/heart-gem-coin-bar-large.png");
+    -unity-slice-left: 20;
+    -unity-slice-top: 15;
+    -unity-slice-right: 20;
+    -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+
+.currency-icon {
+    width: 26px;
+    height: 26px;
+    -unity-background-scale-mode: scale-to-fit;
+    margin-right: 6px;
+}
+
+.currency-icon-coin {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/coin-128.png");
+}
+
+.currency-icon-gem {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/gem-1-128.png");
+}
+
+.currency-icon-trophy {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/trophy-128.png");
+}
+
+.currency-val-text {
+    font-size: 15px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+}
+
+/* Utility Group (Right) */
+.top-utility-group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.server-region-tag {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 12px;
+    background-color: rgba(20, 60, 140, 0.7);
+    border-radius: var(--r-pill);
+    border-width: 1.5px;
+    border-color: rgba(120, 190, 255, 0.5);
+    margin-right: 10px;
+}
+
+.server-region-text {
+    font-size: 11px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    color: rgb(180, 220, 255);
+}
+
+.btn-icon-square {
+    width: 44px;
+    height: 44px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-blue-large.png");
+    -unity-slice-left: 20;
+    -unity-slice-top: 20;
+    -unity-slice-right: 20;
+    -unity-slice-bottom: 20;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    margin-left: 6px;
+    cursor: link;
+    transition-property: scale, translate;
+    transition-duration: 0.12s, 0.12s;
+}
+
+.btn-icon-square:hover {
+    scale: 1.08 1.08;
+    translate: 0 -2px;
+}
+
+.btn-icon-square:active {
+    scale: 0.94 0.94;
+    translate: 0 2px;
+}
+
+.icon-inner-settings {
+    width: 22px;
+    height: 22px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/settings-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.icon-inner-sound {
+    width: 22px;
+    height: 22px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/sound-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. LOGO (TOP-CENTER)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.logo-banner-container {
+    position: absolute;
+    top: 84px;
+    left: 0; right: 0;
+    align-items: center;
+}
+
+.logo-main-text {
+    font-size: 46px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 205, 30);
+    letter-spacing: 3px;
+    -unity-text-align: middle-center;
+    text-shadow: 0 4px 0 rgb(160, 60, 0);
+}
+
+.logo-sub-text {
+    font-size: 13px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(140, 220, 255);
+    letter-spacing: 4px;
+    -unity-text-align: middle-center;
+    margin-top: -6px;
+    text-shadow: 0 2px 0 rgb(10, 40, 100);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. LEFT SIDEBAR (CUSTOMIZE & FEATURED EVENT)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.left-sidebar {
+    position: absolute;
+    left: 28px;
+    top: 96px;
+    width: 250px;
+    flex-direction: column;
+}
+
+.btn-customize-arcade {
+    height: 58px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-purple-sparkle-large.png");
+    -unity-slice-left: 40;
+    -unity-slice-top: 30;
+    -unity-slice-right: 40;
+    -unity-slice-bottom: 30;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    cursor: link;
+    margin-bottom: 16px;
+    transition-property: scale, translate;
+    transition-duration: 0.15s, 0.15s;
+}
+
+.btn-customize-arcade:hover {
+    scale: 1.05 1.05;
+    translate: 0 -2px;
+}
+
+.btn-customize-arcade:active {
+    scale: 0.95 0.95;
+    translate: 0 3px;
+}
+
+.btn-customize-text {
+    font-size: 18px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+    letter-spacing: 1px;
+    text-shadow: 0 2px 0 rgb(90, 20, 140);
+}
+
+.icon-wrench-customize {
+    width: 24px;
+    height: 24px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/wrench-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    margin-right: 8px;
+}
+
+/* Featured Event Card */
+.event-card-container {
+    padding: 16px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Containers/Large/item-info-container-large.png");
+    -unity-slice-left: 24;
+    -unity-slice-top: 24;
+    -unity-slice-right: 24;
+    -unity-slice-bottom: 24;
+    -unity-slice-scale: 1px;
+}
+
+.event-card-header-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.event-crown-icon {
+    width: 22px;
+    height: 22px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/crown-gold-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    margin-right: 6px;
+}
+
+.event-title-text {
+    font-size: 14px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 215, 50);
+}
+
+.event-body-text {
+    font-size: 12px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    color: rgb(215, 235, 255);
+    margin-bottom: 10px;
+    white-space: normal;
+}
+
+.event-reward-tag {
+    align-self: flex-start;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background-color: rgba(46, 204, 113, 0.25);
+    border-width: 1px;
+    border-color: rgb(46, 204, 113);
+}
+
+.event-reward-label {
+    font-size: 11px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(46, 230, 120);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. CENTER-BOTTOM ACTION HUB (PLAY, CREATE, JOIN)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bottom-action-hub {
+    position: absolute;
+    bottom: 24px;
+    left: 0; right: 0;
+    align-items: center;
+}
+
+.play-action-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+/* Massive Golden Sparkle PLAY Button */
+.btn-play-arcade {
+    width: 320px;
+    height: 82px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png");
+    -unity-slice-left: 50;
+    -unity-slice-top: 40;
+    -unity-slice-right: 50;
+    -unity-slice-bottom: 40;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    cursor: link;
+    transition-property: scale, translate;
+    transition-duration: 0.15s, 0.15s;
+    transition-timing-function: ease-out-back;
+}
+
+.btn-play-arcade:hover {
+    scale: 1.06 1.06;
+    translate: 0 -3px;
+}
+
+.btn-play-arcade:active {
+    scale: 0.95 0.95;
+    translate: 0 4px;
+}
+
+.icon-play-white {
+    width: 32px;
+    height: 32px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/play-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    margin-right: 12px;
+}
+
+.btn-play-label {
+    font-size: 28px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+    letter-spacing: 2px;
+    text-shadow: 0 3px 0 rgb(160, 60, 0);
+}
+
+/* Side Quick-Match Filter Button */
+.btn-filter-toggle {
+    width: 58px;
+    height: 82px;
+    margin-left: 10px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-blue-large.png");
+    -unity-slice-left: 20;
+    -unity-slice-top: 20;
+    -unity-slice-right: 20;
+    -unity-slice-bottom: 20;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    cursor: link;
+    transition-property: scale;
+    transition-duration: 0.12s;
+}
+
+.btn-filter-toggle:hover {
+    scale: 1.08 1.08;
+}
+
+.icon-filter-search {
+    width: 26px;
+    height: 26px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/magnifying-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Sub-Actions Row: [ CREATE ROOM ] [ JOIN ROOM ] */
+.sub-actions-row {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-sub-action {
+    width: 156px;
+    height: 50px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin: 0 8px;
+    border-width: 0;
+    cursor: link;
+    transition-property: scale, translate;
+    transition-duration: 0.12s, 0.12s;
+}
+
+.btn-sub-action:hover {
+    scale: 1.05 1.05;
+    translate: 0 -2px;
+}
+
+.btn-sub-action:active {
+    scale: 0.95 0.95;
+    translate: 0 2px;
+}
+
+.btn-create-blue {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-blue-large.png");
+    -unity-slice-left: 30;
+    -unity-slice-top: 25;
+    -unity-slice-right: 30;
+    -unity-slice-bottom: 25;
+    -unity-slice-scale: 1px;
+}
+
+.btn-join-purple {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-purple-large.png");
+    -unity-slice-left: 30;
+    -unity-slice-top: 25;
+    -unity-slice-right: 30;
+    -unity-slice-bottom: 25;
+    -unity-slice-scale: 1px;
+}
+
+.icon-sub-action {
+    width: 20px;
+    height: 20px;
+    -unity-background-scale-mode: scale-to-fit;
+    margin-right: 8px;
+}
+
+.icon-sub-create {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/add-128.png");
+}
+
+.icon-sub-join {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/magnifying-128.png");
+}
+
+.btn-sub-action-label {
+    font-size: 16px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. BOTTOM UTILITY BAR (VERSION & QUIT)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bottom-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 24px;
+    right: 24px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+}
+
+.version-text {
+    font-size: 11px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    color: rgba(180, 215, 255, 0.6);
+}
+
+.btn-quit-game {
+    pointer-events: auto;
+    width: 40px;
+    height: 40px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-pink-large.png");
+    -unity-slice-left: 14;
+    -unity-slice-top: 14;
+    -unity-slice-right: 14;
+    -unity-slice-bottom: 14;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    cursor: link;
+    transition-property: scale;
+    transition-duration: 0.12s;
+}
+
+.btn-quit-game:hover {
+    scale: 1.1 1.1;
+}
+
+.icon-quit-cross {
+    width: 18px;
+    height: 18px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. MODALS & POPUPS (CONTAINERS & FORMS)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.modal-backdrop {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: var(--col-scrim);
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.2s;
+}
+
+.modal-backdrop--visible {
+    opacity: 1;
+}
+
+.modal-frame {
+    width: 580px;
+    max-height: 88%;
+    padding: 32px 36px 36px 36px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Containers/Large/login-remove-ads-container-large.png");
+    -unity-slice-left: 36;
+    -unity-slice-top: 36;
+    -unity-slice-right: 36;
+    -unity-slice-bottom: 36;
+    -unity-slice-scale: 1px;
+    scale: 0.85 0.85;
+    transition-property: scale;
+    transition-duration: 0.22s;
+    transition-timing-function: ease-out-back;
+}
+
+.modal-card--visible {
+    scale: 1 1;
+}
+
+/* Modal Header */
+.modal-header-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-title {
+    font-size: 24px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 215, 50);
+    text-shadow: 0 2px 0 rgb(120, 50, 0);
+}
+
+.btn-modal-close {
+    width: 36px;
+    height: 36px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-pink-large.png");
+    -unity-slice-left: 12;
+    -unity-slice-top: 12;
+    -unity-slice-right: 12;
+    -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    cursor: link;
+    transition-property: scale;
+    transition-duration: 0.12s;
+}
+
+.btn-modal-close:hover {
+    scale: 1.1 1.1;
+}
+
+.icon-modal-close {
+    width: 16px;
+    height: 16px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Form Fields */
+.form-field-group {
+    margin-bottom: 14px;
+}
+
+.form-field-label {
+    font-size: 12px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(160, 205, 255);
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+}
+
+.arcade-text-input {
+    height: 48px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/username-password-container-selected-large.png");
+    -unity-slice-left: 20;
+    -unity-slice-top: 15;
+    -unity-slice-right: 20;
+    -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    padding: 0 16px;
+    font-size: 16px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    color: rgb(255, 255, 255);
+}
+
+.arcade-text-input > .unity-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    color: rgb(255, 255, 255);
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+}
+
+/* Mode Chip Selectors */
+.chip-row {
+    flex-direction: row;
+    margin-bottom: 12px;
+}
+
+.mode-chip-btn {
+    flex-grow: 1;
+    height: 44px;
+    margin: 0 4px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-blue-large.png");
+    -unity-slice-left: 20;
+    -unity-slice-top: 20;
+    -unity-slice-right: 20;
+    -unity-slice-bottom: 20;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(220, 240, 255);
+    cursor: link;
+    transition-property: scale;
+    transition-duration: 0.12s;
+}
+
+.mode-chip-btn:hover {
+    scale: 1.03 1.03;
+}
+
+.mode-chip-btn--active {
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-yellow-large.png");
+    color: rgb(255, 255, 255);
+    text-shadow: 0 2px 0 rgb(140, 60, 0);
+}
+
+/* Map Card */
+.map-preview-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Containers/Large/item-info-container-large.png");
+    -unity-slice-left: 22;
+    -unity-slice-top: 22;
+    -unity-slice-right: 22;
+    -unity-slice-bottom: 22;
+    -unity-slice-scale: 1px;
+    margin-bottom: 14px;
+}
+
+.map-card-name {
+    font-size: 15px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 220, 60);
+}
+
+.map-card-sub {
+    font-size: 11px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    color: rgb(160, 200, 250);
+}
+
+.map-badge-active {
+    padding: 4px 10px;
+    border-radius: 6px;
+    background-color: rgba(46, 204, 113, 0.25);
+    border-width: 1px;
+    border-color: rgb(46, 204, 113);
+    font-size: 11px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(46, 230, 120);
+}
+
+/* Slider Controls */
+.slider-control-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.slider-label {
+    font-size: 13px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(215, 235, 255);
+    min-width: 100px;
+}
+
+.slider-val-badge {
+    width: 44px;
+    padding: 4px 0;
+    border-radius: 8px;
+    background-color: rgba(20, 60, 140, 0.8);
+    font-size: 13px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 215, 50);
+    -unity-text-align: middle-center;
+}
+
+/* Action Confirm Button inside Modal */
+.btn-modal-confirm {
+    width: 100%;
+    height: 56px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-large.png");
+    -unity-slice-left: 30;
+    -unity-slice-top: 25;
+    -unity-slice-right: 30;
+    -unity-slice-bottom: 25;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+    letter-spacing: 1px;
+    text-shadow: 0 2px 0 rgb(140, 60, 0);
+    cursor: link;
+    margin-top: 14px;
+    transition-property: scale, translate;
+    transition-duration: 0.12s, 0.12s;
+}
+
+.btn-modal-confirm:hover {
+    scale: 1.03 1.03;
+    translate: 0 -2px;
+}
+
+.btn-modal-confirm:active {
+    scale: 0.96 0.96;
+    translate: 0 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. JOIN ROOM BROWSER & ROOM CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.room-list-scroll {
+    max-height: 290px;
+    flex-grow: 1;
+    margin-bottom: 12px;
+}
+
+.room-card-arcade {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Containers/Large/item-info-container-large.png");
+    -unity-slice-left: 20;
+    -unity-slice-top: 20;
+    -unity-slice-right: 20;
+    -unity-slice-bottom: 20;
+    -unity-slice-scale: 1px;
+    transition-property: scale;
+    transition-duration: 0.12s;
+}
+
+.room-card-arcade:hover {
+    scale: 1.02 1.02;
+}
+
+.room-card-left {
+    flex-direction: column;
+}
+
+.room-card-title {
+    font-size: 15px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+}
+
+.room-card-tags-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.tag-badge {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    margin-right: 6px;
+}
+
+.tag-badge-ffa {
+    background-color: rgba(255, 175, 20, 0.25);
+    border-width: 1px;
+    border-color: rgb(255, 175, 20);
+    color: rgb(255, 205, 50);
+}
+
+.tag-badge-tdm {
+    background-color: rgba(50, 150, 255, 0.25);
+    border-width: 1px;
+    border-color: rgb(50, 150, 255);
+    color: rgb(130, 200, 255);
+}
+
+.tag-badge-players {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: rgb(230, 240, 255);
+}
+
+.btn-card-join {
+    width: 90px;
+    height: 38px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-yellow-large.png");
+    -unity-slice-left: 16;
+    -unity-slice-top: 16;
+    -unity-slice-right: 16;
+    -unity-slice-bottom: 16;
+    -unity-slice-scale: 1px;
+    border-width: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 255, 255);
+    cursor: link;
+    transition-property: scale;
+    transition-duration: 0.1s;
+}
+
+.btn-card-join:hover {
+    scale: 1.08 1.08;
+}
+
+/* Empty State */
+.browser-empty-card {
+    padding: 28px;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon-radar {
+    width: 48px;
+    height: 48px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/radar-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    opacity: 0.7;
+    margin-bottom: 10px;
+}
+
+.empty-text-title {
+    font-size: 16px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 215, 50);
+    margin-bottom: 4px;
+}
+
+.empty-text-sub {
+    font-size: 12px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Asap-Bold.ttf");
+    color: rgb(160, 195, 240);
+    margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. BUSY / LOADING OVERLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.busy-overlay-frame {
+    padding: 32px 48px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Containers/Large/pause-container-large.png");
+    -unity-slice-left: 28;
+    -unity-slice-top: 28;
+    -unity-slice-right: 28;
+    -unity-slice-bottom: 28;
+    -unity-slice-scale: 1px;
+    align-items: center;
+    justify-content: center;
+}
+
+.busy-spinner-icon {
+    width: 48px;
+    height: 48px;
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/ufo-1-128.png");
+    -unity-background-scale-mode: scale-to-fit;
+    margin-bottom: 14px;
+}
+
+.busy-status-label {
+    font-size: 18px;
+    -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
+    color: rgb(255, 225, 60);
+    letter-spacing: 1.5px;
+    text-shadow: 0 2px 0 rgb(120, 50, 0);
+}

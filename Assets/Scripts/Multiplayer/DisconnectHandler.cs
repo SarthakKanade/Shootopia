@@ -160,9 +160,9 @@ namespace Shootopia
             }
 
             string currentScene = SceneManager.GetActiveScene().name;
-            if (currentScene != "Main")
+            if (currentScene != "MainMenu")
             {
-                SceneManager.LoadScene("Main");
+                LoadingScreenManager.LoadScene("MainMenu", "CONNECTION TERMINATED");
             }
 
             _isHandlingHostDisconnect = false;
