@@ -18,7 +18,7 @@ namespace Shootopia
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
@@ -33,8 +33,13 @@ namespace Shootopia
         {
             if (Instance == null)
             {
-                var go = new GameObject("CursorManager");
-                Instance = go.AddComponent<CursorManager>();
+                Instance = Object.FindFirstObjectByType<CursorManager>();
+                if (Instance == null)
+                {
+                    var go = new GameObject("CursorManager");
+                    Instance = go.AddComponent<CursorManager>();
+                    DontDestroyOnLoad(go);
+                }
             }
 
             Instance._unlockRequesters.Add(requesterId);

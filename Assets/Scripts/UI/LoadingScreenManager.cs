@@ -11,7 +11,19 @@ namespace Shootopia
     /// </summary>
     public class LoadingScreenManager : MonoBehaviour
     {
-        public static LoadingScreenManager Instance { get; private set; }
+        private static LoadingScreenManager _instance;
+        public static LoadingScreenManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindAnyObjectByType<LoadingScreenManager>();
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         [SerializeField] private UIDocument uiDocument;
 
@@ -32,13 +44,13 @@ namespace Shootopia
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
-            Instance = this;
+            _instance = this;
             DontDestroyOnLoad(gameObject);
         }
 
@@ -101,8 +113,11 @@ namespace Shootopia
             if (_loadingRoot == null) return;
 
             _loadingRoot.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            _loadingRoot.pickingMode = visible ? PickingMode.Position : PickingMode.Ignore;
+
             if (visible)
             {
+                _loadingRoot.AddToClassList("modal-backdrop--visible");
                 if (!string.IsNullOrEmpty(status) && _statusText != null)
                 {
                     _statusText.text = status;
@@ -115,6 +130,10 @@ namespace Shootopia
                 {
                     _progressFill.style.width = new Length(0, LengthUnit.Percent);
                 }
+            }
+            else
+            {
+                _loadingRoot.RemoveFromClassList("modal-backdrop--visible");
             }
         }
 

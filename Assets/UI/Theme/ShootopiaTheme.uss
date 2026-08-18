@@ -100,7 +100,6 @@
     -unity-slice-bottom: 24;
     -unity-slice-scale: 1px;
     border-width: 0;
-    cursor: link;
     transition-property: scale;
     transition-duration: 0.15s;
 }
@@ -271,7 +270,6 @@
     justify-content: center;
     align-items: center;
     margin-left: 6px;
-    cursor: link;
     transition-property: scale, translate;
     transition-duration: 0.12s, 0.12s;
 }
@@ -356,7 +354,6 @@
     -unity-slice-bottom: 30;
     -unity-slice-scale: 1px;
     border-width: 0;
-    cursor: link;
     margin-bottom: 16px;
     transition-property: scale, translate;
     transition-duration: 0.15s, 0.15s;
@@ -478,7 +475,6 @@
     -unity-slice-bottom: 40;
     -unity-slice-scale: 1px;
     border-width: 0;
-    cursor: link;
     transition-property: scale, translate;
     transition-duration: 0.15s, 0.15s;
     transition-timing-function: ease-out-back;
@@ -525,7 +521,6 @@
     border-width: 0;
     justify-content: center;
     align-items: center;
-    cursor: link;
     transition-property: scale;
     transition-duration: 0.12s;
 }
@@ -556,7 +551,6 @@
     align-items: center;
     margin: 0 8px;
     border-width: 0;
-    cursor: link;
     transition-property: scale, translate;
     transition-duration: 0.12s, 0.12s;
 }
@@ -646,7 +640,6 @@
     border-width: 0;
     justify-content: center;
     align-items: center;
-    cursor: link;
     transition-property: scale;
     transition-duration: 0.12s;
 }
@@ -729,7 +722,6 @@
     border-width: 0;
     justify-content: center;
     align-items: center;
-    cursor: link;
     transition-property: scale;
     transition-duration: 0.12s;
 }
@@ -806,7 +798,6 @@
     -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
     -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
     color: rgb(220, 240, 255);
-    cursor: link;
     transition-property: scale;
     transition-duration: 0.12s;
 }
@@ -909,7 +900,6 @@
     color: rgb(255, 255, 255);
     letter-spacing: 1px;
     text-shadow: 0 2px 0 rgb(140, 60, 0);
-    cursor: link;
     margin-top: 14px;
     transition-property: scale, translate;
     transition-duration: 0.12s, 0.12s;
@@ -1016,7 +1006,6 @@
     -unity-font: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
     -unity-font-definition: url("project://database/Assets/Space_Exploration_GUI_Kit/Fonts/Font%20Sources/static/Righteous-Regular.ttf");
     color: rgb(255, 255, 255);
-    cursor: link;
     transition-property: scale;
     transition-duration: 0.1s;
 }

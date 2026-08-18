@@ -1,109 +1,93 @@
-using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using Unity.Netcode;
-using Unity.Netcode.Transports.UTP;
-using Unity.Services.Multiplayer;
-using Unity.Services.Relay.Models;
+using UnityEngine.SceneManagement;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Bootstraps the Netcode for GameObjects (NGO) NetworkManager when the gameplay scene loads.
-    /// Configures the UnityTransport using UGS Session Relay allocations.
+    /// Streamlined player spawner and scene synchronization manager for NGO.
+    /// Guarantees that player characters are reliably spawned at spawn points
+    /// whenever gameplay or lobby scenes (WaitingRoom, Map1) load.
     /// </summary>
     public class NetworkBootstrapper : MonoBehaviour
     {
-        private bool _isInitializing = false;
+        private static NetworkBootstrapper _instance;
+        public static NetworkBootstrapper Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindAnyObjectByType<NetworkBootstrapper>();
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
+
+        private void Awake()
+        {
+            if (_instance != null && _instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            _instance = this;
+            DontDestroyOnLoad(gameObject);
+
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
 
         private void Start()
         {
-            if (SessionManager.Instance != null)
-            {
-                SessionManager.Instance.OnSessionJoined.AddListener(OnSessionReady);
-                SessionManager.Instance.OnSessionCreated.AddListener(OnSessionReady);
-            }
-
-            TryInitialize();
+            HookNetworkEvents();
         }
 
-        private void OnSessionReady()
+        private void OnEnable()
         {
-            TryInitialize();
-        }
-
-        private void TryInitialize()
-        {
-            if (_isInitializing) return;
-
-            if (SessionManager.Instance == null)
-            {
-                Debug.LogWarning("[NetworkBootstrapper] SessionManager.Instance is null. Auto-starting Host for local testing...");
-                if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
-                {
-                    _isInitializing = true;
-                    NetworkManager.Singleton.StartHost();
-                }
-                return;
-            }
-
-            var session = SessionManager.Instance.GetCurrentSession();
-            if (session == null)
-            {
-                Debug.Log("[NetworkBootstrapper] No active UGS Session found yet. Waiting for session initialization...");
-                return;
-            }
-
-            if (NetworkManager.Singleton == null)
-            {
-                Debug.LogWarning("[NetworkBootstrapper] NetworkManager.Singleton is null!");
-                return;
-            }
-
-            _isInitializing = true;
-
-            // Subscribe to NGO connection callbacks to track final client IDs
-            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
-            NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
-            NetworkManager.Singleton.ConnectionApprovalCallback = ConnectionApproval;
-
-            if (NetworkManager.Singleton.SceneManager != null)
-            {
-                NetworkManager.Singleton.SceneManager.OnSceneEvent += OnSceneEvent;
-            }
-
-            if (NetworkManager.Singleton.IsListening)
-            {
-                string role = NetworkManager.Singleton.IsHost ? "Host" : "Client";
-                Debug.Log($"[NetworkBootstrapper] Already connected as {role}. Local Client ID: {NetworkManager.Singleton.LocalClientId}");
-                
-                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (NetworkManager.Singleton.IsServer && activeSceneName == "WaitingRoom")
-                {
-                    Debug.Log("[NetworkBootstrapper] Already listening in WaitingRoom. Spawning players.");
-                    SpawnPlayersForConnectedClients();
-                }
-                return;
-            }
-
-            ConfigureAndConnect(session);
+            HookNetworkEvents();
         }
 
         private void OnDestroy()
         {
-            if (SessionManager.Instance != null)
-            {
-                SessionManager.Instance.OnSessionJoined.RemoveListener(OnSessionReady);
-                SessionManager.Instance.OnSessionCreated.RemoveListener(OnSessionReady);
-            }
+            SceneManager.sceneLoaded -= OnSceneLoaded;
 
+            if (_instance == this)
+            {
+                UnhookNetworkEvents();
+                _instance = null;
+            }
+        }
+
+        public void HookNetworkEvents()
+        {
             if (NetworkManager.Singleton != null)
             {
+                NetworkManager.Singleton.OnServerStarted -= OnServerStarted;
+                NetworkManager.Singleton.OnServerStarted += OnServerStarted;
+                NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+                NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+                NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+                NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+
+                if (NetworkManager.Singleton.SceneManager != null)
+                {
+                    NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
+                    NetworkManager.Singleton.SceneManager.OnSceneEvent += OnSceneEvent;
+                }
+            }
+        }
+
+        private void UnhookNetworkEvents()
+        {
+            if (NetworkManager.Singleton != null)
+            {
+                NetworkManager.Singleton.OnServerStarted -= OnServerStarted;
                 NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
                 NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
-                NetworkManager.Singleton.ConnectionApprovalCallback = null;
+
                 if (NetworkManager.Singleton.SceneManager != null)
                 {
                     NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
@@ -111,323 +95,206 @@ namespace Shootopia
             }
         }
 
-        private void ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+        private void OnServerStarted()
         {
-            response.Approved = true;
-            response.CreatePlayerObject = false; // Disable NGO automatic spawning
-            response.Pending = false;
+            Debug.Log("[NetworkBootstrapper] NGO Server started. Registering SceneManager and Client callbacks.");
+            HookNetworkEvents();
+
+            string currentScene = SceneManager.GetActiveScene().name;
+            if (currentScene == "WaitingRoom" || currentScene == "Map1")
+            {
+                SpawnAllConnectedPlayers();
+            }
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            Debug.Log($"[NetworkBootstrapper] Unity Scene loaded: '{scene.name}'");
+
+            LoadingScreenManager.HideOverlay();
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                HookNetworkEvents();
+                if (scene.name == "WaitingRoom" || scene.name == "Map1")
+                {
+                    Debug.Log($"[NetworkBootstrapper] Server detected target scene '{scene.name}'. Spawning host player...");
+                    SpawnPlayerForClient(NetworkManager.Singleton.LocalClientId);
+                }
+            }
         }
 
         private void OnSceneEvent(SceneEvent sceneEvent)
         {
-            if (!NetworkManager.Singleton.IsServer) return;
+            Debug.Log($"[NetworkBootstrapper] OnSceneEvent: Type={sceneEvent.SceneEventType}, SceneName={sceneEvent.SceneName}, ClientId={sceneEvent.ClientId}");
 
-            // LoadEventCompleted fires on the server once ALL connected clients have finished
-            // loading the scene. This is the only safe moment to spawn player objects, because
-            // the client's NGO state machine is fully ready to receive network object messages.
-            if (sceneEvent.SceneEventType == SceneEventType.LoadEventCompleted)
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+
+            string activeSceneName = SceneManager.GetActiveScene().name;
+            if (activeSceneName != "WaitingRoom" && activeSceneName != "Map1") return;
+
+            if (sceneEvent.SceneEventType == SceneEventType.LoadComplete)
             {
-                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (sceneEvent.SceneName == activeSceneName)
-                {
-                    Debug.Log($"[NetworkBootstrapper] All clients loaded {activeSceneName}. Spawning players.");
-                    SpawnPlayersForConnectedClients();
-                }
+                Debug.Log($"[NetworkBootstrapper] Client {sceneEvent.ClientId} finished loading '{sceneEvent.SceneName}'. Spawning player...");
+                SpawnPlayerForClient(sceneEvent.ClientId);
+            }
+            else if (sceneEvent.SceneEventType == SceneEventType.LoadEventCompleted)
+            {
+                Debug.Log($"[NetworkBootstrapper] All clients finished loading '{sceneEvent.SceneName}'. Ensuring all players spawned...");
+                SpawnAllConnectedPlayers();
             }
         }
 
-        private void SpawnPlayerForClient(ulong clientId)
+        private void OnClientConnected(ulong clientId)
         {
-            var playerPrefab = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
-            if (playerPrefab == null)
+            Debug.Log($"[NetworkBootstrapper] Client {clientId} connected to network session.");
+
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+
+            string activeSceneName = SceneManager.GetActiveScene().name;
+            if (activeSceneName == "WaitingRoom" || activeSceneName == "Map1")
             {
-                Debug.LogError("[NetworkBootstrapper] PlayerPrefab is not assigned in NetworkManager!");
-                return;
+                SpawnPlayerForClient(clientId);
             }
+        }
+
+        private void OnClientDisconnected(ulong clientId)
+        {
+            Debug.Log($"[NetworkBootstrapper] Client {clientId} disconnected from network session.");
+
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
             if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
             {
-                bool needsSpawn = false;
-                if (client.PlayerObject == null)
+                if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
                 {
-                    needsSpawn = true;
-                }
-                else if (client.PlayerObject.gameObject.scene.name != UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)
-                {
-                    Debug.Log($"[NetworkBootstrapper] Client {clientId} has a player object in another scene ('{client.PlayerObject.gameObject.scene.name}'). Destroying old player object and spawning a new one...");
-                    
-                    var oldNo = client.PlayerObject;
-                    if (oldNo.IsSpawned)
-                    {
-                        oldNo.Despawn(true);
-                    }
-                    else
-                    {
-                        Destroy(oldNo.gameObject);
-                    }
-                    needsSpawn = true;
-                }
-
-                if (needsSpawn)
-                {
-                    int index = 0;
-                    for (int i = 0; i < NetworkManager.Singleton.ConnectedClientsList.Count; i++)
-                    {
-                        if (NetworkManager.Singleton.ConnectedClientsList[i].ClientId == clientId)
-                        {
-                            index = i;
-                            break;
-                        }
-                    }
-
-                    Vector3 pos = new Vector3(120.0f + (index * 2f), 15.3f, 2.5f);
-                    if (SpawnPointManager.Instance != null)
-                    {
-                        SpawnPointType spawnType = SpawnPointType.FFA;
-                        if (GameModeBase.Instance is TDMMode tdm)
-                        {
-                            int team = tdm.GetPlayerTeam(clientId);
-                            if (team == 0) spawnType = SpawnPointType.TeamBlue;
-                            else if (team == 1) spawnType = SpawnPointType.TeamRed;
-                        }
-
-                        Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
-                        if (sp != null)
-                        {
-                            pos = sp.position;
-                        }
-                    }
-
-                    GameObject playerGo = Instantiate(playerPrefab, pos, Quaternion.identity);
-                    var no = playerGo.GetComponent<NetworkObject>();
-                    no.SpawnAsPlayerObject(clientId, true);
-                    Debug.Log($"[NetworkBootstrapper] Spawned player for client {clientId} at {pos}");
-
-                    AssignPlayerDisplayName(clientId, playerGo);
-                }
-                else
-                {
-                    Debug.Log($"[NetworkBootstrapper] Client {clientId} already has a player object in this scene: '{client.PlayerObject.name}'");
+                    try { client.PlayerObject.Despawn(true); } catch { }
                 }
             }
+
+            PlayerNameRegistry.Unregister(clientId);
         }
 
-        private void AssignPlayerDisplayName(ulong clientId, GameObject playerGo)
+        public void SpawnAllConnectedPlayers()
         {
-            var nameDisplay = playerGo.GetComponent<PlayerNameDisplay>();
-            if (nameDisplay == null) return;
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
-            string displayName = ResolveDisplayName(clientId);
-            if (string.IsNullOrEmpty(displayName))
-            {
-                displayName = $"Player {clientId}";
-            }
-
-            nameDisplay.DisplayName.Value = displayName;
-            Debug.Log($"[NetworkBootstrapper] Assigned display name '{displayName}' to client {clientId}");
-
-            // Register in PlayerNameRegistry
-            PlayerNameRegistry.Register(clientId, displayName);
-        }
-
-        private string ResolveDisplayName(ulong clientId)
-        {
-            if (SessionManager.Instance == null) return null;
-
-            var session = SessionManager.Instance.GetCurrentSession();
-            if (session == null) return null;
-
-            int clientIndex = -1;
-            for (int i = 0; i < NetworkManager.Singleton.ConnectedClientsList.Count; i++)
-            {
-                if (NetworkManager.Singleton.ConnectedClientsList[i].ClientId == clientId)
-                {
-                    clientIndex = i;
-                    break;
-                }
-            }
-
-            if (clientIndex < 0) return null;
-
-            int playerIndex = 0;
-            if (session.Players != null)
-            {
-                foreach (var player in session.Players)
-                {
-                    if (player == null) continue;
-                    if (playerIndex == clientIndex)
-                    {
-                        if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var prop) && !string.IsNullOrEmpty(prop.Value))
-                        {
-                            return prop.Value;
-                        }
-                        return player.GetPlayerName();
-                    }
-                    playerIndex++;
-                }
-            }
-
-            return null;
-        }
-
-        private void SpawnPlayersForConnectedClients()
-        {
-            var playerPrefab = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
-            if (playerPrefab == null)
-            {
-                Debug.LogError("[NetworkBootstrapper] PlayerPrefab is not assigned in NetworkManager!");
-                return;
-            }
-
-            Debug.Log("[NetworkBootstrapper] Spawning player characters for all connected clients...");
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
             {
                 SpawnPlayerForClient(client.ClientId);
             }
         }
 
-        private void ConfigureAndConnect(ISession session)
+        public void SpawnPlayerForClient(ulong clientId)
         {
-#if UNITY_WEBGL
-            string connectionType = "wss";
-#else
-            string connectionType = "udp";
-#endif
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
-            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            if (transport == null)
+            if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
             {
-                Debug.LogError("[NetworkBootstrapper] UnityTransport component not found on NetworkManager!");
+                if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
+                {
+                    Debug.Log($"[NetworkBootstrapper] Client {clientId} already has an active spawned player.");
+                    return;
+                }
+            }
+
+            string currentSceneName = SceneManager.GetActiveScene().name;
+
+            // Resolve spawn position with safe platform fallback (never spawn in lava at 0,0,0)
+            Vector3 spawnPos = currentSceneName == "WaitingRoom" ? new Vector3(15f, 0.5f, 15f) : new Vector3(120f, 16f, 2.5f);
+            Quaternion spawnRot = Quaternion.identity;
+
+            if (SpawnPointManager.Instance != null)
+            {
+                SpawnPointType spawnType = SpawnPointType.FFA;
+                if (GameModeBase.Instance is TDMMode tdm)
+                {
+                    int team = tdm.GetPlayerTeam(clientId);
+                    if (team == 0) spawnType = SpawnPointType.TeamBlue;
+                    else if (team == 1) spawnType = SpawnPointType.TeamRed;
+                }
+
+                Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
+                if (sp != null)
+                {
+                    spawnPos = sp.position;
+                    spawnRot = sp.rotation;
+                }
+            }
+
+            var playerPrefab = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
+            if (playerPrefab == null)
+            {
+                Debug.LogError("[NetworkBootstrapper] PlayerPrefab is not assigned in NetworkManager NetworkConfig!");
                 return;
             }
 
-            try
+            var playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
+            var netObj = playerInstance.GetComponent<NetworkObject>();
+            if (netObj != null)
             {
-                if (session.IsHost)
-                {
-                    Debug.Log("[NetworkBootstrapper] Configuring Relay host allocation...");
-                    var allocation = GetHostAllocation(session);
-                    if (allocation == null)
-                    {
-                        Debug.LogError("[NetworkBootstrapper] Failed to retrieve Host Relay Allocation from session!");
-                        return;
-                    }
-
-                    var relayServerData = AllocationUtils.ToRelayServerData(allocation, connectionType);
-                    transport.SetRelayServerData(relayServerData);
-
-                    Debug.Log("[NetworkBootstrapper] Starting NetworkManager as Host...");
-                    if (NetworkManager.Singleton.StartHost())
-                    {
-                        Debug.Log("[NetworkBootstrapper] StartHost successfully initiated.");
-                        string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                        if (activeSceneName == "WaitingRoom")
-                        {
-                            SpawnPlayerForClient(NetworkManager.Singleton.LocalClientId);
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogError("[NetworkBootstrapper] StartHost failed to start!");
-                    }
-                }
-                else
-                {
-                    Debug.Log("[NetworkBootstrapper] Configuring Relay client join allocation...");
-                    var joinAllocation = GetClientJoinAllocation(session);
-                    if (joinAllocation == null)
-                    {
-                        Debug.LogError("[NetworkBootstrapper] Failed to retrieve Client Join Allocation from session!");
-                        return;
-                    }
-
-                    var relayServerData = AllocationUtils.ToRelayServerData(joinAllocation, connectionType);
-                    transport.SetRelayServerData(relayServerData);
-
-                    Debug.Log("[NetworkBootstrapper] Starting NetworkManager as Client...");
-                    if (NetworkManager.Singleton.StartClient())
-                    {
-                        Debug.Log("[NetworkBootstrapper] StartClient successfully initiated.");
-                    }
-                    else
-                    {
-                        Debug.LogError("[NetworkBootstrapper] StartClient failed to start!");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[NetworkBootstrapper] Error during connection boot-up: {ex.Message}");
-            }
-        }
-
-        private void OnClientConnected(ulong clientId)
-        {
-            if (clientId == NetworkManager.Singleton.LocalClientId)
-            {
-                string role = NetworkManager.Singleton.IsHost ? "Host" : "Client";
-                Debug.Log($"[NetworkBootstrapper] Connected as {role}. Local Client ID: {clientId}");
+                netObj.SpawnAsPlayerObject(clientId, true);
+                Debug.Log($"[NetworkBootstrapper] Successfully spawned player for client {clientId} at {spawnPos} in scene '{currentSceneName}'.");
             }
             else
             {
-                Debug.Log($"[NetworkBootstrapper] Remote client connected to host. Client ID: {clientId}");
+                Debug.LogError("[NetworkBootstrapper] Instantiated player prefab is missing a NetworkObject component!");
+                return;
             }
 
-            if (NetworkManager.Singleton.IsServer)
+            AssignPlayerDisplayName(clientId, playerInstance);
+        }
+
+        private void AssignPlayerDisplayName(ulong clientId, GameObject playerObject)
+        {
+            string displayName = ResolveDisplayName(clientId);
+            if (string.IsNullOrEmpty(displayName))
             {
-                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (activeSceneName == "WaitingRoom")
+                displayName = $"Agent_{clientId}";
+            }
+
+            var nameDisplay = playerObject.GetComponent<PlayerNameDisplay>();
+            if (nameDisplay != null)
+            {
+                nameDisplay.DisplayName.Value = displayName;
+            }
+
+            PlayerNameRegistry.Register(clientId, displayName);
+            Debug.Log($"[NetworkBootstrapper] Assigned display name '{displayName}' to client {clientId}.");
+        }
+
+        private string ResolveDisplayName(ulong clientId)
+        {
+            if (SessionManager.Instance == null) return null;
+            var session = SessionManager.Instance.GetCurrentSession();
+            if (session == null || session.Players == null) return null;
+
+            int clientIdx = 0;
+            for (int i = 0; i < NetworkManager.Singleton.ConnectedClientsList.Count; i++)
+            {
+                if (NetworkManager.Singleton.ConnectedClientsList[i].ClientId == clientId)
                 {
-                    Debug.Log($"[NetworkBootstrapper] Client {clientId} connected while in WaitingRoom. Spawning player.");
-                    SpawnPlayerForClient(clientId);
+                    clientIdx = i;
+                    break;
                 }
             }
-        }
 
-        private void OnClientDisconnected(ulong clientId)
-        {
-            if (clientId == NetworkManager.Singleton.LocalClientId)
+            int pIdx = 0;
+            foreach (var player in session.Players)
             {
-                Debug.LogWarning($"[NetworkBootstrapper] Local client disconnected from network session. Client ID: {clientId}");
+                if (player == null) continue;
+                if (pIdx == clientIdx)
+                {
+                    if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var prop) && !string.IsNullOrEmpty(prop.Value))
+                    {
+                        return prop.Value;
+                    }
+                    return $"Agent_{clientId}";
+                }
+                pIdx++;
             }
-            else
-            {
-                Debug.Log($"[NetworkBootstrapper] Remote client disconnected from host. Client ID: {clientId}");
-            }
-        }
 
-        private Allocation GetHostAllocation(ISession session)
-        {
-            var network = session.Network;
-            if (network == null) return null;
-
-            var relayHandlerField = network.GetType().GetField("m_RelayHandler", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (relayHandlerField == null) return null;
-
-            var relayHandler = relayHandlerField.GetValue(network);
-            if (relayHandler == null) return null;
-
-            var allocationField = relayHandler.GetType().GetField("m_Allocation", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (allocationField == null) return null;
-
-            return allocationField.GetValue(relayHandler) as Allocation;
-        }
-
-        private JoinAllocation GetClientJoinAllocation(ISession session)
-        {
-            var network = session.Network;
-            if (network == null) return null;
-
-            var relayHandlerField = network.GetType().GetField("m_RelayHandler", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (relayHandlerField == null) return null;
-
-            var relayHandler = relayHandlerField.GetValue(network);
-            if (relayHandler == null) return null;
-
-            var joinAllocationField = relayHandler.GetType().GetField("m_JoinAllocation", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (joinAllocationField == null) return null;
-
-            return joinAllocationField.GetValue(relayHandler) as JoinAllocation;
+            return null;
         }
     }
 }

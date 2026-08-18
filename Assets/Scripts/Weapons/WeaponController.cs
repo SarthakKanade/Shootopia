@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Cinemachine;
 using Shootopia;
@@ -142,12 +143,57 @@ namespace Shootopia
         public int CurrentUses => _currentUses;
         public float TimeRemaining => _timeRemaining;
         public float TimeSinceLastShot => _timeSinceLastShot;
-        public bool IsCharging => _isCharging;
-        public float ChargeTimer => _chargeTimer;
+        private readonly HashSet<int> _validAnimParams = new HashSet<int>();
+
+        private void InitAnimatorParams()
+        {
+            _validAnimParams.Clear();
+            if (animator == null) animator = GetComponentInChildren<Animator>(true);
+            if (animator != null)
+            {
+                foreach (var p in animator.parameters)
+                {
+                    _validAnimParams.Add(p.nameHash);
+                }
+            }
+        }
+
+        private void SafeSetBool(int hash, bool val)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+            {
+                animator.SetBool(hash, val);
+            }
+        }
+
+        private void SafeSetFloat(int hash, float val)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+            {
+                animator.SetFloat(hash, val);
+            }
+        }
+
+        private void SafeSetFloat(int hash, float val, float dampTime, float deltaTime)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+            {
+                animator.SetFloat(hash, val, dampTime, deltaTime);
+            }
+        }
+
+        private void SafeSetTrigger(int hash)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+            {
+                animator.SetTrigger(hash);
+            }
+        }
 
         private void Awake()
         {
             if (animator == null) animator = GetComponentInChildren<Animator>(true);
+            InitAnimatorParams();
             if (motor == null) motor = GetComponent<CharacterMotor>();
             if (input == null) input = GetComponent<PlayerInputRouter>();
             _aimRig = GetComponent<PlayerAimRig>();
@@ -412,8 +458,8 @@ namespace Shootopia
             _isAimingTrap = false;
             if (animator != null)
             {
-                animator.SetBool(HashIsThrowAiming, false);
-                animator.SetFloat(HashShootSpeed, 1f);
+                SafeSetBool(HashIsThrowAiming, false);
+                SafeSetFloat(HashShootSpeed, 1f);
                 animator.CrossFade("Empty", 0.15f, -1);
             }
             if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
@@ -530,8 +576,8 @@ namespace Shootopia
                         _isAimingTrap = true;
                         if (animator != null)
                         {
-                            animator.SetBool(HashIsThrowAiming, true);
-                            animator.SetFloat(HashShootSpeed, 1f);
+                            SafeSetBool(HashIsThrowAiming, true);
+                            SafeSetFloat(HashShootSpeed, 1f);
                             animator.CrossFade("ThrowBall_Prep", 0.05f, -1, 0f);
                         }
                         if (motor != null)
@@ -553,9 +599,9 @@ namespace Shootopia
                     _isAimingTrap = false;
                     if (animator != null)
                     {
-                        animator.SetBool(HashIsThrowAiming, false);
-                        animator.SetTrigger(HashThrowRelease);
-                        animator.SetFloat(HashShootSpeed, 1f);
+                        SafeSetBool(HashIsThrowAiming, false);
+                        SafeSetTrigger(HashThrowRelease);
+                        SafeSetFloat(HashShootSpeed, 1f);
                         animator.CrossFade("ThrowBall_Release", 0.02f, -1, 0f);
                     }
                     if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
@@ -750,8 +796,15 @@ namespace Shootopia
             // Owner already fired locally to ensure instant feedback
             if (IsOwner) return;
 
-            if (loadout == null || weaponIndex < 0 || weaponIndex >= loadout.Length) return;
-            var attach = loadout[weaponIndex];
+            WeaponAttachSO attach = null;
+            if (loadout != null && weaponIndex >= 0 && weaponIndex < loadout.Length)
+            {
+                attach = loadout[weaponIndex];
+            }
+            if (attach == null)
+            {
+                attach = CurrentAttach;
+            }
             if (attach == null) return;
             var data = attach.gameplayData;
             if (data == null) return;
@@ -796,8 +849,10 @@ namespace Shootopia
         {
             if (!IsServer) return;
 
-            if (loadout == null || _currentIndex < 0 || _currentIndex >= loadout.Length) return;
-            var attach = loadout[_currentIndex];
+            var attach = CurrentAttach;
+            if (attach == null && !string.IsNullOrEmpty(weaponName)) attach = GetAttachByName(weaponName);
+            if (attach == null && loadout != null && _currentIndex >= 0 && _currentIndex < loadout.Length) attach = loadout[_currentIndex];
+            if (attach == null && loadout != null && loadout.Length > 0) attach = loadout[0];
             if (attach == null) return;
             var data = attach.gameplayData;
             if (data == null) return;
@@ -1040,6 +1095,17 @@ namespace Shootopia
             Muzzle = GripR = GripL = null;
 
             CurrentAttach = attach;
+            if (loadout != null)
+            {
+                for (int i = 0; i < loadout.Length; i++)
+                {
+                    if (loadout[i] != null && loadout[i].name == attachName)
+                    {
+                        _currentIndex = i;
+                        break;
+                    }
+                }
+            }
 
             // Reset durability & stats for new weapon
             var data = attach.gameplayData;
@@ -1198,9 +1264,9 @@ namespace Shootopia
             }
             if (animator != null)
             {
-                animator.SetBool(HashIsFiring, false);
-                animator.SetBool(HashIsThrowAiming, false);
-                animator.SetFloat(HashShootSpeed, 1f);
+                SafeSetBool(HashIsFiring, false);
+                SafeSetBool(HashIsThrowAiming, false);
+                SafeSetFloat(HashShootSpeed, 1f);
             }
         }
 

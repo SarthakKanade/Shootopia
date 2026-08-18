@@ -9,7 +9,19 @@ namespace Shootopia
     /// </summary>
     public class PlayerProfileManager : MonoBehaviour
     {
-        public static PlayerProfileManager Instance { get; private set; }
+        private static PlayerProfileManager _instance;
+        public static PlayerProfileManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindAnyObjectByType<PlayerProfileManager>();
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         private const string KEY_PLAYER_NAME = "Shootopia_PlayerDisplayName";
         private const string KEY_MOUSE_SENS = "Shootopia_MouseSensitivity";
@@ -31,13 +43,13 @@ namespace Shootopia
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
-            Instance = this;
+            _instance = this;
             DontDestroyOnLoad(gameObject);
 
             LoadProfile();

@@ -12,23 +12,39 @@ namespace Shootopia
 
     public class SpawnPointManager : MonoBehaviour
     {
-        public static SpawnPointManager Instance { get; private set; }
+        private static SpawnPointManager _instance;
+        public static SpawnPointManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = Object.FindAnyObjectByType<SpawnPointManager>();
+                    if (_instance != null)
+                    {
+                        _instance.InitializeSpawnPoints();
+                    }
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         private readonly Dictionary<SpawnPointType, List<Transform>> _spawnPointsByType = new Dictionary<SpawnPointType, List<Transform>>();
         private readonly Dictionary<SpawnPointType, int> _lastUsedIndex = new Dictionary<SpawnPointType, int>();
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
             InitializeSpawnPoints();
         }
 
-        private void InitializeSpawnPoints()
+        public void InitializeSpawnPoints()
         {
             _spawnPointsByType.Clear();
             _lastUsedIndex.Clear();
@@ -52,7 +68,25 @@ namespace Shootopia
 
         public Transform GetSpawnPoint(SpawnPointType type)
         {
+            if (_spawnPointsByType.Count == 0)
+            {
+                InitializeSpawnPoints();
+            }
+
             if (!_spawnPointsByType.TryGetValue(type, out var points) || points.Count == 0)
+            {
+                // Fallback to ANY available spawn point list in scene
+                foreach (var list in _spawnPointsByType.Values)
+                {
+                    if (list != null && list.Count > 0)
+                    {
+                        points = list;
+                        break;
+                    }
+                }
+            }
+
+            if (points == null || points.Count == 0)
             {
                 Debug.LogWarning($"[SpawnPointManager] No spawn points registered for type {type}!");
                 return transform;
@@ -61,7 +95,7 @@ namespace Shootopia
             int index = 0;
             if (points.Count > 1)
             {
-                int lastIdx = _lastUsedIndex[type];
+                int lastIdx = _lastUsedIndex.TryGetValue(type, out int idx) ? idx : -1;
                 do
                 {
                     index = Random.Range(0, points.Count);

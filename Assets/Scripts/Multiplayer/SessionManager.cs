@@ -5,16 +5,29 @@ using UnityEngine;
 using UnityEngine.Events;
 using Unity.Services.Multiplayer;
 using Unity.Netcode;
+using UnityEngine.SceneManagement;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Manages multiplayer session creation, joining, browsing, and leaving using the Unity MPS SDK.
-    /// Acts as a central persistent singleton to expose session state to the UI and network layers.
+    /// Streamlined central manager for multiplayer sessions (UGS + NGO + Relay).
+    /// Handles session creation, joining, listing, ready states, connection approval, and scene routing.
     /// </summary>
     public class SessionManager : MonoBehaviour
     {
-        public static SessionManager Instance { get; private set; }
+        private static SessionManager _instance;
+        public static SessionManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindAnyObjectByType<SessionManager>();
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         [Header("Events")]
         public UnityEvent OnSessionCreated;
@@ -24,19 +37,27 @@ namespace Shootopia
         public UnityEvent OnPlayerReadyChanged;
 
         private ISession _currentSession;
+        private bool _isProcessingSession = false;
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            _instance = this;
             DontDestroyOnLoad(gameObject);
+
+            EnsureConnectionApprovalSetup();
         }
 
         private void Start()
+        {
+            EnsureConnectionApprovalSetup();
+        }
+
+        public void EnsureConnectionApprovalSetup()
         {
             if (NetworkManager.Singleton != null)
             {
@@ -45,23 +66,45 @@ namespace Shootopia
             }
         }
 
-        private bool _isProcessingSession = false;
-
         private void ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
         {
+            Debug.Log($"[SessionManager] ConnectionApproval for client {request.ClientNetworkId}. Approving connection.");
             response.Approved = true;
-            response.CreatePlayerObject = false; // Disable NGO automatic spawning globally
+            response.CreatePlayerObject = false; // Player objects are spawned explicitly on scene load
             response.Pending = false;
         }
 
+        public async Task EnsurePreviousSessionCleanedUpAsync()
+        {
+            if (_currentSession != null)
+            {
+                try
+                {
+                    UnsubscribeFromSessionEvents(_currentSession);
+                    await _currentSession.LeaveAsync();
+                }
+                catch { }
+                _currentSession = null;
+            }
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+            {
+                NetworkManager.Singleton.Shutdown();
+                while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
+                {
+                    await Task.Yield();
+                }
+            }
+        }
+
         /// <summary>
-        /// Creates a new multiplayer session on the Unity backend.
+        /// Creates a new multiplayer session on Unity Gaming Services and starts NGO Host.
         /// </summary>
         public async Task CreateSession(string sessionName, bool isPublic, int maxPlayers, string gameMode, string mapName = "Map1")
         {
             if (_isProcessingSession)
             {
-                Debug.LogWarning("[SessionManager] CreateSession request ignored: A session operation is already in progress.");
+                Debug.LogWarning("[SessionManager] Operation in progress. Request ignored.");
                 return;
             }
 
@@ -69,10 +112,12 @@ namespace Shootopia
 
             try
             {
+                await EnsurePreviousSessionCleanedUpAsync();
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                EnsureConnectionApprovalSetup();
 
                 Debug.Log($"[SessionManager] Creating session '{sessionName}' (Public: {isPublic}, MaxPlayers: {maxPlayers}, Mode: {gameMode}, Map: {mapName})...");
-                
+
                 var options = new SessionOptions
                 {
                     Name = sessionName,
@@ -81,44 +126,37 @@ namespace Shootopia
                     Type = "default-session"
                 };
 
-                // Add the custom GameMode and MapName properties for session browsing filters
                 options.SessionProperties = new Dictionary<string, SessionProperty>
                 {
                     { "GameMode", new SessionProperty(gameMode, VisibilityPropertyOptions.Public, PropertyIndex.String1) },
                     { "MapName", new SessionProperty(mapName, VisibilityPropertyOptions.Public, PropertyIndex.String2) }
                 };
 
-                // Configure connection protocol using Relay networking
+                // WithRelayNetwork automatically configures UTP transport and initiates NGO Host
                 options.WithRelayNetwork();
 
-                // Create the session through UGS with retry for transient WebSocket connection drops
-                int maxRetries = 2;
-                for (int attempt = 1; attempt <= maxRetries; attempt++)
-                {
-                    try
-                    {
-                        _currentSession = await MultiplayerService.Instance.CreateSessionAsync(options);
-                        SubscribeToSessionEvents(_currentSession);
-                        break;
-                    }
-                    catch (Exception ex) when (ex.Message.Contains("connection was lost") || ex.Message.Contains("subscribe") || ex.Message.Contains("dropped"))
-                    {
-                        if (attempt == maxRetries) throw;
-                        Debug.LogWarning($"[SessionManager] CreateSession attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
-                        await Task.Delay(1000);
-                    }
-                }
-                
-                // Set local player display name in session metadata
+                _currentSession = await MultiplayerService.Instance.CreateSessionAsync(options);
+                SubscribeToSessionEvents(_currentSession);
+
+                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
                 if (_currentSession.CurrentPlayer != null)
                 {
-                    string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
-                    try { await _currentSession.SaveCurrentPlayerDataAsync(); } catch { }
+                    _currentSession.CurrentPlayer.SetProperty("IsReady", new PlayerProperty("true", VisibilityPropertyOptions.Public));
                 }
 
                 Debug.Log($"[SessionManager] Session created successfully. Join Code: {_currentSession.Code}, Session ID: {_currentSession.Id}");
                 OnSessionCreated?.Invoke();
+
+                // Warp to WaitingRoom scene
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer && NetworkManager.Singleton.SceneManager != null)
+                {
+                    NetworkManager.Singleton.SceneManager.LoadScene("WaitingRoom", LoadSceneMode.Single);
+                }
+                else
+                {
+                    LoadingScreenManager.LoadScene("WaitingRoom", "WARPING TO LOBBY...");
+                }
             }
             catch (Exception ex)
             {
@@ -140,7 +178,7 @@ namespace Shootopia
         {
             if (_isProcessingSession)
             {
-                Debug.LogWarning("[SessionManager] JoinByCode request ignored: A session operation is already in progress.");
+                Debug.LogWarning("[SessionManager] Operation in progress. Request ignored.");
                 return;
             }
 
@@ -148,38 +186,27 @@ namespace Shootopia
 
             try
             {
+                await EnsurePreviousSessionCleanedUpAsync();
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
 
+                LoadingScreenManager.ShowOverlay("WARPING TO LOBBY...");
                 Debug.Log($"[SessionManager] Joining session by code '{joinCode}'...");
-                
+
                 var options = new JoinSessionOptions
                 {
                     Type = "default-session"
                 };
 
-                int maxRetries = 2;
-                for (int attempt = 1; attempt <= maxRetries; attempt++)
-                {
-                    try
-                    {
-                        _currentSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode, options);
-                        SubscribeToSessionEvents(_currentSession);
-                        break;
-                    }
-                    catch (Exception ex) when (ex.Message.Contains("connection was lost") || ex.Message.Contains("subscribe") || ex.Message.Contains("dropped"))
-                    {
-                        if (attempt == maxRetries) throw;
-                        Debug.LogWarning($"[SessionManager] JoinByCode attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
-                        await Task.Delay(1000);
-                    }
-                }
-                
-                // Set local player display name in session metadata
+                // WithRelayNetwork automatically configures UTP transport and initiates NGO Client
+                _currentSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode.Trim().ToUpper(), options);
+                SubscribeToSessionEvents(_currentSession);
+
                 if (_currentSession.CurrentPlayer != null)
                 {
                     string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
-                    try { await _currentSession.SaveCurrentPlayerDataAsync(); } catch { }
+                    _currentSession.CurrentPlayer.SetProperty("IsReady", new PlayerProperty("false", VisibilityPropertyOptions.Public));
+                    await _currentSession.SaveCurrentPlayerDataAsync();
                 }
 
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
@@ -189,6 +216,7 @@ namespace Shootopia
             {
                 string errMsg = $"JoinByCode failed: {ex.Message}";
                 Debug.LogError($"[SessionManager] {errMsg}");
+                LoadingScreenManager.HideOverlay();
                 OnSessionError?.Invoke(errMsg);
                 throw;
             }
@@ -205,7 +233,7 @@ namespace Shootopia
         {
             if (_isProcessingSession)
             {
-                Debug.LogWarning("[SessionManager] JoinById request ignored: A session operation is already in progress.");
+                Debug.LogWarning("[SessionManager] Operation in progress. Request ignored.");
                 return;
             }
 
@@ -213,38 +241,26 @@ namespace Shootopia
 
             try
             {
+                await EnsurePreviousSessionCleanedUpAsync();
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
 
+                LoadingScreenManager.ShowOverlay("WARPING TO LOBBY...");
                 Debug.Log($"[SessionManager] Joining session by ID '{sessionId}'...");
-                
+
                 var options = new JoinSessionOptions
                 {
                     Type = "default-session"
                 };
 
-                int maxRetries = 2;
-                for (int attempt = 1; attempt <= maxRetries; attempt++)
-                {
-                    try
-                    {
-                        _currentSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, options);
-                        SubscribeToSessionEvents(_currentSession);
-                        break;
-                    }
-                    catch (Exception ex) when (ex.Message.Contains("connection was lost") || ex.Message.Contains("subscribe") || ex.Message.Contains("dropped"))
-                    {
-                        if (attempt == maxRetries) throw;
-                        Debug.LogWarning($"[SessionManager] JoinById attempt {attempt} failed ({ex.Message}). Retrying in 1s...");
-                        await Task.Delay(1000);
-                    }
-                }
+                _currentSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, options);
+                SubscribeToSessionEvents(_currentSession);
 
-                // Set local player display name in session metadata
                 if (_currentSession.CurrentPlayer != null)
                 {
                     string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
-                    try { await _currentSession.SaveCurrentPlayerDataAsync(); } catch { }
+                    _currentSession.CurrentPlayer.SetProperty("IsReady", new PlayerProperty("false", VisibilityPropertyOptions.Public));
+                    await _currentSession.SaveCurrentPlayerDataAsync();
                 }
 
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
@@ -254,6 +270,7 @@ namespace Shootopia
             {
                 string errMsg = $"JoinById failed: {ex.Message}";
                 Debug.LogError($"[SessionManager] {errMsg}");
+                LoadingScreenManager.HideOverlay();
                 OnSessionError?.Invoke(errMsg);
                 throw;
             }
@@ -271,17 +288,7 @@ namespace Shootopia
             try
             {
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
-
-                Debug.Log("[SessionManager] Querying public sessions...");
-                
-                var queryOptions = new QuerySessionsOptions
-                {
-                    // By default queries active public sessions matching type
-                };
-
-                var queryResult = await MultiplayerService.Instance.QuerySessionsAsync(queryOptions);
-                Debug.Log($"[SessionManager] Query complete. Found {queryResult.Sessions.Count} public sessions.");
-                
+                var queryResult = await MultiplayerService.Instance.QuerySessionsAsync(new QuerySessionsOptions());
                 return new List<ISessionInfo>(queryResult.Sessions);
             }
             catch (Exception ex)
@@ -294,32 +301,27 @@ namespace Shootopia
         }
 
         /// <summary>
-        /// Leaves the currently connected session and clears local references.
+        /// Leaves the currently connected session, shuts down NGO, and returns to MainMenu.
         /// </summary>
         public async Task LeaveSession()
         {
             try
             {
-                if (_currentSession != null)
-                {
-                    Debug.Log($"[SessionManager] Leaving current session (ID: {_currentSession.Id})...");
-                    UnsubscribeFromSessionEvents(_currentSession);
-                    await _currentSession.LeaveAsync();
-                    _currentSession = null;
-                    Debug.Log("[SessionManager] Successfully left the session.");
-                }
-                else
-                {
-                    Debug.LogWarning("[SessionManager] LeaveSession called but no active session was stored.");
-                }
+                await EnsurePreviousSessionCleanedUpAsync();
+
+                Debug.Log("[SessionManager] Successfully left session.");
                 OnSessionLeft?.Invoke();
+
+                if (SceneManager.GetActiveScene().name != "MainMenu")
+                {
+                    LoadingScreenManager.LoadScene("MainMenu", "RETURNING TO BASE...");
+                }
             }
             catch (Exception ex)
             {
                 string errMsg = $"LeaveSession failed: {ex.Message}";
                 Debug.LogError($"[SessionManager] {errMsg}");
                 OnSessionError?.Invoke(errMsg);
-                throw;
             }
         }
 
@@ -334,49 +336,31 @@ namespace Shootopia
                 var hostSession = _currentSession.AsHost();
                 if (hostSession != null)
                 {
-                    Debug.Log($"[SessionManager] Setting session visibility to Public: {isPublic}...");
                     hostSession.IsPrivate = !isPublic;
                     await hostSession.SavePropertiesAsync();
-                    Debug.Log("[SessionManager] Visibility updated successfully.");
-                }
-                else
-                {
-                    Debug.LogWarning("[SessionManager] SetSessionVisibility called but local client is not the host.");
                 }
             }
             catch (Exception ex)
             {
-                string errMsg = $"SetSessionVisibility failed: {ex.Message}";
-                Debug.LogError($"[SessionManager] {errMsg}");
-                OnSessionError?.Invoke(errMsg);
-                throw;
+                Debug.LogError($"[SessionManager] SetSessionVisibility failed: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Updates the local player's ready state in UGS session metadata.
+        /// Updates local player's ready state in UGS session metadata.
         /// </summary>
         public async Task SetReadyStatus(bool isReady)
         {
             try
             {
-                if (_currentSession == null) return;
-                var localPlayer = _currentSession.CurrentPlayer;
-                if (localPlayer != null)
-                {
-                    Debug.Log($"[SessionManager] Setting local player ready state: {isReady}...");
-                    localPlayer.SetProperty("IsReady", new PlayerProperty(isReady.ToString().ToLower(), VisibilityPropertyOptions.Public));
-                    await _currentSession.SaveCurrentPlayerDataAsync();
-                    Debug.Log("[SessionManager] Local player ready status saved.");
-                    OnPlayerReadyChanged?.Invoke();
-                }
+                if (_currentSession == null || _currentSession.CurrentPlayer == null) return;
+                _currentSession.CurrentPlayer.SetProperty("IsReady", new PlayerProperty(isReady.ToString().ToLower(), VisibilityPropertyOptions.Public));
+                await _currentSession.SaveCurrentPlayerDataAsync();
+                OnPlayerReadyChanged?.Invoke();
             }
             catch (Exception ex)
             {
-                string errMsg = $"SetReadyStatus failed: {ex.Message}";
-                Debug.LogError($"[SessionManager] {errMsg}");
-                OnSessionError?.Invoke(errMsg);
-                throw;
+                Debug.LogError($"[SessionManager] SetReadyStatus failed: {ex.Message}");
             }
         }
 
@@ -386,37 +370,32 @@ namespace Shootopia
         public List<PlayerReadyState> GetPlayerReadyStates()
         {
             var states = new List<PlayerReadyState>();
-            if (_currentSession == null) return states;
+            if (_currentSession == null || _currentSession.Players == null) return states;
 
-            if (_currentSession.Players != null)
+            foreach (var player in _currentSession.Players)
             {
-                foreach (var player in _currentSession.Players)
+                if (player == null) continue;
+                bool isReady = false;
+                if (player.Properties != null && player.Properties.TryGetValue("IsReady", out var prop))
                 {
-                    if (player == null) continue;
-                    bool isReady = false;
-                    if (player.Properties != null && player.Properties.TryGetValue("IsReady", out var prop))
-                    {
-                        bool.TryParse(prop.Value, out isReady);
-                    }
-
-                    // If player is host, default to ready = true
-                    if (player.Id == _currentSession.Host)
-                    {
-                        isReady = true;
-                    }
-
-                    string resolvedName = null;
-                    if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var nameProp))
-                    {
-                        resolvedName = nameProp.Value;
-                    }
-                    if (string.IsNullOrEmpty(resolvedName))
-                    {
-                        resolvedName = player.GetPlayerName();
-                    }
-
-                    states.Add(new PlayerReadyState(player.Id, isReady, resolvedName));
+                    bool.TryParse(prop.Value, out isReady);
                 }
+                if (player.Id == _currentSession.Host)
+                {
+                    isReady = true;
+                }
+
+                string resolvedName = null;
+                if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var nameProp))
+                {
+                    resolvedName = nameProp.Value;
+                }
+                if (string.IsNullOrEmpty(resolvedName))
+                {
+                    resolvedName = $"Agent_{player.Id.Substring(0, Mathf.Min(4, player.Id.Length))}";
+                }
+
+                states.Add(new PlayerReadyState(player.Id, isReady, resolvedName));
             }
             return states;
         }
@@ -424,108 +403,58 @@ namespace Shootopia
         private void SubscribeToSessionEvents(ISession session)
         {
             if (session == null) return;
-            session.PlayerJoined += OnPlayerJoinedOrLeft;
-            session.PlayerLeaving += OnPlayerJoinedOrLeft;
-            session.PlayerPropertiesChanged += OnPlayerPropertiesUpdated;
-            session.Changed += OnSessionPropertiesUpdated;
+            session.PlayerJoined += OnSessionUpdated;
+            session.PlayerLeaving += OnSessionUpdated;
+            session.PlayerPropertiesChanged += OnSessionUpdatedNoArg;
+            session.Changed += OnSessionUpdatedNoArg;
         }
 
         private void UnsubscribeFromSessionEvents(ISession session)
         {
             if (session == null) return;
-            session.PlayerJoined -= OnPlayerJoinedOrLeft;
-            session.PlayerLeaving -= OnPlayerJoinedOrLeft;
-            session.PlayerPropertiesChanged -= OnPlayerPropertiesUpdated;
-            session.Changed -= OnSessionPropertiesUpdated;
+            session.PlayerJoined -= OnSessionUpdated;
+            session.PlayerLeaving -= OnSessionUpdated;
+            session.PlayerPropertiesChanged -= OnSessionUpdatedNoArg;
+            session.Changed -= OnSessionUpdatedNoArg;
         }
 
-        private void OnPlayerJoinedOrLeft(string playerId)
-        {
-            Debug.Log($"[SessionManager] Player joined/left: {playerId}");
-            OnPlayerReadyChanged?.Invoke();
-        }
+        private void OnSessionUpdated(string playerId) => OnPlayerReadyChanged?.Invoke();
+        private void OnSessionUpdatedNoArg() => OnPlayerReadyChanged?.Invoke();
 
-        private void OnPlayerPropertiesUpdated()
-        {
-            Debug.Log("[SessionManager] Player properties updated.");
-            OnPlayerReadyChanged?.Invoke();
-        }
+        public string GetJoinCode() => _currentSession != null ? _currentSession.Code : string.Empty;
+        public ISession GetCurrentSession() => _currentSession;
 
-        private void OnSessionPropertiesUpdated()
-        {
-            Debug.Log("[SessionManager] Session properties updated.");
-            OnPlayerReadyChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// Returns the alphanumeric join code of the active session.
-        /// </summary>
-        public string GetJoinCode()
-        {
-            if (_currentSession != null)
-            {
-                return _currentSession.Code;
-            }
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Gets the reference to the underlying ISession.
-        /// </summary>
-        public ISession GetCurrentSession()
-        {
-            return _currentSession;
-        }
-
-        /// <summary>
-        /// Returns the map name configured for the current session, or defaults to "Map1".
-        /// </summary>
         public string GetSessionMapName()
         {
             if (_currentSession != null && _currentSession.Properties != null && _currentSession.Properties.TryGetValue("MapName", out var prop))
             {
-                if (!string.IsNullOrEmpty(prop.Value))
-                    return prop.Value;
+                if (!string.IsNullOrEmpty(prop.Value)) return prop.Value;
             }
             return "Map1";
         }
 
         /// <summary>
-        /// Updates the session properties to indicate that the match has started.
+        /// Host launches the match: loads Map1 networked scene for all connected clients.
         /// </summary>
-        public async Task StartMatch()
+        public void StartMatch()
         {
-            try
+            if (_currentSession == null || !_currentSession.IsHost)
             {
-                if (_currentSession == null) return;
-                var hostSession = _currentSession.AsHost();
-                if (hostSession != null)
-                {
-                    Debug.Log("[SessionManager] Starting match, setting MatchStarted property...");
-                    hostSession.SetProperty("MatchStarted", new SessionProperty("true", VisibilityPropertyOptions.Public));
-                    await hostSession.SavePropertiesAsync();
-                    Debug.Log("[SessionManager] Match started property saved.");
-                }
-                else
-                {
-                    Debug.LogWarning("[SessionManager] StartMatch called but local client is not the host.");
-                }
+                Debug.LogWarning("[SessionManager] Only the host can start the match!");
+                return;
             }
-            catch (Exception ex)
+
+            string mapName = GetSessionMapName();
+            Debug.Log($"[SessionManager] Host starting match on map: {mapName}...");
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
-                string errMsg = $"StartMatch failed: {ex.Message}";
-                Debug.LogError($"[SessionManager] {errMsg}");
-                OnSessionError?.Invoke(errMsg);
-                throw;
+                NetworkManager.Singleton.SceneManager.LoadScene(mapName, LoadSceneMode.Single);
+            }
+            else
+            {
+                LoadingScreenManager.LoadScene(mapName, "DEPLOYING TO ARENA...");
             }
         }
     }
 }
-
-/*
-VERIFICATION:
-- Two Editor instances (ParrelSync or two builds).
-- Instance A: CreateSession — console logs a join code.
-- Instance B: JoinByCode with that code — console logs joined.
-- GetPublicSessions returns the created session in the list.
-*/

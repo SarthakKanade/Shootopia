@@ -18,7 +18,19 @@ namespace Shootopia
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
-        public static AudioManager Instance { get; private set; }
+        private static AudioManager _instance;
+        public static AudioManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindAnyObjectByType<AudioManager>();
+                }
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         private const string KEY_MASTER = "AudioManager_MasterVolume";
         private const string KEY_MUSIC = "AudioManager_MusicVolume";
@@ -41,13 +53,13 @@ namespace Shootopia
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
+            if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
-            Instance = this;
+            _instance = this;
             DontDestroyOnLoad(gameObject);
 
             LoadVolumeSettings();

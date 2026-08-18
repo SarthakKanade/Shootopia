@@ -130,6 +130,16 @@ namespace Shootopia
             {
                 motor.transform.position += Vector3.down * sinkSpeed * Time.deltaTime;
             }
+
+            // 3. Apply server-authoritative lava damage
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                var health = playerObj.GetComponent<PlayerHealth>();
+                if (health != null && !health.IsDead)
+                {
+                    health.TakeDamage(burnDPS * Time.deltaTime, DamageType.Environment);
+                }
+            }
         }
     }
 }

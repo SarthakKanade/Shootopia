@@ -49,6 +49,7 @@ namespace Shootopia
         base.OnNetworkSpawn();
 
         _currentHp.OnValueChanged += OnHpValueChanged;
+        SetPlayerVisibility(true);
 
         if (IsServer)
         {
@@ -88,6 +89,12 @@ namespace Shootopia
     {
         Debug.Log($"[PlayerHealth] OnHpValueChanged: {previousValue} -> {newValue}");
         _onHpChanged?.Raise(newValue);
+
+        if (newValue > 0f && _isDead)
+        {
+            _isDead = false;
+            SetPlayerVisibility(true);
+        }
 
         if (newValue < previousValue && IsOwner && AudioManager.Instance != null)
         {
@@ -232,7 +239,7 @@ namespace Shootopia
         StartCoroutine(InvincibilityRoutine());
 
         // Get dynamic spawn point from SpawnPointManager
-        Vector3 spawnPos = Vector3.zero;
+        Vector3 spawnPos = new Vector3(120f, 16f, 2.5f);
         if (SpawnPointManager.Instance != null)
         {
             SpawnPointType spawnType = SpawnPointType.FFA;
@@ -248,10 +255,6 @@ namespace Shootopia
             {
                 spawnPos = sp.position;
             }
-        }
-        else
-        {
-            spawnPos = new Vector3(OwnerClientId * 2f, 0.5f, 0f);
         }
 
         // Refill health

@@ -52,6 +52,8 @@ namespace Shootopia
 
         private void OnEnable()
         {
+            LoadingScreenManager.HideOverlay();
+
             if (uiDocument == null)
             {
                 uiDocument = GetComponent<UIDocument>();
