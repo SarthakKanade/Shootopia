@@ -62,24 +62,71 @@ namespace Shootopia
                     }
                 }
 
-                Debug.Log($"[NetworkedGameManager] Starting match. Selected mode from metadata: {selectedMode}");
+                Debug.Log($"[NetworkedGameManager] Initializing match. Selected mode from metadata: {selectedMode}");
                 ActiveModeName.Value = selectedMode;
                 ApplyActiveGameMode(selectedMode);
 
-                // Check if active scene is the WaitingRoom (Lobby)
-                string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (activeSceneName == "WaitingRoom")
+                // If in a multiplayer session with WaitingRoom UI, wait for host to start match
+                if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
                 {
-                    Debug.Log("[NetworkedGameManager] Active scene is WaitingRoom. Skipping match start countdown.");
+                    Debug.Log("[NetworkedGameManager] Multiplayer session active. Waiting in Warmup until host starts match.");
+                    if (_activeGameMode != null)
+                    {
+                        _activeGameMode.MatchActive.Value = false;
+                        _activeGameMode.PreMatchCountdown.Value = -1;
+                    }
                     return;
                 }
 
-                // Start the pre-match countdown sequence in GameScene
+                // Fallback for singleplayer / offline: start pre-match sequence directly
                 StartCoroutine(PreMatchSequence());
             }
             else
             {
                 ApplyActiveGameMode(ActiveModeName.Value.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Entry point called by WaitingRoomController when the host clicks START MATCH.
+        /// </summary>
+        public void StartMatchFromLobby()
+        {
+            if (IsServer)
+            {
+                StartMatchFromLobbyServer();
+            }
+            else
+            {
+                StartMatchFromLobbyServerRpc();
+            }
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void StartMatchFromLobbyServerRpc()
+        {
+            StartMatchFromLobbyServer();
+        }
+
+        private void StartMatchFromLobbyServer()
+        {
+            if (!IsServer) return;
+            Debug.Log("[NetworkedGameManager] Host officially started match from lobby!");
+
+            // Notify all clients to close and destroy waiting room UI
+            OnMatchStartedClientRpc();
+
+            // Start the official pre-match sequence and spawn players
+            StartCoroutine(PreMatchSequence());
+        }
+
+        [Rpc(SendTo.Everyone)]
+        private void OnMatchStartedClientRpc()
+        {
+            Debug.Log("[NetworkedGameManager] Match started - closing waiting room UI.");
+            if (WaitingRoomController.Instance != null)
+            {
+                WaitingRoomController.Instance.OnMatchStarted();
             }
         }
 
@@ -158,7 +205,7 @@ namespace Shootopia
                 int spawnedCount = 0;
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                 {
-                    if (client.PlayerObject != null)
+                    if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
                     {
                         spawnedCount++;
                     }
@@ -177,6 +224,12 @@ namespace Shootopia
             if (waitTimer >= maxWaitTime)
             {
                 Debug.LogWarning("[NetworkedGameManager] Pre-match wait timeout reached before all expected players spawned.");
+            }
+
+            // Guarantee all players are positioned at their match spawn points
+            if (NetworkBootstrapper.Instance != null)
+            {
+                NetworkBootstrapper.Instance.SpawnAllConnectedPlayers();
             }
 
             // 2. 3-second countdown

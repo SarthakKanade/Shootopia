@@ -3,177 +3,473 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UIElements;
+using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using TMPro;
 using Unity.Netcode;
+using Unity.Services.Multiplayer;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Controls the Waiting Room (Lobby) UI and flow.
-    /// Handles player list updates, per-player ready checks, room visibility toggling (host-only),
-    /// join code copying, and transitioning players to the gameplay scene (host-only).
+    /// Master UGUI Controller for the Waiting Room (Lobby) interface.
+    /// Operates as a centered modal window over the active map.
+    /// Supports both Free-For-All (all players unified, Sapphire/Blue theme)
+    /// and Team Modes (Alpha Sapphire Blue vs Omega Ruby Red) with interactive team switching,
+    /// ready status synchronization, warmup sandbox toggling with [TAB], and match start flow.
     /// </summary>
     public class WaitingRoomController : MonoBehaviour
     {
+        public static WaitingRoomController Instance { get; private set; }
         public static bool IsLobbyMenuOpen { get; private set; } = true;
 
         [Header("Scene Configuration")]
         [SerializeField] private string gameplaySceneName = "Map1";
-        [SerializeField] private UIDocument uiDocument;
+        public string GameplaySceneName => gameplaySceneName;
 
-        private VisualElement _root;
-        private VisualElement _modalCard;
-        private Label _lobbyRoleBadge;
-        private Button _btnLeaveLobbyTop;
-        private Label _roomNameLabel;
-        private Label _roomModeMapLabel;
-        private Label _roomPlayerCountLabel;
-        private Label _roomCodeDisplay;
-        private Button _btnCopyCode;
-        private Label _btnCopyCodeLabel;
-        private Label _rosterStatusSummary;
-        private ScrollView _playerListContainer;
-        private VisualElement _hostSettingsGroup;
-        private Toggle _visibilityToggle;
-        private Button _startMatchButton;
-        private Button _readyButton;
-        private Label _readyButtonLabel;
-        private Button _btnLeaveLobby;
-        private VisualElement _hudHint;
+        [Header("Centered Modal Window")]
+        [SerializeField] private GameObject lobbyModalDiv;
+        [SerializeField] private CanvasGroup lobbyCanvasGroup;
+        [SerializeField] private GameObject warmupHudBadge;
+        [SerializeField] private Button btnOpenLobbyFromWarmup;
+        [SerializeField] private Button btnMinimizeToWarmup;
+
+        [Header("Top Header Bar")]
+        [SerializeField] private TextMeshProUGUI roomNameLabel;
+        [SerializeField] private TextMeshProUGUI roomModeBadge;
+        [SerializeField] private TextMeshProUGUI roomMapLabel;
+        [SerializeField] private TextMeshProUGUI roomCodeDisplay;
+        [SerializeField] private Button btnCopyCode;
+        [SerializeField] private TextMeshProUGUI btnCopyCodeLabel;
+        [SerializeField] private TextMeshProUGUI roomPlayerCountLabel;
+        [SerializeField] private Button btnLeave;
+
+        [Header("Roster Panels")]
+        [SerializeField] private GameObject panelFFA;
+        [SerializeField] private Transform contentFFA;
+
+        [SerializeField] private GameObject panelTeams;
+        [SerializeField] private Transform contentAlpha;
+        [SerializeField] private Transform contentOmega;
+        [SerializeField] private TextMeshProUGUI labelAlphaCount;
+        [SerializeField] private TextMeshProUGUI labelOmegaCount;
+        [SerializeField] private Button btnSelectAlpha;
+        [SerializeField] private Button btnSelectOmega;
+        [SerializeField] private Image imgSelectAlphaBg;
+        [SerializeField] private Image imgSelectOmegaBg;
+
+        [Header("Player Card Prefab")]
+        [SerializeField] private GameObject playerCardPrefab;
+
+        [Header("Bottom Controls")]
+        [SerializeField] private TextMeshProUGUI rosterStatusSummary;
+        [SerializeField] private GameObject hostSettingsGroup;
+        [SerializeField] private Toggle togglePublicRoom;
+        [SerializeField] private Button btnReady;
+        [SerializeField] private TextMeshProUGUI btnReadyLabel;
+        [SerializeField] private Button btnStartMatch;
+
+        [Header("Audio & SFX")]
+        [SerializeField] private AudioClip startMatchClip;
+
+        // Colors
+        private static readonly Color ColorSapphire = new Color(0.18f, 0.72f, 1.0f, 1.0f); // #2EB8FF
+        private static readonly Color ColorRuby = new Color(1.0f, 0.28f, 0.42f, 1.0f);     // #FF476B
+        private static readonly Color ColorGold = new Color(1.0f, 0.85f, 0.35f, 1.0f);
+        private static readonly Color ColorGreen = new Color(0.25f, 0.95f, 0.55f, 1.0f);
+        private static readonly Color ColorMuted = new Color(0.65f, 0.7f, 0.8f, 0.75f);
 
         private bool _isLocalReady = false;
-        private bool _loadingGameplayScene = false;
-        private bool _menuOpen = true;
+        private int _localTeamIndex = 0; // 0 = Alpha, 1 = Omega
+        private bool _matchStarted = false;
         private Coroutine _copyFeedbackCoroutine;
+
+        private void Awake()
+        {
+            Instance = this;
+        }
 
         private void OnEnable()
         {
-            CursorManager.PushUnlock("WaitingRoom");
+            SetLobbyVisible(true);
 
-            if (uiDocument == null)
-            {
-                uiDocument = GetComponent<UIDocument>();
-            }
-
-            if (uiDocument == null)
-            {
-                Debug.LogError("[WaitingRoomController] No UIDocument found!");
-                return;
-            }
-
-            _root = uiDocument.rootVisualElement;
-            if (_root == null) return;
-
-            BindElements();
             RegisterCallbacks();
-
-            // Initial UI Refresh
             RefreshLobbyUI();
             LoadingScreenManager.HideOverlay();
-        }
-
-        private void OnDisable()
-        {
-            CursorManager.PopUnlock("WaitingRoom");
-            IsLobbyMenuOpen = false;
-
-            UnregisterCallbacks();
-        }
-
-        private void BindElements()
-        {
-            _modalCard = _root.Q<VisualElement>("LobbyModalCard");
-            _lobbyRoleBadge = _root.Q<Label>("LobbyRoleBadge");
-            _btnLeaveLobbyTop = _root.Q<Button>("BtnLeaveLobbyTop");
-            _roomNameLabel = _root.Q<Label>("RoomNameLabel");
-            _roomModeMapLabel = _root.Q<Label>("RoomModeMapLabel");
-            _roomPlayerCountLabel = _root.Q<Label>("RoomPlayerCountLabel");
-            _roomCodeDisplay = _root.Q<Label>("RoomCodeDisplay");
-            _btnCopyCode = _root.Q<Button>("BtnCopyCode");
-            _btnCopyCodeLabel = _root.Q<Label>("BtnCopyCodeLabel");
-            _rosterStatusSummary = _root.Q<Label>("RosterStatusSummary");
-            _playerListContainer = _root.Q<ScrollView>("PlayerList");
-            _hostSettingsGroup = _root.Q<VisualElement>("HostSettingsGroup");
-            _visibilityToggle = _root.Q<Toggle>("VisibilityToggle");
-            _startMatchButton = _root.Q<Button>("StartMatchButton");
-            _readyButton = _root.Q<Button>("ReadyButton");
-            _readyButtonLabel = _root.Q<Label>("ReadyButtonLabel");
-            _btnLeaveLobby = _root.Q<Button>("BtnLeaveLobby");
-            _hudHint = _root.Q<VisualElement>("LobbyHudHint");
-        }
-
-        private void RegisterCallbacks()
-        {
-            if (_btnLeaveLobbyTop != null) _btnLeaveLobbyTop.clicked += OnLeaveLobbyClicked;
-            if (_btnLeaveLobby != null) _btnLeaveLobby.clicked += OnLeaveLobbyClicked;
-            if (_btnCopyCode != null) _btnCopyCode.clicked += OnCopyCodeClicked;
-            if (_readyButton != null) _readyButton.clicked += OnReadyClicked;
-            if (_startMatchButton != null) _startMatchButton.clicked += OnStartMatchClicked;
-            if (_visibilityToggle != null) _visibilityToggle.RegisterValueChangedCallback(OnVisibilityToggled);
 
             if (SessionManager.Instance != null)
             {
+                SessionManager.Instance.OnSessionJoined.AddListener(RefreshLobbyUI);
+                SessionManager.Instance.OnSessionLeft.AddListener(OnSessionLeftLocally);
                 SessionManager.Instance.OnPlayerReadyChanged.AddListener(RefreshLobbyUI);
             }
         }
 
-        private void UnregisterCallbacks()
+        private void OnDisable()
         {
-            if (_btnLeaveLobbyTop != null) _btnLeaveLobbyTop.clicked -= OnLeaveLobbyClicked;
-            if (_btnLeaveLobby != null) _btnLeaveLobby.clicked -= OnLeaveLobbyClicked;
-            if (_btnCopyCode != null) _btnCopyCode.clicked -= OnCopyCodeClicked;
-            if (_readyButton != null) _readyButton.clicked -= OnReadyClicked;
-            if (_startMatchButton != null) _startMatchButton.clicked -= OnStartMatchClicked;
-            if (_visibilityToggle != null) _visibilityToggle.UnregisterValueChangedCallback(OnVisibilityToggled);
+            if (IsLobbyMenuOpen)
+            {
+                CursorManager.PopUnlock("WaitingRoom");
+                IsLobbyMenuOpen = false;
+            }
 
             if (SessionManager.Instance != null)
             {
+                SessionManager.Instance.OnSessionJoined.RemoveListener(RefreshLobbyUI);
+                SessionManager.Instance.OnSessionLeft.RemoveListener(OnSessionLeftLocally);
                 SessionManager.Instance.OnPlayerReadyChanged.RemoveListener(RefreshLobbyUI);
             }
+
+            UnregisterCallbacks();
         }
 
         private void Update()
         {
-            var keyboard = UnityEngine.InputSystem.Keyboard.current;
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
+            if (_matchStarted) return;
+
+            // [TAB] or [ESC] toggles between Lobby Menu and Warmup Gameplay
+            if (Keyboard.current != null)
             {
-                ToggleMenu(!_menuOpen);
+                if (Keyboard.current.tabKey.wasPressedThisFrame)
+                {
+                    ToggleLobbyVisibility();
+                }
+                else if (Keyboard.current.escapeKey.wasPressedThisFrame && IsLobbyMenuOpen)
+                {
+                    SetLobbyVisible(false);
+                }
             }
         }
 
-        private void ToggleMenu(bool open)
+        public void SetLobbyVisible(bool visible)
         {
-            _menuOpen = open;
-            IsLobbyMenuOpen = open;
-
-            if (_modalCard != null)
+            if (_matchStarted)
             {
-                _modalCard.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
+                visible = false;
             }
 
-            if (_root != null)
-            {
-                _root.style.backgroundColor = open ? new Color(0.02f, 0.04f, 0.07f, 0.82f) : new Color(0f, 0f, 0f, 0f);
-            }
+            IsLobbyMenuOpen = visible;
 
-            if (open)
+            if (visible)
             {
                 CursorManager.PushUnlock("WaitingRoom");
+                if (lobbyModalDiv != null) lobbyModalDiv.SetActive(true);
+                if (lobbyCanvasGroup != null)
+                {
+                    lobbyCanvasGroup.alpha = 1f;
+                    lobbyCanvasGroup.blocksRaycasts = true;
+                    lobbyCanvasGroup.interactable = true;
+                }
+                if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
             }
             else
             {
                 CursorManager.PopUnlock("WaitingRoom");
+                if (lobbyModalDiv != null) lobbyModalDiv.SetActive(false);
+                if (lobbyCanvasGroup != null)
+                {
+                    lobbyCanvasGroup.alpha = 0f;
+                    lobbyCanvasGroup.blocksRaycasts = false;
+                    lobbyCanvasGroup.interactable = false;
+                }
+                if (warmupHudBadge != null) warmupHudBadge.SetActive(true);
             }
         }
 
-        private void OnCopyCodeClicked()
+        public void ToggleLobbyVisibility()
         {
-            string code = SessionManager.Instance != null ? SessionManager.Instance.GetJoinCode() : string.Empty;
+            SetLobbyVisible(!IsLobbyMenuOpen);
+        }
+
+        private void RegisterCallbacks()
+        {
+            if (btnCopyCode != null) btnCopyCode.onClick.AddListener(CopyRoomCode);
+            if (btnReady != null) btnReady.onClick.AddListener(ToggleReady);
+            if (btnStartMatch != null) btnStartMatch.onClick.AddListener(StartMatchAsHost);
+            if (btnLeave != null) btnLeave.onClick.AddListener(LeaveLobby);
+            if (btnMinimizeToWarmup != null) btnMinimizeToWarmup.onClick.AddListener(() => SetLobbyVisible(false));
+            if (btnOpenLobbyFromWarmup != null) btnOpenLobbyFromWarmup.onClick.AddListener(() => SetLobbyVisible(true));
+            if (togglePublicRoom != null) togglePublicRoom.onValueChanged.AddListener(OnVisibilityToggled);
+            if (btnSelectAlpha != null) btnSelectAlpha.onClick.AddListener(() => SwitchTeam(0));
+            if (btnSelectOmega != null) btnSelectOmega.onClick.AddListener(() => SwitchTeam(1));
+        }
+
+        private void UnregisterCallbacks()
+        {
+            if (btnCopyCode != null) btnCopyCode.onClick.RemoveAllListeners();
+            if (btnReady != null) btnReady.onClick.RemoveAllListeners();
+            if (btnStartMatch != null) btnStartMatch.onClick.RemoveAllListeners();
+            if (btnLeave != null) btnLeave.onClick.RemoveAllListeners();
+            if (btnMinimizeToWarmup != null) btnMinimizeToWarmup.onClick.RemoveAllListeners();
+            if (btnOpenLobbyFromWarmup != null) btnOpenLobbyFromWarmup.onClick.RemoveAllListeners();
+            if (togglePublicRoom != null) togglePublicRoom.onValueChanged.RemoveAllListeners();
+            if (btnSelectAlpha != null) btnSelectAlpha.onClick.RemoveAllListeners();
+            if (btnSelectOmega != null) btnSelectOmega.onClick.RemoveAllListeners();
+        }
+
+        public void RefreshLobbyUI()
+        {
+            if (_matchStarted) return;
+
+            var session = SessionManager.Instance != null ? SessionManager.Instance.GetCurrentSession() : null;
+            bool isHost = session != null && session.IsHost;
+
+            // Room Name
+            if (roomNameLabel != null)
+            {
+                roomNameLabel.text = session != null ? session.Name.ToUpper() : "CUSTOM ARENA";
+            }
+
+            // Mode & Map
+            string mode = "FFA";
+            if (session != null && session.Properties != null && session.Properties.TryGetValue("GameMode", out var modeProp))
+            {
+                mode = modeProp.Value.ToUpper();
+            }
+
+            bool isTeamMode = (mode == "TDM" || mode.Contains("TEAM"));
+
+            if (roomModeBadge != null)
+            {
+                roomModeBadge.text = isTeamMode ? "TEAM DEATHMATCH" : "FREE-FOR-ALL";
+                roomModeBadge.color = isTeamMode ? ColorGold : ColorSapphire;
+            }
+
+            string map = SessionManager.Instance != null ? SessionManager.Instance.GetSessionMapName() : "SECTOR ALPHA";
+            if (roomMapLabel != null)
+            {
+                roomMapLabel.text = $"MAP: {map.ToUpper()}";
+            }
+
+            // Room Code
+            string code = SessionManager.Instance != null ? SessionManager.Instance.GetJoinCode() : "------";
+            if (string.IsNullOrEmpty(code)) code = "------";
+            if (roomCodeDisplay != null)
+            {
+                roomCodeDisplay.text = code;
+            }
+
+            // Player Count
+            int count = session != null && session.Players != null ? session.Players.Count : 1;
+            int max = session != null ? session.MaxPlayers : 8;
+            if (roomPlayerCountLabel != null)
+            {
+                roomPlayerCountLabel.text = $"{count}/{max} PLAYERS";
+            }
+
+            // Host Controls
+            if (hostSettingsGroup != null)
+            {
+                hostSettingsGroup.SetActive(isHost);
+            }
+
+            if (btnStartMatch != null)
+            {
+                btnStartMatch.gameObject.SetActive(isHost);
+                btnStartMatch.interactable = CanStartMatch(mode, count);
+            }
+
+            if (btnReady != null)
+            {
+                btnReady.gameObject.SetActive(!isHost);
+                if (btnReadyLabel != null)
+                {
+                    btnReadyLabel.text = _isLocalReady ? "UNREADY" : "READY";
+                }
+            }
+
+            // Toggle Panels based on Game Mode
+            if (panelFFA != null) panelFFA.SetActive(!isTeamMode);
+            if (panelTeams != null) panelTeams.SetActive(isTeamMode);
+
+            // Update Team Switch buttons interactivity
+            if (isTeamMode)
+            {
+                if (btnSelectAlpha != null) btnSelectAlpha.interactable = !_isLocalReady;
+                if (btnSelectOmega != null) btnSelectOmega.interactable = !_isLocalReady;
+
+                // Highlight active team button
+                if (imgSelectAlphaBg != null)
+                {
+                    imgSelectAlphaBg.color = (_localTeamIndex == 0) ? new Color(0.2f, 0.75f, 1f, 1f) : new Color(0.2f, 0.3f, 0.5f, 0.6f);
+                }
+                if (imgSelectOmegaBg != null)
+                {
+                    imgSelectOmegaBg.color = (_localTeamIndex == 1) ? new Color(1f, 0.3f, 0.45f, 1f) : new Color(0.5f, 0.2f, 0.3f, 0.6f);
+                }
+            }
+
+            PopulateRoster(session, isHost, isTeamMode);
+        }
+
+        private bool CanStartMatch(string mode, int playerCount)
+        {
+            // Allow the host to start as long as there is at least 1 player in the session
+            return playerCount >= 1;
+        }
+
+        private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
+        {
+            // Clear existing cards
+            if (contentFFA != null) foreach (Transform child in contentFFA) Destroy(child.gameObject);
+            if (contentAlpha != null) foreach (Transform child in contentAlpha) Destroy(child.gameObject);
+            if (contentOmega != null) foreach (Transform child in contentOmega) Destroy(child.gameObject);
+
+            var readyStates = SessionManager.Instance != null ? SessionManager.Instance.GetPlayerReadyStates() : null;
+            if (readyStates == null || readyStates.Count == 0) return;
+
+            string localPlayerId = (session != null && session.CurrentPlayer != null) ? session.CurrentPlayer.Id : "";
+            string hostId = session != null ? session.Host : "";
+            int readyCount = 0;
+            int alphaCount = 0;
+            int omegaCount = 0;
+
+            foreach (var p in readyStates)
+            {
+                bool isPlayerHost = (p.playerId == hostId);
+                bool isLocal = (p.playerId == localPlayerId);
+                bool isReady = (p.isReady || isPlayerHost);
+                if (isReady) readyCount++;
+
+                if (isLocal)
+                {
+                    _localTeamIndex = p.teamIndex;
+                }
+
+                Transform targetParent = contentFFA;
+                Color themeColor = ColorSapphire;
+
+                if (isTeamMode)
+                {
+                    if (p.teamIndex == 0)
+                    {
+                        targetParent = contentAlpha;
+                        themeColor = ColorSapphire;
+                        alphaCount++;
+                    }
+                    else
+                    {
+                        targetParent = contentOmega;
+                        themeColor = ColorRuby;
+                        omegaCount++;
+                    }
+                }
+
+                if (targetParent != null && playerCardPrefab != null)
+                {
+                    CreatePlayerCard(targetParent, p, isPlayerHost, isLocal, isReady, themeColor);
+                }
+            }
+
+            // Update Counts
+            if (labelAlphaCount != null) labelAlphaCount.text = $"({alphaCount})";
+            if (labelOmegaCount != null) labelOmegaCount.text = $"({omegaCount})";
+
+            if (rosterStatusSummary != null)
+            {
+                if (isHost)
+                {
+                    rosterStatusSummary.text = (readyCount >= readyStates.Count)
+                        ? "<color=#45F595>ALL PLAYERS READY — LAUNCH ARENA</color>"
+                        : $"<color=#FFD555>{readyCount}/{readyStates.Count} PLAYERS READY</color>";
+                }
+                else
+                {
+                    rosterStatusSummary.text = _isLocalReady
+                        ? "<color=#45F595>YOU ARE READY! WAITING FOR HOST...</color>"
+                        : "<color=#FFD555>CLICK READY TO CONFIRM</color>";
+                }
+            }
+        }
+
+        private void CreatePlayerCard(Transform parent, PlayerReadyState player, bool isHost, bool isLocal, bool isReady, Color nameColor)
+        {
+            var card = Instantiate(playerCardPrefab, parent);
+            var rect = card.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.sizeDelta = new Vector2(parent.GetComponent<RectTransform>() != null ? parent.GetComponent<RectTransform>().rect.width - 16 : 380, 56);
+            }
+
+            var texts = card.GetComponentsInChildren<TextMeshProUGUI>();
+            var images = card.GetComponentsInChildren<Image>();
+
+            string displayName = player.displayName;
+            if (isLocal) displayName += " <color=#FFD555>(YOU)</color>";
+
+            foreach (var t in texts)
+            {
+                if (t.gameObject.name == "PlayerName" || t.gameObject.name == "Name")
+                {
+                    t.text = displayName;
+                    t.color = nameColor;
+                }
+                else if (t.gameObject.name == "StatusText" || t.gameObject.name == "RoleBadge" || t.gameObject.name == "ReadyStatus")
+                {
+                    if (isHost)
+                    {
+                        t.text = "HOST";
+                        t.color = ColorGold;
+                    }
+                    else if (isReady)
+                    {
+                        t.text = "READY";
+                        t.color = ColorGreen;
+                    }
+                    else
+                    {
+                        t.text = "NOT READY";
+                        t.color = ColorMuted;
+                    }
+                }
+            }
+
+            foreach (var img in images)
+            {
+                if (img.gameObject.name.Contains("Crown") || img.gameObject.name.Contains("HostIcon"))
+                {
+                    img.gameObject.SetActive(isHost);
+                }
+                if (img.gameObject.name.Contains("ReadyBadge") || img.gameObject.name.Contains("StatusIndicator"))
+                {
+                    img.color = isReady ? ColorGreen : new Color(0.85f, 0.35f, 0.35f, 0.8f);
+                }
+                if (img.gameObject.name == "CardBorder" || img.gameObject.name == "BorderGlow")
+                {
+                    img.color = nameColor;
+                }
+            }
+        }
+
+        public async void SwitchTeam(int newTeamIndex)
+        {
+            if (_isLocalReady) return; // Locked when ready
+            _localTeamIndex = newTeamIndex;
+
+            if (SessionManager.Instance != null)
+            {
+                await SessionManager.Instance.SetPlayerTeam(newTeamIndex);
+            }
+
+            RefreshLobbyUI();
+        }
+
+        private async void ToggleReady()
+        {
+            _isLocalReady = !_isLocalReady;
+            if (SessionManager.Instance != null)
+            {
+                await SessionManager.Instance.SetReadyStatus(_isLocalReady);
+            }
+            RefreshLobbyUI();
+        }
+
+        private void CopyRoomCode()
+        {
+            string code = SessionManager.Instance != null ? SessionManager.Instance.GetJoinCode() : "";
             if (!string.IsNullOrEmpty(code))
             {
                 GUIUtility.systemCopyBuffer = code;
-                Debug.Log($"[WaitingRoomController] Copied room code '{code}' to clipboard.");
-
                 if (_copyFeedbackCoroutine != null) StopCoroutine(_copyFeedbackCoroutine);
                 _copyFeedbackCoroutine = StartCoroutine(CopyFeedbackRoutine());
             }
@@ -181,313 +477,74 @@ namespace Shootopia
 
         private IEnumerator CopyFeedbackRoutine()
         {
-            if (_btnCopyCodeLabel != null)
-            {
-                _btnCopyCodeLabel.text = "COPIED!";
-            }
-            yield return new WaitForSeconds(1.5f);
-            if (_btnCopyCodeLabel != null)
-            {
-                _btnCopyCodeLabel.text = "COPY CODE";
-            }
+            if (btnCopyCodeLabel != null) btnCopyCodeLabel.text = "COPIED!";
+            yield return new WaitForSecondsRealtime(1.8f);
+            if (btnCopyCodeLabel != null) btnCopyCodeLabel.text = "COPY";
         }
 
-        private async void OnReadyClicked()
+        private void OnSessionLeftLocally()
         {
-            _isLocalReady = !_isLocalReady;
-            Debug.Log($"[WaitingRoomController] Local player ready status toggled to: {_isLocalReady}");
-
-            if (_readyButtonLabel != null)
-            {
-                _readyButtonLabel.text = _isLocalReady ? "UNREADY" : "READY UP";
-            }
-
-            try
-            {
-                if (SessionManager.Instance != null)
-                {
-                    await SessionManager.Instance.SetReadyStatus(_isLocalReady);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[WaitingRoomController] SetReadyStatus failed: {ex.Message}");
-            }
+            SceneManager.LoadScene("MainMenu");
         }
 
-        private async void OnVisibilityToggled(ChangeEvent<bool> evt)
+        private async void OnVisibilityToggled(bool isPublic)
         {
-            if (SessionManager.Instance == null) return;
-            var currentSession = SessionManager.Instance.GetCurrentSession();
-            if (currentSession == null) return;
-
-            bool currentPublic = !currentSession.IsPrivate;
-            if (evt.newValue == currentPublic) return;
-
-            bool isPublic = evt.newValue;
-            Debug.Log($"[WaitingRoomController] Toggling session visibility. Public: {isPublic}");
-
-            try
-            {
-                await SessionManager.Instance.SetSessionVisibility(isPublic);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[WaitingRoomController] SetSessionVisibility failed: {ex.Message}");
-            }
-        }
-
-        private void OnStartMatchClicked()
-        {
-            if (_loadingGameplayScene) return;
-            _loadingGameplayScene = true;
-            Debug.Log("[WaitingRoomController] Host clicked Start Match.");
-            LoadingScreenManager.ShowOverlay("DEPLOYING TO ARENA...");
-
-            if (SessionManager.Instance != null)
-            {
-                SessionManager.Instance.StartMatch();
-            }
-            else
-            {
-                string targetScene = !string.IsNullOrEmpty(gameplaySceneName) ? gameplaySceneName : "Map1";
-                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-                {
-                    NetworkManager.Singleton.SceneManager.LoadScene(targetScene, LoadSceneMode.Single);
-                }
-                else
-                {
-                    LoadingScreenManager.LoadScene(targetScene, "DEPLOYING TO ARENA...");
-                }
-            }
-        }
-
-        private async void OnLeaveLobbyClicked()
-        {
-            Debug.Log("[WaitingRoomController] Leave Lobby clicked. Leaving session...");
-            LoadingScreenManager.ShowOverlay("LEAVING ROOM...");
-
             if (SessionManager.Instance != null)
             {
                 try
                 {
-                    await SessionManager.Instance.LeaveSession();
+                    await SessionManager.Instance.SetSessionVisibility(isPublic);
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[WaitingRoomController] Session leave note: {ex.Message}");
+                    Debug.LogWarning($"[WaitingRoomController] Visibility toggle note: {ex.Message}");
                 }
-            }
-            else
-            {
-                LoadingScreenManager.LoadScene("MainMenu", "RETURNING TO COMMAND BASE...");
             }
         }
 
-        public void RefreshLobbyUI()
+        private void StartMatchAsHost()
         {
-            if (_loadingGameplayScene) return;
-            if (SessionManager.Instance == null) return;
+            if (_matchStarted) return;
+            _matchStarted = true;
 
-            var currentSession = SessionManager.Instance.GetCurrentSession();
-            if (currentSession == null) return;
-
-            bool isHost = currentSession.IsHost;
-
-            // Check if match has started (for clients)
-            if (!isHost && currentSession.Properties != null && currentSession.Properties.TryGetValue("MatchStarted", out var matchStartedProp))
+            if (startMatchClip != null && AudioManager.Instance != null)
             {
-                if (matchStartedProp.Value == "true")
-                {
-                    if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening)
-                    {
-                        Debug.Log("[WaitingRoomController] MatchStarted is true. Loading gameplay scene locally...");
-                        _loadingGameplayScene = true;
-                        SceneManager.LoadScene(gameplaySceneName);
-                        return;
-                    }
-                    else
-                    {
-                        Debug.Log("[WaitingRoomController] MatchStarted is true. Waiting for NetworkSceneManager...");
-                    }
-                }
+                AudioManager.Instance.PlaySFX2D(startMatchClip, 1.0f);
             }
 
-            // Room Name & Details
-            if (_roomNameLabel != null)
+            // Trigger match start on NetworkedGameManager
+            if (NetworkedGameManager.Instance != null)
             {
-                _roomNameLabel.text = !string.IsNullOrEmpty(currentSession.Name) ? currentSession.Name : "Cyber Arena";
+                NetworkedGameManager.Instance.StartMatchFromLobby();
+            }
+        }
+
+        /// <summary>
+        /// Called when the match officially starts: closes Waiting Room UI completely.
+        /// </summary>
+        public void OnMatchStarted()
+        {
+            _matchStarted = true;
+            SetLobbyVisible(false);
+            if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
+            gameObject.SetActive(false);
+        }
+
+        private async void LeaveLobby()
+        {
+            LoadingScreenManager.ShowOverlay("RETURNING TO MAIN MENU...");
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+            {
+                try { NetworkManager.Singleton.Shutdown(); } catch { }
             }
 
-            string mode = "FFA";
-            if (currentSession.Properties != null && currentSession.Properties.TryGetValue("GameMode", out var modeProp) && !string.IsNullOrEmpty(modeProp.Value))
+            if (SessionManager.Instance != null)
             {
-                mode = modeProp.Value;
+                try { await SessionManager.Instance.LeaveSession(); } catch { }
             }
 
-            string map = SessionManager.Instance.GetSessionMapName();
-            if (_roomModeMapLabel != null)
-            {
-                _roomModeMapLabel.text = $"{mode.ToUpper()}  •  {map.ToUpper()}";
-            }
-
-            // Room Join Code
-            string joinCode = SessionManager.Instance.GetJoinCode();
-            if (_roomCodeDisplay != null)
-            {
-                _roomCodeDisplay.text = !string.IsNullOrEmpty(joinCode) ? joinCode : "------";
-            }
-
-            // Role Badge
-            if (_lobbyRoleBadge != null)
-            {
-                _lobbyRoleBadge.text = isHost ? "HOST" : "MEMBER";
-            }
-
-            // Host controls vs Client controls
-            if (_hostSettingsGroup != null)
-            {
-                _hostSettingsGroup.style.display = isHost ? DisplayStyle.Flex : DisplayStyle.None;
-            }
-
-            if (_visibilityToggle != null && isHost)
-            {
-                _visibilityToggle.value = !currentSession.IsPrivate;
-            }
-
-            if (_startMatchButton != null)
-            {
-                _startMatchButton.style.display = isHost ? DisplayStyle.Flex : DisplayStyle.None;
-            }
-
-            if (_readyButton != null)
-            {
-                _readyButton.style.display = !isHost ? DisplayStyle.Flex : DisplayStyle.None;
-                if (_readyButtonLabel != null)
-                {
-                    _readyButtonLabel.text = _isLocalReady ? "UNREADY" : "READY UP";
-                }
-            }
-
-            // Rebuild Player List
-            if (_playerListContainer != null)
-            {
-                _playerListContainer.Clear();
-
-                var playerStates = SessionManager.Instance.GetPlayerReadyStates();
-                int playerCount = playerStates.Count;
-                int maxPlayers = currentSession.MaxPlayers > 0 ? currentSession.MaxPlayers : 4;
-
-                if (_roomPlayerCountLabel != null)
-                {
-                    _roomPlayerCountLabel.text = $"{playerCount}/{maxPlayers}";
-                }
-
-                bool allClientsReady = true;
-
-                foreach (var state in playerStates)
-                {
-                    bool isPlayerHost = (state.playerId == currentSession.Host);
-
-                    var row = new VisualElement();
-                    row.style.flexDirection = FlexDirection.Row;
-                    row.style.justifyContent = Justify.SpaceBetween;
-                    row.style.alignItems = Align.Center;
-                    row.style.paddingTop = 8f;
-                    row.style.paddingBottom = 8f;
-                    row.style.paddingLeft = 12f;
-                    row.style.paddingRight = 12f;
-                    row.style.marginBottom = 6f;
-                    row.style.backgroundColor = new Color(0.07f, 0.11f, 0.18f, 0.85f);
-                    row.style.borderTopLeftRadius = 8f;
-                    row.style.borderTopRightRadius = 8f;
-                    row.style.borderBottomLeftRadius = 8f;
-                    row.style.borderBottomRightRadius = 8f;
-                    row.style.borderLeftWidth = 4f;
-                    row.style.borderLeftColor = (state.isReady || isPlayerHost)
-                        ? new Color(0.18f, 0.8f, 0.44f)
-                        : new Color(0.9f, 0.6f, 0.15f);
-
-                    // Left: Name & Host Badge
-                    var leftCol = new VisualElement();
-                    leftCol.style.flexDirection = FlexDirection.Row;
-                    leftCol.style.alignItems = Align.Center;
-
-                    var nameLabel = new Label(state.displayName);
-                    nameLabel.style.fontSize = 15f;
-                    nameLabel.style.color = Color.white;
-                    nameLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-                    leftCol.Add(nameLabel);
-
-                    if (isPlayerHost)
-                    {
-                        var hostTag = new Label("HOST");
-                        hostTag.style.fontSize = 10f;
-                        hostTag.style.marginLeft = 8f;
-                        hostTag.style.paddingTop = 2f;
-                        hostTag.style.paddingBottom = 2f;
-                        hostTag.style.paddingLeft = 6f;
-                        hostTag.style.paddingRight = 6f;
-                        hostTag.style.borderTopLeftRadius = 4f;
-                        hostTag.style.borderTopRightRadius = 4f;
-                        hostTag.style.borderBottomLeftRadius = 4f;
-                        hostTag.style.borderBottomRightRadius = 4f;
-                        hostTag.style.backgroundColor = new Color(0.9f, 0.7f, 0.1f, 0.25f);
-                        hostTag.style.color = new Color(1f, 0.85f, 0.2f);
-                        hostTag.style.unityFontStyleAndWeight = FontStyle.Bold;
-                        leftCol.Add(hostTag);
-                    }
-
-                    // Right: Ready Badge
-                    bool ready = state.isReady || isPlayerHost;
-                    var badge = new Label(ready ? "READY" : "WAITING");
-                    badge.style.fontSize = 11f;
-                    badge.style.paddingTop = 3f;
-                    badge.style.paddingBottom = 3f;
-                    badge.style.paddingLeft = 8f;
-                    badge.style.paddingRight = 8f;
-                    badge.style.borderTopLeftRadius = 4f;
-                    badge.style.borderTopRightRadius = 4f;
-                    badge.style.borderBottomLeftRadius = 4f;
-                    badge.style.borderBottomRightRadius = 4f;
-                    badge.style.unityFontStyleAndWeight = FontStyle.Bold;
-                    badge.style.color = ready ? new Color(0.18f, 0.8f, 0.44f) : new Color(0.9f, 0.6f, 0.15f);
-                    badge.style.backgroundColor = ready ? new Color(0.18f, 0.8f, 0.44f, 0.2f) : new Color(0.9f, 0.6f, 0.15f, 0.2f);
-
-                    row.Add(leftCol);
-                    row.Add(badge);
-                    _playerListContainer.Add(row);
-
-                    if (!isPlayerHost && !state.isReady)
-                    {
-                        allClientsReady = false;
-                    }
-                }
-
-                if (_rosterStatusSummary != null)
-                {
-                    if (playerCount <= 1)
-                    {
-                        _rosterStatusSummary.text = "SOLO LOBBY (READY TO DEPLOY)";
-                        _rosterStatusSummary.style.color = new Color(0.18f, 0.8f, 0.44f);
-                    }
-                    else if (allClientsReady)
-                    {
-                        _rosterStatusSummary.text = "ALL PLAYERS READY";
-                        _rosterStatusSummary.style.color = new Color(0.18f, 0.8f, 0.44f);
-                    }
-                    else
-                    {
-                        _rosterStatusSummary.text = "WAITING FOR READY";
-                        _rosterStatusSummary.style.color = new Color(0.9f, 0.6f, 0.15f);
-                    }
-                }
-
-                if (_startMatchButton != null && isHost)
-                {
-                    _startMatchButton.SetEnabled(allClientsReady || playerCount == 1);
-                }
-            }
+            SceneManager.LoadScene("MainMenu");
         }
     }
 }

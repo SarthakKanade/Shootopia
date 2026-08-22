@@ -57,22 +57,40 @@ namespace Shootopia
             livesRemaining.Value = _totalLives;
             _deathCount.Value = 0;
 
-            if (transform.position.y <= 1.0f && SpawnPointManager.Instance != null)
+        if (transform.position.y <= 1.0f && SpawnPointManager.Instance != null)
+        {
+            SpawnPointType spawnType = SpawnPointType.FFA;
+            if (GameModeBase.Instance is TDMMode tdm)
             {
-                SpawnPointType spawnType = SpawnPointType.FFA;
-                if (GameModeBase.Instance is TDMMode tdm)
-                {
-                    int team = tdm.GetPlayerTeam(OwnerClientId);
-                    if (team == 0) spawnType = SpawnPointType.TeamBlue;
-                    else if (team == 1) spawnType = SpawnPointType.TeamRed;
-                }
+                int team = tdm.GetPlayerTeam(OwnerClientId);
+                if (team == 0) spawnType = SpawnPointType.TeamBlue;
+                else if (team == 1) spawnType = SpawnPointType.TeamRed;
+            }
 
-                Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
-                if (sp != null)
+            Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
+            if (sp != null)
+            {
+                if (IsServer)
                 {
                     Teleport(sp.position);
                 }
+                else if (IsOwner)
+                {
+                    var cc = GetComponent<CharacterController>();
+                    if (cc != null) cc.enabled = false;
+                    transform.position = sp.position;
+                    transform.rotation = sp.rotation;
+                    if (cc != null) cc.enabled = true;
+
+                    var motor = GetComponent<CharacterMotor>();
+                    if (motor != null)
+                    {
+                        motor.VerticalVelocity = 0f;
+                        motor.IsInLava = false;
+                    }
+                }
             }
+        }
         }
 
         // Initial UI update
@@ -129,6 +147,16 @@ namespace Shootopia
     private void TakeDamageServerRpc(float amount, DamageType type, string weaponName, ulong attackerClientId, RpcParams rpcParams = default)
     {
         if (!IsServer) return;
+
+        // Ignore damage when match is not active (Warmup Lobby)
+        if (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.ActiveGameMode != null && !NetworkedGameManager.Instance.ActiveGameMode.MatchActive.Value)
+        {
+            return;
+        }
+        if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
+        {
+            return;
+        }
 
         if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "WaitingRoom")
         {
@@ -259,6 +287,24 @@ namespace Shootopia
 
         // Refill health
         _currentHp.Value = _maxHp;
+
+        // Server-side repositioning
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        transform.position = spawnPos;
+        if (cc != null) cc.enabled = true;
+
+        var motor = GetComponent<CharacterMotor>();
+        if (motor != null)
+        {
+            motor.VerticalVelocity = 0f;
+            motor.IsInLava = false;
+        }
+
+        var input = GetComponent<PlayerInputRouter>();
+        if (input != null) input.DisableControls = false;
+
+        RemoveBurnEffect();
 
         // Re-enable and reposition on all clients
         RespawnClientRpc(spawnPos);
@@ -474,6 +520,11 @@ namespace Shootopia
     public void Teleport(Vector3 position)
     {
         if (!IsServer) return;
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        transform.position = position;
+        if (cc != null) cc.enabled = true;
+
         TeleportClientRpc(position);
     }
 
@@ -484,6 +535,80 @@ namespace Shootopia
         if (cc != null) cc.enabled = false;
         transform.position = position;
         if (cc != null) cc.enabled = true;
+
+        var input = GetComponent<PlayerInputRouter>();
+        if (input != null) input.DisableControls = false;
+
+        var motor = GetComponent<CharacterMotor>();
+        if (motor != null)
+        {
+            motor.VerticalVelocity = 0f;
+            motor.IsInLava = false;
+        }
+        RemoveBurnEffect();
+    }
+
+    public void ResetStateForMatch(Vector3 position)
+    {
+        if (!IsServer) return;
+        _isDead = false;
+        _currentHp.Value = _maxHp;
+
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        transform.position = position;
+        if (cc != null) cc.enabled = true;
+
+        var motor = GetComponent<CharacterMotor>();
+        if (motor != null)
+        {
+            motor.VerticalVelocity = 0f;
+            motor.IsInLava = false;
+        }
+
+        var input = GetComponent<PlayerInputRouter>();
+        if (input != null) input.DisableControls = false;
+
+        RemoveBurnEffect();
+
+        ResetPlayerClientRpc(position);
+    }
+
+    [ClientRpc]
+    private void ResetPlayerClientRpc(Vector3 position)
+    {
+        _isDead = false;
+
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        transform.position = position;
+        if (cc != null) cc.enabled = true;
+
+        SetPlayerControlsEnabled(true);
+        SetPlayerVisibility(true);
+        RemoveBurnEffect();
+
+        var input = GetComponent<PlayerInputRouter>();
+        if (input != null) input.DisableControls = false;
+
+        var motor = GetComponent<CharacterMotor>();
+        if (motor != null)
+        {
+            motor.VerticalVelocity = 0f;
+            motor.IsInLava = false;
+        }
+
+        Animator anim = GetComponentInChildren<Animator>(true);
+        if (anim != null)
+        {
+            anim.ResetTrigger("Die");
+            anim.CrossFade("Locomotion", 0.1f, 0);
+            if (anim.layerCount > 1)
+            {
+                anim.CrossFade("Empty", 0.1f, 1);
+                anim.SetLayerWeight(1, 1f);
+            }
+        }
     }
 
     private Coroutine _freezeRoutine;

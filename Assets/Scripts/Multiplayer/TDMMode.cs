@@ -62,7 +62,7 @@ namespace Shootopia
                             var health = client.PlayerObject.GetComponent<PlayerHealth>();
                             if (health != null)
                             {
-                                health.Teleport(sp.position);
+                                health.ResetStateForMatch(sp.position);
                             }
                         }
                     }

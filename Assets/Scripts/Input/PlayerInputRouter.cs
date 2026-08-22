@@ -50,6 +50,16 @@ namespace Shootopia
 
         private void UpdateCursorLock()
         {
+            if (CursorManager.IsCursorUnlocked || WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused)
+            {
+                if (Cursor.lockState != CursorLockMode.None)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
+                return;
+            }
+
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             bool shouldLock = lockCursor && (activeScene == "GameScene" || activeScene == "Map1" || activeScene == "Shootopia_Sandbox");
 
@@ -80,19 +90,10 @@ namespace Shootopia
             var intent = new PlayerInputIntent();
 
             // Gating input: freeze when lobby menu is open or match is in pre-match countdown hold
-            bool isFrozen = false;
-            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-
-            if (activeSceneName == "WaitingRoom")
+            bool isFrozen = WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused;
+            if (GameModeBase.Instance != null && GameModeBase.Instance.PreMatchCountdown.Value > 0)
             {
-                isFrozen = WaitingRoomController.IsLobbyMenuOpen;
-            }
-            else if (activeSceneName == "GameScene" || activeSceneName == "Map1")
-            {
-                if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
-                {
-                    isFrozen = true;
-                }
+                isFrozen = true;
             }
 
             if (isFrozen || DisableControls)

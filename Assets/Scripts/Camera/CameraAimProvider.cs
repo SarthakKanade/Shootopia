@@ -46,19 +46,36 @@ namespace Shootopia
         private void Awake()
         {
             if (renderCamera == null) renderCamera = GetComponent<Camera>();
+            if (renderCamera == null) renderCamera = Camera.main;
         }
 
         private void LateUpdate()
         {
-            if (renderCamera == null) return;
+            if (renderCamera == null)
+            {
+                renderCamera = Camera.main;
+                if (renderCamera == null) return;
+            }
 
             // Reticle = centre of screen
             Ray ray = renderCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
 
             if (Physics.Raycast(ray, out RaycastHit hit, aimRayDistance, aimMask, QueryTriggerInteraction.Ignore))
-                _aimPoint = hit.point;
+            {
+                // Ensure hit is not on the player or behind the player's plane
+                if (player != null && (hit.transform == player || hit.transform.IsChildOf(player) || Vector3.Dot(hit.point - player.position, ray.direction) < 0f))
+                {
+                    _aimPoint = ray.origin + ray.direction * aimRayDistance;
+                }
+                else
+                {
+                    _aimPoint = hit.point;
+                }
+            }
             else
+            {
                 _aimPoint = ray.origin + ray.direction * aimRayDistance;
+            }
         }
     }
 }

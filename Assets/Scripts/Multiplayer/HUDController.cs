@@ -1,47 +1,54 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
+using UnityEngine.UI;
+using TMPro;
 using Unity.Netcode;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Controls the gameplay HUD using UI Toolkit.
-    /// Manages player health bar, equipped weapon/ammo display, kill feed notifications, match countdown timer, and scoreboard.
-    /// Prefixes all logs with [HUDController].
+    /// Master UGUI Controller for the In-Game Gameplay HUD.
+    /// Manages player health bar, equipped weapon/ammo display, velocity gauge,
+    /// animated kill feed notifications, match countdown timer, hit markers, and damage flash.
     /// </summary>
     public class HUDController : MonoBehaviour
     {
-        [Header("UI Reference")]
-        [SerializeField] private UIDocument uiDocument;
+        [Header("Match Header & Timer")]
+        [SerializeField] private TextMeshProUGUI timerText;
+        [SerializeField] private Transform scoreContainer;
+        [SerializeField] private TextMeshProUGUI placementText;
 
-        [Header("Combat Feel / Juice")]
-        [SerializeField] private AudioClip _hitSound;
-        [SerializeField] private AudioClip _killSound;
+        [Header("Player Health & Velocity")]
+        [SerializeField] private Image healthFill;
+        [SerializeField] private TextMeshProUGUI healthText;
+        [SerializeField] private Image velocityFill;
+        [SerializeField] private TextMeshProUGUI velocityStreakText;
 
-        private VisualElement _root;
-        
-        private Label _timerText;
-        private VisualElement _scoreContainer;
-        private VisualElement _killFeedContainer;
-        private Label _placementText;
-        
-        private VisualElement _healthFill;
-        private Label _healthText;
-        
-        private Label _weaponCategory;
-        private Label _weaponName;
-        private Label _ammoText;
-        private VisualElement _cooldownBar;
-        private VisualElement _cooldownFill;
+        [Header("Weapon & Ammo Display")]
+        [SerializeField] private TextMeshProUGUI weaponCategoryText;
+        [SerializeField] private TextMeshProUGUI weaponNameText;
+        [SerializeField] private TextMeshProUGUI ammoText;
+        [SerializeField] private GameObject cooldownBarRoot;
+        [SerializeField] private Image cooldownFill;
 
-        private VisualElement _damageFlash;
-        private VisualElement _hitMarker;
-        private readonly List<VisualElement> _hitMarkerTicks = new List<VisualElement>();
-        private Label _killConfirmation;
+        [Header("Kill Feed & System Feed")]
+        [SerializeField] private Transform killFeedContainer;
+        [SerializeField] private GameObject killFeedEntryPrefab;
+
+        [Header("Combat Feel & Juice")]
+        [SerializeField] private CanvasGroup damageFlashGroup;
+        [SerializeField] private GameObject hitMarkerRoot;
+        [SerializeField] private Image[] hitMarkerTicks;
+        [SerializeField] private GameObject killConfirmationRoot;
+        [SerializeField] private CanvasGroup killConfirmationGroup;
+        [SerializeField] private TextMeshProUGUI killConfirmationText;
+
+        [Header("Combat Audio")]
+        [SerializeField] private AudioClip hitSound;
+        [SerializeField] private AudioClip killSound;
+
         private AudioSource _audioSource;
-
         private Coroutine _damageFlashRoutine;
         private Coroutine _hitMarkerRoutine;
         private Coroutine _killConfirmationRoutine;
@@ -54,70 +61,25 @@ namespace Shootopia
         {
             LoadingScreenManager.HideOverlay();
 
-            if (uiDocument == null)
-            {
-                uiDocument = GetComponent<UIDocument>();
-            }
-
-            if (uiDocument == null)
-            {
-                Debug.LogError("[HUDController] No UIDocument found!");
-                return;
-            }
-
-            _root = uiDocument.rootVisualElement;
-            if (_root == null) return;
-
-            // Bind UI Elements
-            _timerText = _root.Q<Label>("TimerText");
-            _scoreContainer = _root.Q<VisualElement>("ScoreContainer");
-            _killFeedContainer = _root.Q<VisualElement>("KillFeed");
-            _placementText = _root.Q<Label>("PlacementText");
-            
-            _healthFill = _root.Q<VisualElement>("HealthFill");
-            _healthText = _root.Q<Label>("HealthText");
-            
-            _weaponCategory = _root.Q<Label>("WeaponCategory");
-            _weaponName = _root.Q<Label>("WeaponName");
-            _ammoText = _root.Q<Label>("AmmoText");
-            _cooldownBar = _root.Q<VisualElement>("CooldownBar");
-            _cooldownFill = _root.Q<VisualElement>("CooldownFill");
-
-            // Bind Combat Feel Elements
-            _damageFlash = _root.Q<VisualElement>("DamageFlash");
-            _hitMarker = _root.Q<VisualElement>("HitMarker");
-            _killConfirmation = _root.Q<Label>("KillConfirmation");
-
-            _hitMarkerTicks.Clear();
-            if (_hitMarker != null)
-            {
-                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerT"));
-                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerB"));
-                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerL"));
-                _hitMarkerTicks.Add(_root.Q<VisualElement>("HitMarkerR"));
-            }
-
-            // Setup local audio source for 2D feedback sound
             _audioSource = GetComponent<AudioSource>();
             if (_audioSource == null)
             {
                 _audioSource = gameObject.AddComponent<AudioSource>();
             }
-            _audioSource.spatialBlend = 0f; // Force 2D sound
+            _audioSource.spatialBlend = 0f;
 
-            // Subscribe to static event for kill feeds & system messages
-            GameModeBase.OnKillFeedReceived += AddKillFeedEntry;
+            // Subscribe to static combat events
+            GameModeBase.OnKillFeedReceived += OnKillFeedEvent;
             GameModeBase.OnSystemMessageReceived += AddSystemFeedEntry;
-            PlayerHealth.OnLocalPlayerHitConfirmed += ShowHitMarker;
-            
-            Debug.Log("[HUDController] Initialized successfully.");
+            PlayerHealth.OnLocalPlayerHitConfirmed += OnPlayerHitConfirmed;
         }
 
         private void OnDisable()
         {
-            GameModeBase.OnKillFeedReceived -= AddKillFeedEntry;
+            GameModeBase.OnKillFeedReceived -= OnKillFeedEvent;
             GameModeBase.OnSystemMessageReceived -= AddSystemFeedEntry;
-            PlayerHealth.OnLocalPlayerHitConfirmed -= ShowHitMarker;
+            PlayerHealth.OnLocalPlayerHitConfirmed -= OnPlayerHitConfirmed;
+
             CleanUpLocalPlayerReferences();
 
             if (_damageFlashRoutine != null) { StopCoroutine(_damageFlashRoutine); _damageFlashRoutine = null; }
@@ -182,18 +144,19 @@ namespace Shootopia
             if (_localHealth == null) return;
             float maxHp = _localHealth.GetMaxHp();
             if (maxHp <= 0) maxHp = 100f;
-            float percentage = Mathf.Clamp01(newValue / maxHp) * 100f;
+            float percentage = Mathf.Clamp01(newValue / maxHp);
 
-            if (_healthFill != null)
+            if (healthFill != null)
             {
-                _healthFill.style.width = new Length(percentage, LengthUnit.Percent);
-            }
-            if (_healthText != null)
-            {
-                _healthText.text = $"{Mathf.RoundToInt(newValue)} / {Mathf.RoundToInt(maxHp)}";
+                healthFill.fillAmount = percentage;
             }
 
-            // Trigger screen flash when taking damage
+            if (healthText != null)
+            {
+                healthText.text = $"{Mathf.RoundToInt(newValue)} / {Mathf.RoundToInt(maxHp)}";
+            }
+
+            // Damage flash vignette
             if (newValue < previousValue && previousValue > 0f)
             {
                 float damageTaken = previousValue - newValue;
@@ -205,429 +168,261 @@ namespace Shootopia
         {
             var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
 
-            // Update match countdown timer
             if (activeMode != null && activeMode.IsInProgress)
             {
                 float timeRemaining = activeMode.TimeRemaining;
                 int minutes = Mathf.FloorToInt(timeRemaining / 60f);
                 int seconds = Mathf.FloorToInt(timeRemaining % 60f);
 
-                if (_timerText != null)
+                if (timerText != null)
                 {
-                    _timerText.text = $"{minutes:00}:{seconds:00}";
-
-                    // Simple low time warning pulsing
-                    if (timeRemaining <= 10f && timeRemaining > 0f)
-                    {
-                        _timerText.style.color = (Mathf.FloorToInt(timeRemaining * 2f) % 2 == 0) ? Color.red : Color.white;
-                    }
-                    else
-                    {
-                        _timerText.style.color = Color.white;
-                    }
+                    timerText.text = $"{minutes:00}:{seconds:00}";
+                    timerText.color = (timeRemaining <= 10f && timeRemaining > 0f && Mathf.FloorToInt(timeRemaining * 2f) % 2 == 0)
+                        ? new Color(1f, 0.3f, 0.3f)
+                        : Color.white;
                 }
             }
             else
             {
-                if (_timerText != null)
+                if (timerText != null)
                 {
-                    _timerText.text = "00:00";
-                    _timerText.style.color = Color.white;
-                }
-            }
-
-            // Update mode-agnostic score list
-            if (_scoreContainer != null)
-            {
-                _scoreContainer.Clear();
-                if (activeMode is IScoreProvider scoreProvider)
-                {
-                    var scoreData = scoreProvider.GetScoreDisplayData();
-                    if (scoreData.Entries != null)
-                    {
-                        for (int i = 0; i < scoreData.Entries.Count; i++)
-                        {
-                            var entry = scoreData.Entries[i];
-
-                            var entryLabel = new Label($"{entry.Label}: {entry.Value}");
-                            entryLabel.style.fontSize = 13f;
-                            entryLabel.style.color = Color.white;
-                            entryLabel.style.marginRight = 12f;
-                            entryLabel.style.marginLeft = 12f;
-                            entryLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-
-                            // Dynamic coloring based on label
-                            if (entry.Label.Equals("You", System.StringComparison.OrdinalIgnoreCase))
-                            {
-                                entryLabel.style.color = new Color(0.18f, 0.8f, 0.44f); // light green
-                            }
-                            else if (entry.Label.StartsWith("Leader", System.StringComparison.OrdinalIgnoreCase))
-                            {
-                                entryLabel.style.color = new Color(0.95f, 0.77f, 0.06f); // golden yellow
-                            }
-                            else if (entry.Label.Equals("Blue", System.StringComparison.OrdinalIgnoreCase))
-                            {
-                                entryLabel.style.color = new Color(0.2f, 0.6f, 1f); // Blue
-                            }
-                            else if (entry.Label.Equals("Red", System.StringComparison.OrdinalIgnoreCase))
-                            {
-                                entryLabel.style.color = new Color(1f, 0.3f, 0.3f); // Red
-                            }
-
-                            _scoreContainer.Add(entryLabel);
-
-                            if (i < scoreData.Entries.Count - 1)
-                            {
-                                var divider = new Label("|");
-                                divider.style.fontSize = 13f;
-                                divider.style.color = new Color(0.4f, 0.4f, 0.4f);
-                                _scoreContainer.Add(divider);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Update FFA Placement Indicator
-            if (GameModeBase.Instance is FFAMode ffa)
-            {
-                if (NetworkManager.Singleton != null)
-                {
-                    ulong localId = NetworkManager.Singleton.LocalClientId;
-                    int rank = ffa.GetPlayerRank(localId);
-                    string suffix = "th";
-                    if (rank == 1) suffix = "st";
-                    else if (rank == 2) suffix = "nd";
-                    else if (rank == 3) suffix = "rd";
-
-                    if (_placementText != null)
-                    {
-                        _placementText.text = $"YOU: {rank}{suffix} PLACE";
-                        _placementText.style.display = DisplayStyle.Flex;
-                    }
-                }
-            }
-            else
-            {
-                if (_placementText != null)
-                {
-                    _placementText.style.display = DisplayStyle.None;
+                    timerText.text = "00:00";
+                    timerText.color = Color.white;
                 }
             }
         }
 
         private void UpdateWeaponUI()
         {
-            if (_localWeaponController == null || !_localWeaponController.IsArmed || _localWeaponController.CurrentAttach == null)
+            if (_localWeaponController == null || _localWeaponController.CurrentAttach == null)
             {
-                if (_weaponName != null) _weaponName.text = "FISTS";
-                if (_weaponCategory != null) _weaponCategory.text = "DEFAULT";
-                if (_ammoText != null) _ammoText.text = "∞";
-                if (_cooldownBar != null) _cooldownBar.style.display = DisplayStyle.None;
+                if (weaponCategoryText != null) weaponCategoryText.text = "PISTOL";
+                if (weaponNameText != null) weaponNameText.text = "SIDEARM";
+                if (ammoText != null) ammoText.text = "∞";
+                if (cooldownBarRoot != null) cooldownBarRoot.SetActive(false);
                 return;
             }
 
             var attach = _localWeaponController.CurrentAttach;
-            var data = attach.gameplayData;
-            if (data == null) return;
+            var weaponData = attach.gameplayData;
 
-            if (_weaponName != null) _weaponName.text = data.weaponName.ToUpper();
-            if (_weaponCategory != null) _weaponCategory.text = data.category.ToString().ToUpper();
-
-            bool isProjectile = data.projectilePrefab != null;
-
-            if (_cooldownBar != null && _cooldownFill != null)
+            if (weaponCategoryText != null)
             {
-                if (isProjectile)
+                weaponCategoryText.text = weaponData != null ? weaponData.category.ToString().ToUpper() : "WEAPON";
+            }
+
+            if (weaponNameText != null)
+            {
+                weaponNameText.text = weaponData != null ? weaponData.weaponName.ToUpper() : attach.name.ToUpper();
+            }
+
+            if (ammoText != null)
+            {
+                if (weaponData != null && weaponData.durabilityType == DurabilityType.Ammo)
                 {
-                    if (data.durabilityType == DurabilityType.Ammo)
-                    {
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = $"{_localWeaponController.CurrentAmmo} / {data.MagazineSize}";
-                        }
-                        _cooldownBar.style.display = DisplayStyle.None;
-                    }
-                    else if (data.durabilityType == DurabilityType.Uses)
-                    {
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = $"{_localWeaponController.CurrentUses} / {data.maxUses}";
-                        }
-                        _cooldownBar.style.display = DisplayStyle.None;
-                    }
-                    else if (data.durabilityType == DurabilityType.TimeBased)
-                    {
-                        float remaining = _localWeaponController.TimeRemaining;
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = $"{remaining:F1}s";
-                        }
-                        _cooldownBar.style.display = DisplayStyle.Flex;
-                        float pct = Mathf.Clamp01(remaining / data.weaponDuration) * 100f;
-                        _cooldownFill.style.width = new Length(pct, LengthUnit.Percent);
-                    }
-                    else
-                    {
-                        // Fallback cooldown / ready status based on fire rate
-                        _cooldownBar.style.display = DisplayStyle.Flex;
-                        float pct = Mathf.Clamp01(_localWeaponController.TimeSinceLastShot / data.FireRate) * 100f;
-                        _cooldownFill.style.width = new Length(pct, LengthUnit.Percent);
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = pct >= 100f ? "READY" : "COOLDOWN";
-                        }
-                    }
+                    ammoText.text = $"{_localWeaponController.CurrentAmmo} / {weaponData.MagazineSize}";
+                }
+                else if (weaponData != null && weaponData.durabilityType == DurabilityType.Uses)
+                {
+                    ammoText.text = $"{_localWeaponController.CurrentUses} USES";
+                }
+                else if (weaponData != null && weaponData.durabilityType == DurabilityType.TimeBased)
+                {
+                    ammoText.text = $"{_localWeaponController.TimeRemaining:0.0}s";
                 }
                 else
                 {
-                    // Hitscan weapons
-                    _cooldownBar.style.display = DisplayStyle.None;
-
-                    if (data.durabilityType == DurabilityType.Ammo)
-                    {
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = $"{_localWeaponController.CurrentAmmo} / {data.MagazineSize}";
-                        }
-                    }
-                    else if (data.durabilityType == DurabilityType.Uses)
-                    {
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = $"{_localWeaponController.CurrentUses} / {data.maxUses}";
-                        }
-                    }
-                    else if (data.durabilityType == DurabilityType.TimeBased)
-                    {
-                        float remaining = _localWeaponController.TimeRemaining;
-                        if (_ammoText != null)
-                        {
-                            _ammoText.text = $"{remaining:F1}s";
-                        }
-                        _cooldownBar.style.display = DisplayStyle.Flex;
-                        float pct = Mathf.Clamp01(remaining / data.weaponDuration) * 100f;
-                        _cooldownFill.style.width = new Length(pct, LengthUnit.Percent);
-                    }
+                    ammoText.text = "∞";
                 }
             }
         }
 
-        private void AddKillFeedEntry(string killerName, string victimName, string weaponName, ulong killerClientId, ulong victimClientId)
+        // ──────────────────────── COMBAT FEEL / JUICE ────────────────────────
+
+        public void TriggerDamageFlash(float damage)
         {
-            if (_killFeedContainer == null) return;
-
-            var entry = new VisualElement();
-            entry.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f, 0.85f);
-            entry.style.borderTopLeftRadius = 4f;
-            entry.style.borderTopRightRadius = 4f;
-            entry.style.borderBottomLeftRadius = 4f;
-            entry.style.borderBottomRightRadius = 4f;
-            entry.style.borderLeftWidth = 3f;
-            entry.style.borderLeftColor = new Color(0.9f, 0.3f, 0.23f);
-            entry.style.paddingTop = 4f;
-            entry.style.paddingBottom = 4f;
-            entry.style.paddingLeft = 10f;
-            entry.style.paddingRight = 10f;
-            entry.style.marginBottom = 6f;
-            entry.style.flexDirection = FlexDirection.Row;
-
-            var textLabel = new Label($"{killerName} killed {victimName} with {weaponName}");
-            textLabel.style.color = Color.white;
-            textLabel.style.fontSize = 12f;
-            entry.Add(textLabel);
-
-            _killFeedContainer.Add(entry);
-
-            // Cap count
-            while (_killFeedContainer.childCount > 5)
-            {
-                _killFeedContainer.RemoveAt(0);
-            }
-
-            // Life timer
-            StartCoroutine(FadeOutAndRemoveEntry(entry));
-
-            // Check if local player is the killer
-            if (NetworkManager.Singleton != null && killerClientId == NetworkManager.Singleton.LocalClientId && killerClientId != victimClientId)
-            {
-                ShowKillConfirmation(victimName);
-            }
-        }
-
-        private void AddSystemFeedEntry(string message)
-        {
-            if (_killFeedContainer == null) return;
-
-            var entry = new VisualElement();
-            entry.style.backgroundColor = new Color(0.15f, 0.12f, 0.05f, 0.85f);
-            entry.style.borderTopLeftRadius = 4f;
-            entry.style.borderTopRightRadius = 4f;
-            entry.style.borderBottomLeftRadius = 4f;
-            entry.style.borderBottomRightRadius = 4f;
-            entry.style.borderLeftWidth = 3f;
-            entry.style.borderLeftColor = new Color(0.95f, 0.75f, 0.2f); // Amber / Yellow for system logs
-            entry.style.paddingTop = 4f;
-            entry.style.paddingBottom = 4f;
-            entry.style.paddingLeft = 10f;
-            entry.style.paddingRight = 10f;
-            entry.style.marginBottom = 6f;
-            entry.style.flexDirection = FlexDirection.Row;
-
-            var textLabel = new Label(message);
-            textLabel.style.color = new Color(0.95f, 0.95f, 0.8f);
-            textLabel.style.fontSize = 12f;
-            textLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
-            entry.Add(textLabel);
-
-            _killFeedContainer.Add(entry);
-
-            while (_killFeedContainer.childCount > 5)
-            {
-                _killFeedContainer.RemoveAt(0);
-            }
-
-            StartCoroutine(FadeOutAndRemoveEntry(entry));
-        }
-
-        private IEnumerator FadeOutAndRemoveEntry(VisualElement entry)
-        {
-            yield return new WaitForSeconds(3.5f);
-
-            float duration = 0.5f;
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                if (entry == null || entry.parent == null) yield break;
-                elapsed += Time.deltaTime;
-                entry.style.opacity = Mathf.Lerp(1f, 0f, elapsed / duration);
-                yield return null;
-            }
-
-            if (entry != null && entry.parent != null)
-            {
-                _killFeedContainer.Remove(entry);
-            }
-        }
-
-        // --- Combat Feel Animations [CombatFeedback] ---
-
-        private void TriggerDamageFlash(float damage)
-        {
-            if (_damageFlash == null) return;
+            if (damageFlashGroup == null) return;
             if (_damageFlashRoutine != null) StopCoroutine(_damageFlashRoutine);
-            _damageFlashRoutine = StartCoroutine(DamageFlashSequence(damage));
+            _damageFlashRoutine = StartCoroutine(DamageFlashRoutine(Mathf.Clamp01(damage / 50f)));
         }
 
-        private IEnumerator DamageFlashSequence(float damage)
+        private IEnumerator DamageFlashRoutine(float intensity)
         {
-            float maxHp = _localHealth != null ? _localHealth.GetMaxHp() : 100f;
-            float ratio = Mathf.Clamp01(damage / maxHp);
-            
-            // Intensity proportional to damage taken (min 0.3, max 0.8)
-            float startAlpha = Mathf.Lerp(0.3f, 0.8f, ratio);
-            float duration = Mathf.Lerp(0.2f, 0.5f, ratio);
-            
+            damageFlashGroup.alpha = Mathf.Lerp(0.35f, 0.85f, intensity);
+            float duration = 0.35f;
             float elapsed = 0f;
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                float alpha = Mathf.Lerp(startAlpha, 0f, elapsed / duration);
-                Color c = new Color(0.9f, 0.3f, 0.23f, alpha);
-                _damageFlash.style.borderLeftColor = c;
-                _damageFlash.style.borderRightColor = c;
-                _damageFlash.style.borderTopColor = c;
-                _damageFlash.style.borderBottomColor = c;
-                _damageFlash.style.backgroundColor = new Color(0.9f, 0.3f, 0.23f, alpha * 0.25f);
+                damageFlashGroup.alpha = Mathf.Lerp(intensity, 0f, elapsed / duration);
                 yield return null;
             }
-            
-            Color transparent = new Color(0.9f, 0.3f, 0.23f, 0f);
-            _damageFlash.style.borderLeftColor = transparent;
-            _damageFlash.style.borderRightColor = transparent;
-            _damageFlash.style.borderTopColor = transparent;
-            _damageFlash.style.borderBottomColor = transparent;
-            _damageFlash.style.backgroundColor = transparent;
+            damageFlashGroup.alpha = 0f;
         }
 
-        private void ShowHitMarker(bool isKill)
+        private void OnPlayerHitConfirmed(bool isKill)
         {
-            if (_hitMarker == null) return;
+            ShowHitMarker(isKill);
+        }
+
+        public void ShowHitMarker(bool isKill)
+        {
+            if (hitSound != null && _audioSource != null)
+            {
+                _audioSource.PlayOneShot(hitSound, 0.7f);
+            }
+
+            if (hitMarkerRoot == null) return;
             if (_hitMarkerRoutine != null) StopCoroutine(_hitMarkerRoutine);
-            _hitMarkerRoutine = StartCoroutine(HitMarkerSequence(isKill));
+            _hitMarkerRoutine = StartCoroutine(HitMarkerRoutine(isKill));
         }
 
-        private IEnumerator HitMarkerSequence(bool isKill)
+        private IEnumerator HitMarkerRoutine(bool isKill)
         {
-            Color tickColor = isKill ? new Color(0.92f, 0.15f, 0.15f) : Color.white;
-            foreach (var tick in _hitMarkerTicks)
+            hitMarkerRoot.SetActive(true);
+            Color tickColor = isKill ? new Color(1f, 0.2f, 0.2f, 1f) : new Color(1f, 1f, 1f, 1f);
+
+            if (hitMarkerTicks != null)
             {
-                if (tick != null) tick.style.backgroundColor = tickColor;
-            }
-
-            // Play hit/kill sound
-            AudioClip sound = isKill ? _killSound : _hitSound;
-            if (_audioSource != null && sound != null)
-            {
-                _audioSource.PlayOneShot(sound);
-            }
-
-            float duration = 0.2f;
-            float elapsed = 0f;
-            _hitMarker.style.opacity = 1f;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-                _hitMarker.style.opacity = Mathf.Lerp(1f, 0f, t);
-                yield return null;
-            }
-
-            _hitMarker.style.opacity = 0f;
-        }
-
-        private void ShowKillConfirmation(string victimName)
-        {
-            if (_killConfirmation == null) return;
-            if (_killConfirmationRoutine != null) StopCoroutine(_killConfirmationRoutine);
-            _killConfirmationRoutine = StartCoroutine(KillConfirmationSequence(victimName));
-        }
-
-        private IEnumerator KillConfirmationSequence(string victimName)
-        {
-            _killConfirmation.text = $"+1 Kill: {victimName.ToUpper()}";
-            _killConfirmation.style.opacity = 1f;
-            
-            float duration = 1.5f;
-            float elapsed = 0f;
-            
-            // Reset position & size
-            _killConfirmation.style.top = new Length(60, LengthUnit.Percent);
-            _killConfirmation.style.fontSize = 26f;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-                
-                // Drift up
-                float topPct = Mathf.Lerp(60f, 54f, t);
-                _killConfirmation.style.top = new Length(topPct, LengthUnit.Percent);
-                
-                // Font size shrink slightly
-                _killConfirmation.style.fontSize = Mathf.Lerp(26f, 22f, t);
-
-                if (t > 0.6f)
+                foreach (var tick in hitMarkerTicks)
                 {
-                    float fadeT = (t - 0.6f) / 0.4f;
-                    _killConfirmation.style.opacity = Mathf.Lerp(1f, 0f, fadeT);
+                    if (tick != null) tick.color = tickColor;
                 }
+            }
 
+            float duration = 0.22f;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float a = Mathf.Lerp(1f, 0f, elapsed / duration);
+                if (hitMarkerTicks != null)
+                {
+                    foreach (var tick in hitMarkerTicks)
+                    {
+                        if (tick != null) tick.color = new Color(tickColor.r, tickColor.g, tickColor.b, a);
+                    }
+                }
                 yield return null;
             }
 
-            _killConfirmation.style.opacity = 0f;
+            hitMarkerRoot.SetActive(false);
+        }
+
+        public void ShowKillConfirmation(string victimName)
+        {
+            if (killSound != null && _audioSource != null)
+            {
+                _audioSource.PlayOneShot(killSound, 1.0f);
+            }
+
+            if (killConfirmationRoot == null) return;
+            if (_killConfirmationRoutine != null) StopCoroutine(_killConfirmationRoutine);
+            _killConfirmationRoutine = StartCoroutine(KillConfirmationRoutine(victimName));
+        }
+
+        private IEnumerator KillConfirmationRoutine(string victimName)
+        {
+            if (killConfirmationText != null)
+            {
+                killConfirmationText.text = $"+1 ELIMINATED: {victimName.ToUpper()}";
+            }
+
+            killConfirmationRoot.SetActive(true);
+            UIJuice.PunchScale(killConfirmationRoot.GetComponent<RectTransform>(), 0.25f);
+
+            yield return new WaitForSeconds(2.0f);
+
+            if (killConfirmationGroup != null)
+            {
+                float duration = 0.3f;
+                float elapsed = 0f;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    killConfirmationGroup.alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+                    yield return null;
+                }
+            }
+
+            killConfirmationRoot.SetActive(false);
+            if (killConfirmationGroup != null) killConfirmationGroup.alpha = 1f;
+        }
+
+        // ──────────────────────── KILL FEED ────────────────────────
+
+        private void OnKillFeedEvent(string killerName, string victimName, string weaponName, ulong killerId, ulong victimId)
+        {
+            AddKillFeedEntry(killerName, victimName, weaponName);
+        }
+
+        public void AddKillFeedEntry(string killer, string victim, string weapon = "")
+        {
+            if (killFeedContainer == null) return;
+
+            GameObject entryObj = null;
+            if (killFeedEntryPrefab != null)
+            {
+                entryObj = Instantiate(killFeedEntryPrefab, killFeedContainer);
+            }
+            else
+            {
+                entryObj = new GameObject("KillEntry");
+                entryObj.transform.SetParent(killFeedContainer, false);
+                var txt = entryObj.AddComponent<TextMeshProUGUI>();
+                txt.fontSize = 16;
+                txt.color = Color.white;
+            }
+
+            var label = entryObj.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null)
+            {
+                string wpnStr = !string.IsNullOrEmpty(weapon) ? $" [{weapon}] " : " ➔ ";
+                label.text = $"<color=#FFE066>{killer}</color>{wpnStr}<color=#FF6666>{victim}</color>";
+            }
+
+            StartCoroutine(FadeAndDestroyKillEntry(entryObj, 4.0f));
+
+            // Check if local player was the killer
+            string localName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "";
+            if (!string.IsNullOrEmpty(localName) && killer.Equals(localName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                ShowKillConfirmation(victim);
+            }
+        }
+
+        public void AddSystemFeedEntry(string message)
+        {
+            if (killFeedContainer == null) return;
+
+            var entryObj = new GameObject("SystemEntry");
+            entryObj.transform.SetParent(killFeedContainer, false);
+            var txt = entryObj.AddComponent<TextMeshProUGUI>();
+            txt.fontSize = 14;
+            txt.color = new Color(0.6f, 0.9f, 1f, 0.9f);
+            txt.text = $"• {message}";
+
+            StartCoroutine(FadeAndDestroyKillEntry(entryObj, 4.0f));
+        }
+
+        private IEnumerator FadeAndDestroyKillEntry(GameObject entry, float lifetime)
+        {
+            yield return new WaitForSeconds(lifetime);
+            var cg = entry.GetComponent<CanvasGroup>();
+            if (cg == null) cg = entry.AddComponent<CanvasGroup>();
+
+            float fadeDuration = 0.5f;
+            float elapsed = 0f;
+            while (elapsed < fadeDuration)
+            {
+                elapsed += Time.deltaTime;
+                cg.alpha = Mathf.Lerp(1f, 0f, elapsed / fadeDuration);
+                yield return null;
+            }
+
+            Destroy(entry);
         }
     }
 }

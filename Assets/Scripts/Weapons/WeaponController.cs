@@ -294,19 +294,10 @@ namespace Shootopia
             if (input == null) return;
 
             // Weapon control gating
-            bool isFrozen = false;
-            string activeSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-
-            if (activeSceneName == "WaitingRoom")
+            bool isFrozen = WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused;
+            if (GameModeBase.Instance != null && GameModeBase.Instance.PreMatchCountdown.Value > 0)
             {
-                isFrozen = WaitingRoomController.IsLobbyMenuOpen;
-            }
-            else if (activeSceneName == "GameScene" || activeSceneName == "Map1")
-            {
-                if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
-                {
-                    isFrozen = true;
-                }
+                isFrozen = true;
             }
 
             if (isFrozen)
@@ -734,9 +725,26 @@ namespace Shootopia
         {
             _timeSinceLastShot = 0f;
 
-            Vector3 origin = customOrigin.HasValue ? customOrigin.Value : (Muzzle != null ? Muzzle.position : transform.position);
-            Vector3 aimPoint = Aim != null ? Aim.AimPoint : origin + transform.forward * 100f;
+            Vector3 origin = customOrigin.HasValue ? customOrigin.Value : (Muzzle != null ? Muzzle.position : transform.position + Vector3.up * 1.2f);
+            
+            // Camera / reticle aim reference
+            Camera mainCam = Camera.main;
+            Vector3 camForward = mainCam != null ? mainCam.transform.forward : (Aim != null ? Aim.CameraPlanarForward : transform.forward);
+
+            Vector3 aimPoint = Aim != null ? Aim.AimPoint : origin + camForward * 100f;
             Vector3 dir = customVel.HasValue ? customVel.Value.normalized : (aimPoint - origin).normalized;
+
+            // Parallax & Steep Angle Fix: When looking down at the ground close to the character in TPS,
+            // the camera raycast hit point can lie behind or too close to the gun muzzle.
+            // If the calculated direction points backwards relative to the camera, align it with camera forward.
+            if (!customVel.HasValue)
+            {
+                if (Vector3.Dot(dir, camForward) <= 0.15f || Vector3.Dot(aimPoint - origin, camForward) <= 0.5f)
+                {
+                    dir = camForward;
+                }
+            }
+
             if (dir.sqrMagnitude < 0.0001f) dir = Muzzle != null ? Muzzle.forward : transform.forward;
             Vector3 launchVel = customVel.HasValue ? customVel.Value : (dir * (data.throwForce > 0f ? data.throwForce : 14f));
             Quaternion rot = Quaternion.LookRotation(dir, Vector3.up);

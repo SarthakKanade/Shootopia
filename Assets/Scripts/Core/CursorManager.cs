@@ -26,10 +26,7 @@ namespace Shootopia
             DontDestroyOnLoad(gameObject);
         }
 
-        /// <summary>
-        /// Registers a request to unlock the cursor (e.g., from MainMenu, PauseMenu, Scoreboard, ResultsScreen).
-        /// </summary>
-        public static void PushUnlock(string requesterId)
+        private static void EnsureInstance()
         {
             if (Instance == null)
             {
@@ -41,7 +38,14 @@ namespace Shootopia
                     DontDestroyOnLoad(go);
                 }
             }
+        }
 
+        /// <summary>
+        /// Registers a request to unlock the cursor (e.g., from MainMenu, WaitingRoom, PauseMenu, Scoreboard, ResultsScreen).
+        /// </summary>
+        public static void PushUnlock(string requesterId)
+        {
+            EnsureInstance();
             Instance._unlockRequesters.Add(requesterId);
             Instance.ApplyCursorState();
         }
@@ -67,19 +71,49 @@ namespace Shootopia
             Instance.ApplyCursorState();
         }
 
-        public static bool IsCursorUnlocked => Instance != null && Instance._unlockRequesters.Count > 0;
-
-        private void ApplyCursorState()
+        public static bool IsCursorUnlocked
         {
-            if (_unlockRequesters.Count > 0)
+            get
             {
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
+                if (Instance != null && Instance._unlockRequesters.Count > 0) return true;
+                if (WaitingRoomController.IsLobbyMenuOpen) return true;
+                if (PauseMenuController.IsMenuPaused) return true;
+                return false;
+            }
+        }
+
+        private void Update()
+        {
+            // Keep cursor state continuously synchronized with active UI demands
+            ApplyCursorState();
+        }
+
+        public void ApplyCursorState()
+        {
+            string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            bool isMenuScene = (activeScene == "MainMenu" || activeScene == "WaitingRoom");
+
+            if (isMenuScene || _unlockRequesters.Count > 0 || WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused)
+            {
+                if (Cursor.lockState != CursorLockMode.None)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                }
+                if (!Cursor.visible)
+                {
+                    Cursor.visible = true;
+                }
             }
             else
             {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
+                if (Cursor.lockState != CursorLockMode.Locked)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                }
+                if (Cursor.visible)
+                {
+                    Cursor.visible = false;
+                }
             }
         }
 

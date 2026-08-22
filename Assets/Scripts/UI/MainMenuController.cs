@@ -3,396 +3,292 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.UIElements;
+using UnityEngine.UI;
+using TMPro;
 using Unity.Services.Multiplayer;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Master UI Controller for the Smash Karts-inspired Shootopia Main Menu.
-    /// Integrates Space Exploration GUI Kit assets, live 3D character preview,
-    /// seamless matchmaking, custom room creation, code joining, and room browsing.
+    /// Master UGUI UI Controller for the Shootopia Main Menu.
+    /// Handles Quick Match filter & play, Custom Rooms (Create/Join/Code), Settings,
+    /// 3D Character Customization, and responsive audio/network feedback.
     /// </summary>
     public class MainMenuController : MonoBehaviour
     {
-        [Header("UI Document")]
-        [SerializeField] private UIDocument uiDocument;
-
         [Header("Audio Feedback")]
         [SerializeField] private AudioClip buttonClickClip;
         [SerializeField] private AudioClip errorClip;
         [SerializeField] private AudioClip menuMusicClip;
 
-        private VisualElement _root;
+        [Header("Top Header & Profile")]
+        [SerializeField] private TextMeshProUGUI playerNameLabel;
+        [SerializeField] private Button btnEditProfile;
+        [SerializeField] private Button btnToggleSound;
+        [SerializeField] private Image soundIconImage;
+        [SerializeField] private Sprite soundOnSprite;
+        [SerializeField] private Sprite soundOffSprite;
+        [SerializeField] private Button btnTopSettings;
 
-        // ── Top Header & Profile ──
-        private Button _btnProfilePill;
-        private Label _playerNameLabel;
-        private Label _coinAmountLabel;
-        private Label _gemAmountLabel;
-        private Label _trophyAmountLabel;
-        private Button _btnToggleSound;
-        private Button _btnTopSettings;
-        private bool _isMuted = false;
+        [Header("Main Action Hub")]
+        [SerializeField] private Button btnPlayMatch;
+        [SerializeField] private Button btnCustomRooms;
+        [SerializeField] private Button btnCustomize;
+        [SerializeField] private Button btnSettings;
+        [SerializeField] private Button btnQuit;
 
-        // ── Main Action Hub ──
-        private Button _btnPlayMatch;
-        private Button _btnFilterToggle;
-        private Button _btnCreateRoom;
-        private Button _btnJoinRoom;
-        private Button _btnCustomize;
-        private Button _btnQuit;
+        [Header("Modal: Quick Match Filter")]
+        [SerializeField] private GameObject modalQuickFilter;
+        [SerializeField] private CanvasGroup quickFilterGroup;
+        [SerializeField] private Button btnCloseQuickFilter;
+        [SerializeField] private Button chipQuickAll, chipQuickFFA, chipQuickTDM;
+        [SerializeField] private TextMeshProUGUI quickModeDescText;
+        [SerializeField] private Button btnConfirmQuickPlay;
 
-        // ── Modal: Create Room ──
-        private VisualElement _modalCreateRoom;
-        private Button _btnCloseCreateRoom;
-        private TextField _inputCreateRoomName;
-        private Button _chipModeFFA, _chipModeTDM;
-        private SliderInt _sliderMaxPlayers;
-        private Label _labelMaxPlayers;
-        private Toggle _togglePublicRoom;
-        private Button _btnConfirmCreate;
+        [Header("Modal: Custom Rooms Hub")]
+        [SerializeField] private GameObject modalCustomRooms;
+        [SerializeField] private CanvasGroup customRoomsGroup;
+        [SerializeField] private Button btnCloseCustomRooms;
+        [SerializeField] private Button tabBtnCreate, tabBtnJoin;
+        [SerializeField] private GameObject tabContentCreate, tabContentJoin;
+
+        [Header("Custom Rooms: Create Tab")]
+        [SerializeField] private TMP_InputField inputCreateRoomName;
+        [SerializeField] private Button chipModeFFA, chipModeTDM;
+        [SerializeField] private Slider sliderMaxPlayers;
+        [SerializeField] private TextMeshProUGUI labelMaxPlayers;
+        [SerializeField] private Toggle togglePublicRoom;
+        [SerializeField] private Button btnConfirmCreate;
+
+        [Header("Custom Rooms: Join Tab (Browser & Code)")]
+        [SerializeField] private TMP_InputField inputJoinCode;
+        [SerializeField] private Button btnSubmitJoinCode;
+        [SerializeField] private Button chipFilterAll, chipFilterFFA, chipFilterTDM;
+        [SerializeField] private Button btnRefreshRooms;
+        [SerializeField] private Transform roomListContent;
+        [SerializeField] private GameObject roomCardPrefab;
+        [SerializeField] private GameObject browseEmptyState;
+
+        [Header("Modal: Customize")]
+        [SerializeField] private GameObject modalCustomize;
+        [SerializeField] private CanvasGroup customizeGroup;
+        [SerializeField] private Button btnCloseCustomize;
+        [SerializeField] private Button btnSkinAgent, btnSkinRobot;
+
+        [Header("Modal: Settings")]
+        [SerializeField] private GameObject modalSettings;
+        [SerializeField] private CanvasGroup settingsGroup;
+        [SerializeField] private Button btnCloseSettings;
+        [SerializeField] private Slider sliderMasterVol, sliderMusicVol, sliderSFXVol, sliderMouseSens;
+        [SerializeField] private TextMeshProUGUI labelMasterVol, labelMusicVol, labelSFXVol, labelMouseSens;
+        [SerializeField] private Toggle toggleInvertY, toggleFullscreen;
+        [SerializeField] private SpaceGUISwitch switchInvertY, switchFullscreen;
+        [SerializeField] private Button btnMinusSens, btnPlusSens;
+        [SerializeField] private Button btnActionReset, btnActionControls, btnActionApply;
+
+        [Header("Modal: Edit Profile")]
+        [SerializeField] private GameObject modalEditProfile;
+        [SerializeField] private CanvasGroup editProfileGroup;
+        [SerializeField] private Button btnCloseProfile;
+        [SerializeField] private TMP_InputField inputDisplayName;
+        [SerializeField] private Button btnSaveProfile;
+
+        [Header("Busy / Matchmaking Overlay")]
+        [SerializeField] private GameObject busyOverlay;
+        [SerializeField] private CanvasGroup busyGroup;
+        [SerializeField] private TextMeshProUGUI busyLabel;
+        [SerializeField] private Button btnCancelBusy;
+        [SerializeField] private Transform spinnerIcon;
+
+        [Header("Error Toast / Alert Modal")]
+        [SerializeField] private GameObject errorModal;
+        [SerializeField] private CanvasGroup errorGroup;
+        [SerializeField] private TextMeshProUGUI errorLabel;
+        [SerializeField] private Button btnDismissError;
+
+        // ── State Variables ──
         private string _selectedCreateMode = "FFA";
-
-        // ── Modal: Join Room (Browser & Code Tabs) ──
-        private VisualElement _modalJoinRoom;
-        private Button _btnCloseJoinRoom;
-        private Button _tabBtnBrowse, _tabBtnCode;
-        private VisualElement _tabContentBrowse, _tabContentCode;
-        private Button _chipFilterAll, _chipFilterFFA, _chipFilterTDM;
-        private Button _btnRefreshRooms;
-        private ScrollView _roomListContainer;
-        private VisualElement _browseEmptyState;
-        private Button _btnEmptyCreate;
-        private TextField _inputJoinCode;
-        private Button _btnSubmitJoinCode;
-        private string _browserModeFilter = "ALL";
-        private List<ISessionInfo> _cachedSessions = new List<ISessionInfo>();
-
-        // ── Modal: Quick Match Filter ──
-        private VisualElement _modalQuickFilter;
-        private Button _btnCloseQuickFilter;
-        private Button _chipQuickAll, _chipQuickFFA, _chipQuickTDM;
-        private Button _btnConfirmQuickFilter;
         private string _quickMatchMode = "ALL";
-
-        // ── Modal: Customize ──
-        private VisualElement _modalCustomize;
-        private Button _btnCloseCustomize, _btnDoneCustomize;
-        private Button _btnSkinAgent, _btnSkinRobot;
+        private string _browserModeFilter = "ALL";
         private int _selectedSkin = 0;
-
-        // ── Modal: Settings ──
-        private VisualElement _modalSettings;
-        private Button _btnCloseSettings, _btnApplySettings;
-        private Slider _sliderMasterVol, _sliderMusicVol, _sliderSFXVol, _sliderMouseSens;
-        private Label _labelMasterVol, _labelMusicVol, _labelSFXVol, _labelMouseSens;
-        private Toggle _toggleInvertY, _toggleFullscreen;
-
-        // ── Modal: Edit Profile ──
-        private VisualElement _modalEditProfile;
-        private Button _btnCloseProfile, _btnSaveProfile;
-        private TextField _inputDisplayName;
-
-        // ── Busy / Loading Overlay ──
-        private VisualElement _busyOverlay;
-        private Label _busyLabel;
-
-        // ── Modal Stack & State ──
-        private readonly Stack<VisualElement> _modalStack = new Stack<VisualElement>();
+        private bool _isMuted = false;
         private bool _isBusy = false;
-
-        // ────────────────────── LIFECYCLE ──────────────────────
+        private readonly Stack<GameObject> _modalStack = new Stack<GameObject>();
+        private List<ISessionInfo> _cachedSessions = new List<ISessionInfo>();
 
         private void OnEnable()
         {
             CursorManager.PushUnlock("MainMenu");
-
-            if (uiDocument == null) uiDocument = GetComponent<UIDocument>();
-            if (uiDocument == null)
-            {
-                Debug.LogError("[MainMenuController] No UIDocument component found!");
-                return;
-            }
-
-            _root = uiDocument.rootVisualElement;
-            if (_root == null) return;
-
-            BindElements();
-            RegisterCallbacks();
             RefreshProfileDisplay();
 
             if (SessionManager.Instance != null)
             {
                 SessionManager.Instance.OnSessionError.AddListener(OnSessionError);
             }
+
+            RegisterCallbacks();
         }
 
         private async void Start()
         {
-            // Play Menu Theme Music
             if (menuMusicClip != null && AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlayMusic(menuMusicClip, 0.8f);
             }
 
-            // Ensure 3D Avatar Stage is bound to UI texture
-            if (AvatarStageController.Instance != null)
-            {
-                AvatarStageController.Instance.BindToUIDocument();
-            }
+            InitSettingsValues();
+            UpdateChipVisuals();
 
-            // Ensure UGS and Auth are initialized in the background
             await MultiplayerAutoInitializer.EnsureInitializedAsync();
         }
 
         private void OnDisable()
         {
             CursorManager.PopUnlock("MainMenu");
-            StopAllCoroutines();
 
             if (SessionManager.Instance != null)
             {
                 SessionManager.Instance.OnSessionError.RemoveListener(OnSessionError);
             }
+
+            UnregisterCallbacks();
         }
 
-        // ────────────────────── ELEMENT BINDING ──────────────────────
-
-        private void BindElements()
+        private void Update()
         {
-            // Header
-            _btnProfilePill = _root.Q<Button>("BtnProfilePill");
-            _playerNameLabel = _root.Q<Label>("PlayerNameLabel");
-            _coinAmountLabel = _root.Q<Label>("CoinAmountLabel");
-            _gemAmountLabel = _root.Q<Label>("GemAmountLabel");
-            _trophyAmountLabel = _root.Q<Label>("TrophyAmountLabel");
-            _btnToggleSound = _root.Q<Button>("BtnToggleSound");
-            _btnTopSettings = _root.Q<Button>("BtnTopSettings");
-
-            // Main Actions
-            _btnPlayMatch = _root.Q<Button>("BtnPlayMatch");
-            _btnFilterToggle = _root.Q<Button>("BtnFilterToggle");
-            _btnCreateRoom = _root.Q<Button>("BtnCreateRoom");
-            _btnJoinRoom = _root.Q<Button>("BtnJoinRoom");
-            _btnCustomize = _root.Q<Button>("BtnCustomize");
-            _btnQuit = _root.Q<Button>("BtnQuit");
-
-            // Modal: Create Room
-            _modalCreateRoom = _root.Q<VisualElement>("ModalCreateRoom");
-            _btnCloseCreateRoom = _root.Q<Button>("BtnCloseCreateRoom");
-            _inputCreateRoomName = _root.Q<TextField>("InputCreateRoomName");
-            _chipModeFFA = _root.Q<Button>("ChipModeFFA");
-            _chipModeTDM = _root.Q<Button>("ChipModeTDM");
-            _sliderMaxPlayers = _root.Q<SliderInt>("SliderMaxPlayers");
-            _labelMaxPlayers = _root.Q<Label>("LabelMaxPlayers");
-            _togglePublicRoom = _root.Q<Toggle>("TogglePublicRoom");
-            _btnConfirmCreate = _root.Q<Button>("BtnConfirmCreate");
-
-            // Modal: Join Room
-            _modalJoinRoom = _root.Q<VisualElement>("ModalJoinRoom");
-            _btnCloseJoinRoom = _root.Q<Button>("BtnCloseJoinRoom");
-            _tabBtnBrowse = _root.Q<Button>("TabBtnBrowse");
-            _tabBtnCode = _root.Q<Button>("TabBtnCode");
-            _tabContentBrowse = _root.Q<VisualElement>("TabContentBrowse");
-            _tabContentCode = _root.Q<VisualElement>("TabContentCode");
-            _chipFilterAll = _root.Q<Button>("ChipFilterAll");
-            _chipFilterFFA = _root.Q<Button>("ChipFilterFFA");
-            _chipFilterTDM = _root.Q<Button>("ChipFilterTDM");
-            _btnRefreshRooms = _root.Q<Button>("BtnRefreshRooms");
-            _roomListContainer = _root.Q<ScrollView>("RoomListContainer");
-            _browseEmptyState = _root.Q<VisualElement>("BrowseEmptyState");
-            _btnEmptyCreate = _root.Q<Button>("BtnEmptyCreate");
-            _inputJoinCode = _root.Q<TextField>("InputJoinCode");
-            _btnSubmitJoinCode = _root.Q<Button>("BtnSubmitJoinCode");
-
-            // Modal: Quick Match Filter
-            _modalQuickFilter = _root.Q<VisualElement>("ModalQuickFilter");
-            _btnCloseQuickFilter = _root.Q<Button>("BtnCloseQuickFilter");
-            _chipQuickAll = _root.Q<Button>("ChipQuickAll");
-            _chipQuickFFA = _root.Q<Button>("ChipQuickFFA");
-            _chipQuickTDM = _root.Q<Button>("ChipQuickTDM");
-            _btnConfirmQuickFilter = _root.Q<Button>("BtnConfirmQuickFilter");
-
-            // Modal: Customize
-            _modalCustomize = _root.Q<VisualElement>("ModalCustomize");
-            _btnCloseCustomize = _root.Q<Button>("BtnCloseCustomize");
-            _btnDoneCustomize = _root.Q<Button>("BtnDoneCustomize");
-            _btnSkinAgent = _root.Q<Button>("BtnSkinAgent");
-            _btnSkinRobot = _root.Q<Button>("BtnSkinRobot");
-
-            // Modal: Settings
-            _modalSettings = _root.Q<VisualElement>("ModalSettings");
-            _btnCloseSettings = _root.Q<Button>("BtnCloseSettings");
-            _btnApplySettings = _root.Q<Button>("BtnApplySettings");
-            _sliderMasterVol = _root.Q<Slider>("SliderMasterVol");
-            _labelMasterVol = _root.Q<Label>("LabelMasterVol");
-            _sliderMusicVol = _root.Q<Slider>("SliderMusicVol");
-            _labelMusicVol = _root.Q<Label>("LabelMusicVol");
-            _sliderSFXVol = _root.Q<Slider>("SliderSFXVol");
-            _labelSFXVol = _root.Q<Label>("LabelSFXVol");
-            _sliderMouseSens = _root.Q<Slider>("SliderMouseSens");
-            _labelMouseSens = _root.Q<Label>("LabelMouseSens");
-            _toggleInvertY = _root.Q<Toggle>("ToggleInvertY");
-            _toggleFullscreen = _root.Q<Toggle>("ToggleFullscreen");
-
-            // Modal: Edit Profile
-            _modalEditProfile = _root.Q<VisualElement>("ModalEditProfile");
-            _btnCloseProfile = _root.Q<Button>("BtnCloseProfile");
-            _inputDisplayName = _root.Q<TextField>("InputDisplayName");
-            _btnSaveProfile = _root.Q<Button>("BtnSaveProfile");
-
-            // Busy Overlay
-            _busyOverlay = _root.Q<VisualElement>("BusyOverlay");
-            _busyLabel = _root.Q<Label>("BusyLabel");
-
-#if UNITY_WEBGL
-            if (_btnQuit != null) _btnQuit.style.display = DisplayStyle.None;
-            if (_toggleFullscreen != null) _toggleFullscreen.style.display = DisplayStyle.None;
-#endif
+            if (_isBusy && spinnerIcon != null)
+            {
+                spinnerIcon.Rotate(0f, 0f, -180f * Time.unscaledDeltaTime);
+            }
         }
 
-        // ────────────────────── CALLBACK REGISTRATION ──────────────────────
+        // ──────────────────────── CALLBACK REGISTRATION ────────────────────────
 
         private void RegisterCallbacks()
         {
-            // Header & Utility
-            SafeClick(_btnProfilePill, () => OpenModal(_modalEditProfile, SetupProfileModal));
-            SafeClick(_btnTopSettings, () => OpenModal(_modalSettings, SetupSettingsModal));
-            SafeClick(_btnToggleSound, ToggleMuteAudio);
+            if (btnEditProfile != null) btnEditProfile.onClick.AddListener(() => OpenModal(modalEditProfile, editProfileGroup));
+            if (btnToggleSound != null) btnToggleSound.onClick.AddListener(ToggleSound);
+            if (btnTopSettings != null) btnTopSettings.onClick.AddListener(() => OpenModal(modalSettings, settingsGroup));
 
-            // Main Actions
-            SafeClick(_btnPlayMatch, OnPlayMatchClicked);
-            SafeClick(_btnFilterToggle, () => OpenModal(_modalQuickFilter));
-            SafeClick(_btnCreateRoom, () => OpenModal(_modalCreateRoom));
-            SafeClick(_btnJoinRoom, () => { OpenModal(_modalJoinRoom); SwitchJoinTab("Browse"); RefreshBrowserRooms(); });
-            SafeClick(_btnCustomize, () => OpenModal(_modalCustomize));
-            SafeClick(_btnQuit, OnQuitClicked);
+            if (btnPlayMatch != null) btnPlayMatch.onClick.AddListener(() => OpenModal(modalQuickFilter, quickFilterGroup));
+            if (btnCustomRooms != null) btnCustomRooms.onClick.AddListener(OpenCustomRooms);
+            if (btnCustomize != null) btnCustomize.onClick.AddListener(() => OpenModal(modalCustomize, customizeGroup));
+            if (btnSettings != null) btnSettings.onClick.AddListener(() => OpenModal(modalSettings, settingsGroup));
+            if (btnQuit != null) btnQuit.onClick.AddListener(QuitGame);
 
-            // Create Room Modal
-            SafeClick(_btnCloseCreateRoom, CloseTopModal);
-            SafeClick(_chipModeFFA, () => SetCreateMode("FFA"));
-            SafeClick(_chipModeTDM, () => SetCreateMode("TDM"));
-            if (_sliderMaxPlayers != null)
-            {
-                _sliderMaxPlayers.RegisterValueChangedCallback(evt =>
-                {
-                    if (_labelMaxPlayers != null) _labelMaxPlayers.text = evt.newValue.ToString();
-                });
-            }
-            SafeClick(_btnConfirmCreate, OnConfirmCreateRoom);
+            // Quick Filter Modal
+            if (btnCloseQuickFilter != null) btnCloseQuickFilter.onClick.AddListener(CloseTopModal);
+            if (chipQuickAll != null) chipQuickAll.onClick.AddListener(() => SetQuickMode("ALL"));
+            if (chipQuickFFA != null) chipQuickFFA.onClick.AddListener(() => SetQuickMode("FFA"));
+            if (chipQuickTDM != null) chipQuickTDM.onClick.AddListener(() => SetQuickMode("TDM"));
+            if (btnConfirmQuickPlay != null) btnConfirmQuickPlay.onClick.AddListener(StartQuickMatch);
 
-            // Join Room Modal
-            SafeClick(_btnCloseJoinRoom, CloseTopModal);
-            SafeClick(_tabBtnBrowse, () => SwitchJoinTab("Browse"));
-            SafeClick(_tabBtnCode, () => SwitchJoinTab("Code"));
-            SafeClick(_chipFilterAll, () => SetBrowserFilter("ALL"));
-            SafeClick(_chipFilterFFA, () => SetBrowserFilter("FFA"));
-            SafeClick(_chipFilterTDM, () => SetBrowserFilter("TDM"));
-            SafeClick(_btnRefreshRooms, RefreshBrowserRooms);
-            SafeClick(_btnEmptyCreate, () => { CloseTopModal(); OpenModal(_modalCreateRoom); });
-            if (_inputJoinCode != null)
-            {
-                _inputJoinCode.RegisterValueChangedCallback(evt =>
-                {
-                    if (evt.newValue != null)
-                        _inputJoinCode.SetValueWithoutNotify(evt.newValue.ToUpper());
-                });
-            }
-            SafeClick(_btnSubmitJoinCode, OnSubmitJoinCode);
+            // Custom Rooms Modal
+            if (btnCloseCustomRooms != null) btnCloseCustomRooms.onClick.AddListener(CloseTopModal);
+            if (tabBtnCreate != null) tabBtnCreate.onClick.AddListener(() => SwitchCustomRoomsTab(true));
+            if (tabBtnJoin != null) tabBtnJoin.onClick.AddListener(() => SwitchCustomRoomsTab(false));
 
-            // Quick Match Filter Modal
-            SafeClick(_btnCloseQuickFilter, CloseTopModal);
-            SafeClick(_chipQuickAll, () => SetQuickMatchMode("ALL"));
-            SafeClick(_chipQuickFFA, () => SetQuickMatchMode("FFA"));
-            SafeClick(_chipQuickTDM, () => SetQuickMatchMode("TDM"));
-            SafeClick(_btnConfirmQuickFilter, () => { CloseTopModal(); OnPlayMatchClicked(); });
+            // Create Tab
+            if (chipModeFFA != null) chipModeFFA.onClick.AddListener(() => SetCreateMode("FFA"));
+            if (chipModeTDM != null) chipModeTDM.onClick.AddListener(() => SetCreateMode("TDM"));
+            if (sliderMaxPlayers != null) sliderMaxPlayers.onValueChanged.AddListener(OnMaxPlayersChanged);
+            if (btnConfirmCreate != null) btnConfirmCreate.onClick.AddListener(ConfirmCreateRoom);
+
+            // Join Tab
+            if (btnSubmitJoinCode != null) btnSubmitJoinCode.onClick.AddListener(SubmitJoinCode);
+            if (chipFilterAll != null) chipFilterAll.onClick.AddListener(() => SetBrowserFilter("ALL"));
+            if (chipFilterFFA != null) chipFilterFFA.onClick.AddListener(() => SetBrowserFilter("FFA"));
+            if (chipFilterTDM != null) chipFilterTDM.onClick.AddListener(() => SetBrowserFilter("TDM"));
+            if (btnRefreshRooms != null) btnRefreshRooms.onClick.AddListener(RefreshRoomListAsync);
 
             // Customize Modal
-            SafeClick(_btnCloseCustomize, CloseTopModal);
-            SafeClick(_btnDoneCustomize, CloseTopModal);
-            SafeClick(_btnSkinAgent, () => SelectSkin(0));
-            SafeClick(_btnSkinRobot, () => SelectSkin(1));
+            if (btnCloseCustomize != null) btnCloseCustomize.onClick.AddListener(CloseTopModal);
+            if (btnSkinAgent != null) btnSkinAgent.onClick.AddListener(() => SelectSkin(0));
+            if (btnSkinRobot != null) btnSkinRobot.onClick.AddListener(() => SelectSkin(1));
 
             // Settings Modal
-            SafeClick(_btnCloseSettings, CloseTopModal);
-            SafeClick(_btnApplySettings, ApplyAndSaveSettings);
+            if (btnCloseSettings != null) btnCloseSettings.onClick.AddListener(CloseTopModal);
+            if (sliderMasterVol != null) sliderMasterVol.onValueChanged.AddListener(OnMasterVolChanged);
+            if (sliderMusicVol != null) sliderMusicVol.onValueChanged.AddListener(OnMusicVolChanged);
+            if (sliderSFXVol != null) sliderSFXVol.onValueChanged.AddListener(OnSFXVolChanged);
+            if (sliderMouseSens != null) sliderMouseSens.onValueChanged.AddListener(OnMouseSensChanged);
+            if (toggleInvertY != null) toggleInvertY.onValueChanged.AddListener(OnInvertYChanged);
+            if (toggleFullscreen != null) toggleFullscreen.onValueChanged.AddListener(OnFullscreenChanged);
 
-            if (_sliderMasterVol != null) _sliderMasterVol.RegisterValueChangedCallback(evt =>
-            {
-                if (_labelMasterVol != null) _labelMasterVol.text = $"{Mathf.RoundToInt(evt.newValue * 100)}%";
-                if (AudioManager.Instance != null) AudioManager.Instance.SetChannelVolume(AudioChannel.Master, evt.newValue);
-            });
-            if (_sliderMusicVol != null) _sliderMusicVol.RegisterValueChangedCallback(evt =>
-            {
-                if (_labelMusicVol != null) _labelMusicVol.text = $"{Mathf.RoundToInt(evt.newValue * 100)}%";
-                if (AudioManager.Instance != null) AudioManager.Instance.SetChannelVolume(AudioChannel.Music, evt.newValue);
-            });
-            if (_sliderSFXVol != null) _sliderSFXVol.RegisterValueChangedCallback(evt =>
-            {
-                if (_labelSFXVol != null) _labelSFXVol.text = $"{Mathf.RoundToInt(evt.newValue * 100)}%";
-                if (AudioManager.Instance != null) AudioManager.Instance.SetChannelVolume(AudioChannel.SFX, evt.newValue);
-            });
-            if (_sliderMouseSens != null) _sliderMouseSens.RegisterValueChangedCallback(evt =>
-            {
-                if (_labelMouseSens != null) _labelMouseSens.text = $"{evt.newValue:F1}";
-            });
+            if (switchInvertY != null) switchInvertY.OnValueChanged += OnInvertYChanged;
+            if (switchFullscreen != null) switchFullscreen.OnValueChanged += OnFullscreenChanged;
+            if (btnMinusSens != null) btnMinusSens.onClick.AddListener(() => AdjustSensitivity(-0.2f));
+            if (btnPlusSens != null) btnPlusSens.onClick.AddListener(() => AdjustSensitivity(+0.2f));
+            if (btnActionReset != null) btnActionReset.onClick.AddListener(ResetSettingsToDefaults);
+            if (btnActionControls != null) btnActionControls.onClick.AddListener(CloseTopModal);
+            if (btnActionApply != null) btnActionApply.onClick.AddListener(CloseTopModal);
 
-            // Profile Modal
-            SafeClick(_btnCloseProfile, CloseTopModal);
-            SafeClick(_btnSaveProfile, OnSaveProfile);
+            // Edit Profile Modal
+            if (btnCloseProfile != null) btnCloseProfile.onClick.AddListener(CloseTopModal);
+            if (btnSaveProfile != null) btnSaveProfile.onClick.AddListener(SaveProfile);
+
+            // Busy & Error
+            if (btnCancelBusy != null) btnCancelBusy.onClick.AddListener(CancelBusy);
+            if (btnDismissError != null) btnDismissError.onClick.AddListener(CloseTopModal);
         }
 
-        private void SafeClick(Button btn, Action action)
+        private void UnregisterCallbacks()
         {
-            if (btn != null) btn.clicked += () => { PlayButtonSound(); action(); };
+            // Reset modal stack
+            _modalStack.Clear();
         }
 
-        // ────────────────────── MODAL STACK SYSTEM ──────────────────────
+        // ──────────────────────── PROFILE & HEADER ────────────────────────
 
-        private void OpenModal(VisualElement modal, Action onOpen = null)
+        public void RefreshProfileDisplay()
         {
-            if (modal == null) return;
+            string pName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+            if (playerNameLabel != null) playerNameLabel.text = pName;
+            if (inputDisplayName != null) inputDisplayName.text = pName;
+        }
 
-            modal.style.display = DisplayStyle.Flex;
-            _modalStack.Push(modal);
-
-            modal.RemoveFromClassList("modal-backdrop--visible");
-            var frame = modal.Q(className: "modal-frame");
-            if (frame != null) frame.RemoveFromClassList("modal-card--visible");
-
-            modal.schedule.Execute(() =>
+        private void SaveProfile()
+        {
+            if (inputDisplayName != null && !string.IsNullOrWhiteSpace(inputDisplayName.text))
             {
-                modal.AddToClassList("modal-backdrop--visible");
-                if (frame != null) frame.AddToClassList("modal-card--visible");
-            }).ExecuteLater(20);
-
-            onOpen?.Invoke();
+                if (PlayerProfileManager.Instance != null)
+                {
+                    PlayerProfileManager.Instance.SetDisplayName(inputDisplayName.text.Trim());
+                }
+                RefreshProfileDisplay();
+            }
+            CloseTopModal();
         }
 
-        private void CloseTopModal()
+        private void ToggleSound()
         {
-            if (_modalStack.Count == 0) return;
-
-            var modal = _modalStack.Pop();
-            modal.RemoveFromClassList("modal-backdrop--visible");
-            var frame = modal.Q(className: "modal-frame");
-            if (frame != null) frame.RemoveFromClassList("modal-card--visible");
-
-            modal.schedule.Execute(() =>
+            _isMuted = !_isMuted;
+            AudioListener.pause = _isMuted;
+            if (soundIconImage != null)
             {
-                modal.style.display = DisplayStyle.None;
-            }).ExecuteLater(220);
+                soundIconImage.sprite = _isMuted ? soundOffSprite : soundOnSprite;
+            }
         }
 
-        // ────────────────────── PLAY MATCH (QUICK MATCH) ──────────────────────
+        // ──────────────────────── QUICK MATCHMAKING ────────────────────────
 
-        private async void OnPlayMatchClicked()
+        private void SetQuickMode(string mode)
         {
-            if (_isBusy) return;
-            _isBusy = true;
+            _quickMatchMode = mode;
+            UpdateChipVisuals();
 
-            ShowBusy("MATCHMAKING...");
+            if (quickModeDescText != null)
+            {
+                if (_quickMatchMode == "FFA") quickModeDescText.text = "FREE-FOR-ALL: High-octane solo arena combat. Every agent for themselves!";
+                else if (_quickMatchMode == "TDM") quickModeDescText.text = "TEAM DEATHMATCH: Red vs Blue squad warfare. First team to score threshold wins!";
+                else quickModeDescText.text = "ANY MODE: Connects to the fastest available public match.";
+            }
+        }
+
+        private async void StartQuickMatch()
+        {
+            CloseTopModal();
+            ShowBusy(true, $"SEARCHING FOR {_quickMatchMode} MATCH...");
 
             try
             {
@@ -401,484 +297,426 @@ namespace Shootopia
                 if (SessionManager.Instance != null)
                 {
                     var sessions = await SessionManager.Instance.GetPublicSessions();
-                    ISessionInfo target = null;
-
-                    foreach (var s in sessions)
+                    var match = sessions.Find(s =>
                     {
-                        if (s != null && s.AvailableSlots > 0)
-                        {
-                            if (_quickMatchMode == "ALL")
-                            {
-                                target = s;
-                                break;
-                            }
+                        if (_quickMatchMode == "ALL") return true;
+                        string mode = (s.Properties != null && s.Properties.ContainsKey("GameMode")) ? s.Properties["GameMode"].Value : "FFA";
+                        return mode.Equals(_quickMatchMode, StringComparison.OrdinalIgnoreCase);
+                    });
 
-                            if (s.Properties != null && s.Properties.TryGetValue("GameMode", out var modeProp))
-                            {
-                                if (modeProp.Value.Equals(_quickMatchMode, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    target = s;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (target != null)
+                    if (match != null)
                     {
-                        Debug.Log($"[MainMenuController] Matching session found: {target.Name} ({target.Id}). Joining...");
-                        await SessionManager.Instance.JoinById(target.Id);
+                        await SessionManager.Instance.JoinById(match.Id);
                     }
                     else
                     {
-                        string hostMode = _quickMatchMode == "ALL" ? "FFA" : _quickMatchMode;
-                        string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
-                        string roomName = $"{myName}'s Arena";
-
-                        Debug.Log($"[MainMenuController] No matching session found. Hosting {roomName} ({hostMode})...");
-                        await SessionManager.Instance.CreateSession(roomName, isPublic: true, maxPlayers: 4, gameMode: hostMode, mapName: "Map1");
+                        string modeToUse = _quickMatchMode == "ALL" ? "FFA" : _quickMatchMode;
+                        string hostName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                        await SessionManager.Instance.CreateSession($"{hostName}'s Match", true, 8, modeToUse);
                     }
+                }
+                else
+                {
+                    ShowError("SessionManager instance not found!");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[MainMenuController] Matchmaking failed: {ex.Message}");
-                HideBusy();
-                ShowNotification($"Matchmaking failed: {ex.Message}");
+                ShowError($"Matchmaking Failed: {ex.Message}");
             }
             finally
             {
-                _isBusy = false;
+                ShowBusy(false);
             }
         }
 
-        private void SetQuickMatchMode(string mode)
+        // ──────────────────────── CUSTOM ROOMS HUB ────────────────────────
+
+        private void OpenCustomRooms()
         {
-            _quickMatchMode = mode;
-            SetChipActive(_chipQuickAll, mode == "ALL");
-            SetChipActive(_chipQuickFFA, mode == "FFA");
-            SetChipActive(_chipQuickTDM, mode == "TDM");
+            OpenModal(modalCustomRooms, customRoomsGroup);
+            SwitchCustomRoomsTab(true); // Default to Create tab or Join tab
         }
 
-        // ────────────────────── CREATE CUSTOM ROOM ──────────────────────
+        public void SwitchCustomRoomsTab(bool isCreateTab)
+        {
+            if (tabContentCreate != null) tabContentCreate.SetActive(isCreateTab);
+            if (tabContentJoin != null) tabContentJoin.SetActive(!isCreateTab);
+
+            if (tabBtnCreate != null)
+            {
+                var img = tabBtnCreate.GetComponent<Image>();
+                if (img != null) img.color = isCreateTab ? new Color(1f, 0.9f, 0.4f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
+            }
+            if (tabBtnJoin != null)
+            {
+                var img = tabBtnJoin.GetComponent<Image>();
+                if (img != null) img.color = !isCreateTab ? new Color(1f, 0.9f, 0.4f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
+            }
+
+            if (!isCreateTab)
+            {
+                RefreshRoomListAsync();
+            }
+        }
+
+        // ── CREATE ROOM TAB ──
 
         private void SetCreateMode(string mode)
         {
             _selectedCreateMode = mode;
-            SetChipActive(_chipModeFFA, mode == "FFA");
-            SetChipActive(_chipModeTDM, mode == "TDM");
+            UpdateChipVisuals();
         }
 
-        private async void OnConfirmCreateRoom()
+        private void OnMaxPlayersChanged(float val)
         {
-            if (_isBusy) return;
-            _isBusy = true;
+            int count = Mathf.RoundToInt(val);
+            if (labelMaxPlayers != null) labelMaxPlayers.text = $"{count} PLAYERS";
+        }
 
-            string roomName = _inputCreateRoomName != null && !string.IsNullOrWhiteSpace(_inputCreateRoomName.value)
-                ? _inputCreateRoomName.value.Trim()
-                : $"{PlayerProfileManager.Instance?.DisplayName ?? "Agent"}'s Room";
+        private async void ConfirmCreateRoom()
+        {
+            string hostName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+            string roomName = inputCreateRoomName != null && !string.IsNullOrWhiteSpace(inputCreateRoomName.text)
+                ? inputCreateRoomName.text.Trim()
+                : $"{hostName}'s Arena";
 
-            int maxPlayers = _sliderMaxPlayers != null ? _sliderMaxPlayers.value : 4;
-            bool isPublic = _togglePublicRoom != null ? _togglePublicRoom.value : true;
+            int maxPlayers = sliderMaxPlayers != null ? Mathf.RoundToInt(sliderMaxPlayers.value) : 8;
+            bool isPublic = togglePublicRoom == null || togglePublicRoom.isOn;
 
             CloseTopModal();
-            ShowBusy($"CREATING {roomName.ToUpper()}...");
+            ShowBusy(true, "INITIALIZING ARENA...");
 
             try
             {
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
-
-                if (SessionManager.Instance != null)
-                {
-                    await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode, "Map1");
-                }
+                await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode);
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[MainMenuController] CreateRoom failed: {ex.Message}");
-                HideBusy();
-                ShowNotification($"Failed to host arena: {ex.Message}");
+                ShowError($"Failed to create room: {ex.Message}");
             }
             finally
             {
-                _isBusy = false;
+                ShowBusy(false);
             }
         }
 
-        // ────────────────────── JOIN ROOM (BROWSER + CODE) ──────────────────────
+        // ── JOIN ROOM TAB ──
 
-        private void SwitchJoinTab(string tab)
+        private async void SubmitJoinCode()
         {
-            if (_tabContentBrowse != null) _tabContentBrowse.style.display = tab == "Browse" ? DisplayStyle.Flex : DisplayStyle.None;
-            if (_tabContentCode != null) _tabContentCode.style.display = tab == "Code" ? DisplayStyle.Flex : DisplayStyle.None;
-
-            SetChipActive(_tabBtnBrowse, tab == "Browse");
-            SetChipActive(_tabBtnCode, tab == "Code");
-
-            if (tab == "Code" && _inputJoinCode != null)
+            if (inputJoinCode == null || string.IsNullOrWhiteSpace(inputJoinCode.text))
             {
-                _inputJoinCode.Focus();
+                ShowError("Please enter a valid room code.");
+                return;
+            }
+
+            string code = inputJoinCode.text.Trim().ToUpper();
+            ShowBusy(true, $"CONNECTING TO CODE {code}...");
+
+            try
+            {
+                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                await SessionManager.Instance.JoinByCode(code);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to join room: {ex.Message}");
+            }
+            finally
+            {
+                ShowBusy(false);
             }
         }
 
         private void SetBrowserFilter(string filter)
         {
             _browserModeFilter = filter;
-            SetChipActive(_chipFilterAll, filter == "ALL");
-            SetChipActive(_chipFilterFFA, filter == "FFA");
-            SetChipActive(_chipFilterTDM, filter == "TDM");
-            RenderBrowserRooms();
+            UpdateChipVisuals();
+            PopulateRoomCards();
         }
 
-        private async void RefreshBrowserRooms()
+        private async void RefreshRoomListAsync()
         {
-            if (_isBusy) return;
-            _isBusy = true;
-
-            if (_btnRefreshRooms != null) _btnRefreshRooms.SetEnabled(false);
+            if (btnRefreshRooms != null) btnRefreshRooms.interactable = false;
 
             try
             {
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
-
                 if (SessionManager.Instance != null)
                 {
                     _cachedSessions = await SessionManager.Instance.GetPublicSessions();
-                    RenderBrowserRooms();
+                    PopulateRoomCards();
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[MainMenuController] RefreshBrowserRooms error: {ex.Message}");
-                ShowNotification("Could not fetch online rooms. Check your connection.");
+                Debug.LogWarning($"[MainMenuController] Query sessions note: {ex.Message}");
             }
             finally
             {
-                _isBusy = false;
-                if (_btnRefreshRooms != null) _btnRefreshRooms.SetEnabled(true);
+                if (btnRefreshRooms != null) btnRefreshRooms.interactable = true;
             }
         }
 
-        private void RenderBrowserRooms()
+        private void PopulateRoomCards()
         {
-            if (_roomListContainer == null) return;
-            _roomListContainer.Clear();
+            if (roomListContent == null) return;
 
-            var filtered = new List<ISessionInfo>();
-            foreach (var s in _cachedSessions)
+            foreach (Transform child in roomListContent)
             {
-                if (s == null) continue;
-                string mode = "FFA";
-                if (s.Properties != null && s.Properties.TryGetValue("GameMode", out var prop))
-                    mode = prop.Value;
-
-                if (_browserModeFilter == "ALL" || _browserModeFilter.Equals(mode, StringComparison.OrdinalIgnoreCase))
-                    filtered.Add(s);
+                Destroy(child.gameObject);
             }
 
-            bool hasRooms = filtered.Count > 0;
-            if (_browseEmptyState != null) _browseEmptyState.style.display = hasRooms ? DisplayStyle.None : DisplayStyle.Flex;
-            if (_roomListContainer != null) _roomListContainer.style.display = hasRooms ? DisplayStyle.Flex : DisplayStyle.None;
+            var filtered = _cachedSessions.FindAll(s =>
+            {
+                if (_browserModeFilter == "ALL") return true;
+                string mode = (s.Properties != null && s.Properties.ContainsKey("GameMode")) ? s.Properties["GameMode"].Value : "FFA";
+                return mode.Equals(_browserModeFilter, StringComparison.OrdinalIgnoreCase);
+            });
+
+            if (browseEmptyState != null)
+            {
+                browseEmptyState.SetActive(filtered.Count == 0);
+            }
 
             foreach (var session in filtered)
             {
-                _roomListContainer.Add(CreateRoomCard(session));
+                CreateRoomCard(session);
             }
         }
 
-        private VisualElement CreateRoomCard(ISessionInfo session)
+        private void CreateRoomCard(ISessionInfo session)
         {
-            var card = new VisualElement();
-            card.AddToClassList("room-card-arcade");
+            if (roomCardPrefab == null || roomListContent == null) return;
 
-            // Left Side: Name + Tags
-            var left = new VisualElement();
-            left.AddToClassList("room-card-left");
+            var card = Instantiate(roomCardPrefab, roomListContent);
+            var texts = card.GetComponentsInChildren<TextMeshProUGUI>();
+            var joinBtn = card.GetComponentInChildren<Button>();
 
-            var nameLabel = new Label(session.Name ?? "Arena Match");
-            nameLabel.AddToClassList("room-card-title");
-            left.Add(nameLabel);
+            string roomName = session.Name;
+            string mode = (session.Properties != null && session.Properties.ContainsKey("GameMode")) ? session.Properties["GameMode"].Value : "FFA";
+            int maxPlayers = session.MaxPlayers;
 
-            var tagsRow = new VisualElement();
-            tagsRow.AddToClassList("room-card-tags-row");
+            if (texts.Length > 0) texts[0].text = roomName;
+            if (texts.Length > 1) texts[1].text = $"{mode} • MAX {maxPlayers} PLAYERS";
 
-            string mode = "FFA";
-            if (session.Properties != null && session.Properties.TryGetValue("GameMode", out var modeProp))
-                mode = modeProp.Value;
-
-            var modeBadge = new Label(mode);
-            modeBadge.AddToClassList("tag-badge");
-            modeBadge.AddToClassList(mode.Equals("TDM", StringComparison.OrdinalIgnoreCase) ? "tag-badge-tdm" : "tag-badge-ffa");
-            tagsRow.Add(modeBadge);
-
-            int currentPlayers = session.MaxPlayers - session.AvailableSlots;
-            var playersBadge = new Label($"👤 {currentPlayers}/{session.MaxPlayers}");
-            playersBadge.AddToClassList("tag-badge");
-            playersBadge.AddToClassList("tag-badge-players");
-            tagsRow.Add(playersBadge);
-
-            left.Add(tagsRow);
-            card.Add(left);
-
-            // Right Side: Join Button
-            var btnJoin = new Button(() => OnJoinSpecificRoom(session.Id)) { text = "JOIN" };
-            btnJoin.AddToClassList("btn-card-join");
-            card.Add(btnJoin);
-
-            return card;
-        }
-
-        private async void OnJoinSpecificRoom(string sessionId)
-        {
-            if (_isBusy) return;
-            _isBusy = true;
-
-            CloseTopModal();
-            ShowBusy("JOINING ARENA...");
-
-            try
+            if (joinBtn != null)
             {
-                await MultiplayerAutoInitializer.EnsureInitializedAsync();
-
-                if (SessionManager.Instance != null)
+                joinBtn.onClick.AddListener(async () =>
                 {
-                    await SessionManager.Instance.JoinById(sessionId);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[MainMenuController] Join specific room failed: {ex.Message}");
-                HideBusy();
-                ShowNotification($"Could not join arena: {ex.Message}");
-            }
-            finally
-            {
-                _isBusy = false;
-            }
-        }
-
-        private async void OnSubmitJoinCode()
-        {
-            if (_isBusy) return;
-
-            string code = _inputJoinCode != null ? _inputJoinCode.value.Trim().ToUpper() : "";
-            if (string.IsNullOrEmpty(code) || code.Length < 4)
-            {
-                ShowNotification("Please enter a valid room code.");
-                return;
-            }
-
-            _isBusy = true;
-            CloseTopModal();
-            ShowBusy($"JOINING ROOM {code}...");
-
-            try
-            {
-                await MultiplayerAutoInitializer.EnsureInitializedAsync();
-
-                if (SessionManager.Instance != null)
-                {
-                    await SessionManager.Instance.JoinByCode(code);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[MainMenuController] JoinByCode failed: {ex.Message}");
-                HideBusy();
-                ShowNotification($"Invalid or expired code: {ex.Message}");
-            }
-            finally
-            {
-                _isBusy = false;
+                    ShowBusy(true, $"JOINING {roomName}...");
+                    try
+                    {
+                        await SessionManager.Instance.JoinById(session.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowError($"Failed to join: {ex.Message}");
+                    }
+                    finally
+                    {
+                        ShowBusy(false);
+                    }
+                });
             }
         }
 
-        // ────────────────────── CUSTOMIZATION ──────────────────────
+        // ──────────────────────── CUSTOMIZATION ────────────────────────
 
         private void SelectSkin(int skinIndex)
         {
             _selectedSkin = skinIndex;
-            SetChipActive(_btnSkinAgent, skinIndex == 0);
-            SetChipActive(_btnSkinRobot, skinIndex == 1);
-
             if (AvatarStageController.Instance != null)
             {
-                AvatarStageController.Instance.SetSkin(skinIndex);
+                AvatarStageController.Instance.SetSkin(_selectedSkin);
+            }
+            UpdateChipVisuals();
+        }
+
+        // ──────────────────────── SETTINGS ────────────────────────
+
+        private void InitSettingsValues()
+        {
+            float master = PlayerPrefs.GetFloat("AudioManager_MasterVolume", 1.0f);
+            float music = PlayerPrefs.GetFloat("AudioManager_MusicVolume", 0.8f);
+            float sfx = PlayerPrefs.GetFloat("AudioManager_SFXVolume", 1.0f);
+            float sens = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
+            bool invertY = PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY;
+            bool fullscreen = Screen.fullScreen;
+
+            if (sliderMasterVol != null) { sliderMasterVol.value = master; OnMasterVolChanged(master); }
+            if (sliderMusicVol != null) { sliderMusicVol.value = music; OnMusicVolChanged(music); }
+            if (sliderSFXVol != null) { sliderSFXVol.value = sfx; OnSFXVolChanged(sfx); }
+            if (sliderMouseSens != null) { sliderMouseSens.value = sens; OnMouseSensChanged(sens); }
+            if (labelMouseSens != null) labelMouseSens.text = $"{sens:0.0}x";
+
+            if (toggleInvertY != null) toggleInvertY.isOn = invertY;
+            if (toggleFullscreen != null) toggleFullscreen.isOn = fullscreen;
+            if (switchInvertY != null) switchInvertY.SetState(invertY, false);
+            if (switchFullscreen != null) switchFullscreen.SetState(fullscreen, false);
+        }
+
+        private void OnMasterVolChanged(float val)
+        {
+            if (labelMasterVol != null) labelMasterVol.text = $"{Mathf.RoundToInt(val * 100)}%";
+            if (AudioManager.Instance != null) AudioManager.Instance.SetChannelVolume(AudioChannel.Master, val);
+        }
+
+        private void OnMusicVolChanged(float val)
+        {
+            if (labelMusicVol != null) labelMusicVol.text = $"{Mathf.RoundToInt(val * 100)}%";
+            if (AudioManager.Instance != null) AudioManager.Instance.SetChannelVolume(AudioChannel.Music, val);
+        }
+
+        private void OnSFXVolChanged(float val)
+        {
+            if (labelSFXVol != null) labelSFXVol.text = $"{Mathf.RoundToInt(val * 100)}%";
+            if (AudioManager.Instance != null) AudioManager.Instance.SetChannelVolume(AudioChannel.SFX, val);
+        }
+
+        private void OnMouseSensChanged(float val)
+        {
+            if (PlayerProfileManager.Instance != null) PlayerProfileManager.Instance.SetMouseSensitivity(val);
+            if (labelMouseSens != null) labelMouseSens.text = $"{val:0.0}x";
+        }
+
+        private void AdjustSensitivity(float delta)
+        {
+            float current = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
+            float newSens = Mathf.Clamp((float)Math.Round(current + delta, 1), 0.2f, 3.0f);
+            OnMouseSensChanged(newSens);
+            if (sliderMouseSens != null) sliderMouseSens.value = newSens;
+        }
+
+        private void ResetSettingsToDefaults()
+        {
+            if (sliderMasterVol != null) sliderMasterVol.value = 1.0f;
+            if (sliderMusicVol != null) sliderMusicVol.value = 0.8f;
+            if (sliderSFXVol != null) sliderSFXVol.value = 1.0f;
+            OnMouseSensChanged(1.0f);
+            if (sliderMouseSens != null) sliderMouseSens.value = 1.0f;
+            if (switchInvertY != null) switchInvertY.SetState(false, true);
+            if (switchFullscreen != null) switchFullscreen.SetState(true, true);
+        }
+
+        private void OnInvertYChanged(bool val)
+        {
+            if (PlayerProfileManager.Instance != null) PlayerProfileManager.Instance.SetInvertY(val);
+            if (toggleInvertY != null) toggleInvertY.isOn = val;
+            if (switchInvertY != null && switchInvertY.IsOn != val) switchInvertY.SetState(val, false);
+        }
+
+        private void OnFullscreenChanged(bool val)
+        {
+            Screen.fullScreen = val;
+            if (toggleFullscreen != null) toggleFullscreen.isOn = val;
+            if (switchFullscreen != null && switchFullscreen.IsOn != val) switchFullscreen.SetState(val, false);
+        }
+
+        // ──────────────────────── MODAL STACK & UI HELPERS ────────────────────────
+
+        public void OpenModal(GameObject modal, CanvasGroup group = null)
+        {
+            if (modal == null) return;
+            _modalStack.Push(modal);
+            UIJuice.PopIn(modal.GetComponent<RectTransform>(), group);
+        }
+
+        public void CloseTopModal()
+        {
+            if (_modalStack.Count > 0)
+            {
+                var top = _modalStack.Pop();
+                var group = top.GetComponent<CanvasGroup>();
+                UIJuice.PopOut(top.GetComponent<RectTransform>(), group);
             }
         }
 
-        // ────────────────────── SETTINGS & AUDIO ──────────────────────
-
-        private void SetupSettingsModal()
+        public void ShowBusy(bool show, string message = "WARPING...")
         {
-            if (_sliderMasterVol != null && _labelMasterVol != null)
+            _isBusy = show;
+            if (busyOverlay != null)
             {
-                float val = PlayerPrefs.GetFloat("Vol_Master", 0.8f);
-                _sliderMasterVol.SetValueWithoutNotify(val);
-                _labelMasterVol.text = $"{Mathf.RoundToInt(val * 100)}%";
-            }
-
-            if (_sliderMusicVol != null && _labelMusicVol != null)
-            {
-                float val = PlayerPrefs.GetFloat("Vol_Music", 0.6f);
-                _sliderMusicVol.SetValueWithoutNotify(val);
-                _labelMusicVol.text = $"{Mathf.RoundToInt(val * 100)}%";
-            }
-
-            if (_sliderSFXVol != null && _labelSFXVol != null)
-            {
-                float val = PlayerPrefs.GetFloat("Vol_SFX", 0.8f);
-                _sliderSFXVol.SetValueWithoutNotify(val);
-                _labelSFXVol.text = $"{Mathf.RoundToInt(val * 100)}%";
-            }
-
-            if (_sliderMouseSens != null && _labelMouseSens != null)
-            {
-                float sens = PlayerPrefs.GetFloat("MouseSens", 2.0f);
-                _sliderMouseSens.SetValueWithoutNotify(sens);
-                _labelMouseSens.text = $"{sens:F1}";
-            }
-
-            if (_toggleInvertY != null)
-            {
-                _toggleInvertY.SetValueWithoutNotify(PlayerPrefs.GetInt("InvertY", 0) == 1);
-            }
-
-            if (_toggleFullscreen != null)
-            {
-                _toggleFullscreen.SetValueWithoutNotify(Screen.fullScreen);
-            }
-        }
-
-        private void ApplyAndSaveSettings()
-        {
-            if (_sliderMasterVol != null) PlayerPrefs.SetFloat("Vol_Master", _sliderMasterVol.value);
-            if (_sliderMusicVol != null) PlayerPrefs.SetFloat("Vol_Music", _sliderMusicVol.value);
-            if (_sliderSFXVol != null) PlayerPrefs.SetFloat("Vol_SFX", _sliderSFXVol.value);
-            if (_sliderMouseSens != null) PlayerPrefs.SetFloat("MouseSens", _sliderMouseSens.value);
-            if (_toggleInvertY != null) PlayerPrefs.SetInt("InvertY", _toggleInvertY.value ? 1 : 0);
-
-            if (_toggleFullscreen != null)
-            {
-                Screen.fullScreen = _toggleFullscreen.value;
-            }
-
-            PlayerPrefs.Save();
-            CloseTopModal();
-            ShowNotification("Settings Saved Successfully!");
-        }
-
-        private void ToggleMuteAudio()
-        {
-            _isMuted = !_isMuted;
-            if (AudioManager.Instance != null)
-            {
-                AudioManager.Instance.SetChannelVolume(AudioChannel.Master, _isMuted ? 0f : 0.8f);
-            }
-        }
-
-        // ────────────────────── PROFILE ──────────────────────
-
-        private void SetupProfileModal()
-        {
-            if (_inputDisplayName != null)
-            {
-                string currentName = PlayerProfileManager.Instance != null
-                    ? PlayerProfileManager.Instance.DisplayName
-                    : "Agent_3293";
-                _inputDisplayName.value = currentName;
-            }
-        }
-
-        private void OnSaveProfile()
-        {
-            if (_inputDisplayName != null && !string.IsNullOrWhiteSpace(_inputDisplayName.value))
-            {
-                string newName = _inputDisplayName.value.Trim();
-                if (PlayerProfileManager.Instance != null)
+                if (show)
                 {
-                    PlayerProfileManager.Instance.SetDisplayName(newName);
+                    if (busyLabel != null) busyLabel.text = message;
+                    UIJuice.PopIn(busyOverlay.GetComponent<RectTransform>(), busyGroup);
                 }
-                RefreshProfileDisplay();
+                else
+                {
+                    UIJuice.PopOut(busyOverlay.GetComponent<RectTransform>(), busyGroup);
+                }
             }
-
-            CloseTopModal();
         }
 
-        private void RefreshProfileDisplay()
+        private async void CancelBusy()
         {
-            if (_playerNameLabel != null)
+            ShowBusy(false);
+            if (SessionManager.Instance != null)
             {
-                _playerNameLabel.text = PlayerProfileManager.Instance != null
-                    ? PlayerProfileManager.Instance.DisplayName
-                    : "Agent_3293";
+                await SessionManager.Instance.LeaveSession();
             }
         }
 
-        // ────────────────────── BUSY & NOTIFICATIONS ──────────────────────
-
-        private void ShowBusy(string message)
+        public void ShowError(string error)
         {
-            if (_busyLabel != null) _busyLabel.text = message;
-            if (_busyOverlay != null)
+            ShowBusy(false);
+            if (errorModal != null)
             {
-                _busyOverlay.style.display = DisplayStyle.Flex;
-                _busyOverlay.schedule.Execute(() => _busyOverlay.AddToClassList("modal-backdrop--visible")).ExecuteLater(10);
+                if (errorLabel != null) errorLabel.text = error;
+                OpenModal(errorModal, errorGroup);
+                if (errorClip != null && AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlaySFX2D(errorClip, 1.0f);
+                }
             }
-        }
-
-        private void HideBusy()
-        {
-            if (_busyOverlay != null)
+            else
             {
-                _busyOverlay.RemoveFromClassList("modal-backdrop--visible");
-                _busyOverlay.schedule.Execute(() => _busyOverlay.style.display = DisplayStyle.None).ExecuteLater(200);
+                NetworkNotificationUI.ShowToast(error, isError: true);
             }
-        }
-
-        private void ShowNotification(string message)
-        {
-            Debug.Log($"[MainMenuController] Notification: {message}");
-            NetworkNotificationUI.ShowToast(message, 3.5f, isError: false);
         }
 
         private void OnSessionError(string error)
         {
-            HideBusy();
-            NetworkNotificationUI.ShowToast(error, 4.5f, isError: true);
-            PlayErrorSound();
+            ShowError(error);
         }
 
-        private void SetChipActive(Button chip, bool active)
+        private void UpdateChipVisuals()
+        {
+            SetChipActive(chipQuickAll, _quickMatchMode == "ALL");
+            SetChipActive(chipQuickFFA, _quickMatchMode == "FFA");
+            SetChipActive(chipQuickTDM, _quickMatchMode == "TDM");
+
+            SetChipActive(chipModeFFA, _selectedCreateMode == "FFA");
+            SetChipActive(chipModeTDM, _selectedCreateMode == "TDM");
+
+            SetChipActive(chipFilterAll, _browserModeFilter == "ALL");
+            SetChipActive(chipFilterFFA, _browserModeFilter == "FFA");
+            SetChipActive(chipFilterTDM, _browserModeFilter == "TDM");
+
+            SetChipActive(btnSkinAgent, _selectedSkin == 0);
+            SetChipActive(btnSkinRobot, _selectedSkin == 1);
+        }
+
+        private void SetChipActive(Button chip, bool isActive)
         {
             if (chip == null) return;
-            if (active) chip.AddToClassList("mode-chip-btn--active");
-            else chip.RemoveFromClassList("mode-chip-btn--active");
-        }
-
-        private void PlayButtonSound()
-        {
-            if (buttonClickClip != null && AudioManager.Instance != null)
+            var img = chip.GetComponent<Image>();
+            if (img != null)
             {
-                AudioManager.Instance.PlaySFX2D(buttonClickClip);
+                img.color = isActive ? new Color(1f, 0.9f, 0.4f, 1f) : new Color(0.7f, 0.7f, 0.8f, 0.85f);
             }
         }
 
-        private void PlayErrorSound()
+        private void QuitGame()
         {
-            if (errorClip != null && AudioManager.Instance != null)
-            {
-                AudioManager.Instance.PlaySFX2D(errorClip);
-            }
-        }
-
-        private void OnQuitClicked()
-        {
-#if UNITY_EDITOR
+            #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
-#else
+            #else
             Application.Quit();
-#endif
+            #endif
         }
     }
 }

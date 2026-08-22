@@ -148,14 +148,15 @@ namespace Shootopia
                 Debug.Log($"[SessionManager] Session created successfully. Join Code: {_currentSession.Code}, Session ID: {_currentSession.Id}");
                 OnSessionCreated?.Invoke();
 
-                // Warp to WaitingRoom scene
+                // Warp directly to selected map scene (Warmup Lobby)
+                string targetMap = !string.IsNullOrEmpty(mapName) ? mapName : GetSessionMapName();
                 if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer && NetworkManager.Singleton.SceneManager != null)
                 {
-                    NetworkManager.Singleton.SceneManager.LoadScene("WaitingRoom", LoadSceneMode.Single);
+                    NetworkManager.Singleton.SceneManager.LoadScene(targetMap, LoadSceneMode.Single);
                 }
                 else
                 {
-                    LoadingScreenManager.LoadScene("WaitingRoom", "WARPING TO LOBBY...");
+                    LoadingScreenManager.LoadScene(targetMap, "WARPING TO ARENA...");
                 }
             }
             catch (Exception ex)
@@ -365,13 +366,32 @@ namespace Shootopia
         }
 
         /// <summary>
-        /// Gets the ready states and display names of all players in the current session.
+        /// Updates local player's team selection (0 = Alpha / Sapphire, 1 = Omega / Ruby) in UGS session metadata.
+        /// </summary>
+        public async Task SetPlayerTeam(int teamIndex)
+        {
+            try
+            {
+                if (_currentSession == null || _currentSession.CurrentPlayer == null) return;
+                _currentSession.CurrentPlayer.SetProperty("TeamIndex", new PlayerProperty(teamIndex.ToString(), VisibilityPropertyOptions.Public));
+                await _currentSession.SaveCurrentPlayerDataAsync();
+                OnPlayerReadyChanged?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SessionManager] SetPlayerTeam failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets the ready states, team assignments, and display names of all players in the current session.
         /// </summary>
         public List<PlayerReadyState> GetPlayerReadyStates()
         {
             var states = new List<PlayerReadyState>();
             if (_currentSession == null || _currentSession.Players == null) return states;
 
+            int fallbackIndex = 0;
             foreach (var player in _currentSession.Players)
             {
                 if (player == null) continue;
@@ -385,6 +405,15 @@ namespace Shootopia
                     isReady = true;
                 }
 
+                int teamIndex = fallbackIndex % 2;
+                if (player.Properties != null && player.Properties.TryGetValue("TeamIndex", out var teamProp))
+                {
+                    if (int.TryParse(teamProp.Value, out int parsedTeam))
+                    {
+                        teamIndex = Mathf.Clamp(parsedTeam, 0, 1);
+                    }
+                }
+
                 string resolvedName = null;
                 if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var nameProp))
                 {
@@ -395,7 +424,8 @@ namespace Shootopia
                     resolvedName = $"Agent_{player.Id.Substring(0, Mathf.Min(4, player.Id.Length))}";
                 }
 
-                states.Add(new PlayerReadyState(player.Id, isReady, resolvedName));
+                states.Add(new PlayerReadyState(player.Id, isReady, resolvedName, teamIndex));
+                fallbackIndex++;
             }
             return states;
         }

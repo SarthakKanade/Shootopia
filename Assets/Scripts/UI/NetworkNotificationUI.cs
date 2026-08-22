@@ -1,23 +1,26 @@
 using System.Collections;
 using UnityEngine;
-using Shootopia;
+using UnityEngine.UI;
+using TMPro;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Displays prominent in-game notification toasts for network errors, session failures,
+    /// Displays prominent UGUI notification toasts for network errors, session failures,
     /// and host disconnection messages across all scenes.
     /// </summary>
     public class NetworkNotificationUI : MonoBehaviour
     {
         public static NetworkNotificationUI Instance { get; private set; }
 
-        private string _activeNotification = "";
-        private float _hideTime = 0f;
-        private bool _isErrorType = true;
+        [Header("Toast UI References")]
+        [SerializeField] private GameObject toastRoot;
+        [SerializeField] private CanvasGroup toastCanvasGroup;
+        [SerializeField] private Image toastBackground;
+        [SerializeField] private TextMeshProUGUI toastText;
+        [SerializeField] private Image toastIcon;
 
-        private GUIStyle _toastBgStyle;
-        private GUIStyle _toastTextStyle;
+        private Coroutine _toastRoutine;
 
         private void Awake()
         {
@@ -28,6 +31,8 @@ namespace Shootopia
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            if (toastRoot != null) toastRoot.SetActive(false);
         }
 
         private void OnEnable()
@@ -53,62 +58,44 @@ namespace Shootopia
 
         public static void ShowToast(string message, float duration = 4f, bool isError = true)
         {
-            if (Instance == null)
+            if (Instance != null)
             {
-                var go = new GameObject("NetworkNotificationUI");
-                Instance = go.AddComponent<NetworkNotificationUI>();
-            }
-
-            Instance._activeNotification = message;
-            Instance._hideTime = Time.unscaledTime + duration;
-            Instance._isErrorType = isError;
-
-            Debug.Log($"[NetworkNotificationUI] Toast: '{message}' (isError={isError})");
-        }
-
-        private void InitStyles()
-        {
-            if (_toastBgStyle != null) return;
-
-            _toastBgStyle = new GUIStyle(GUI.skin.box);
-            _toastBgStyle.padding = new RectOffset(20, 20, 10, 10);
-            _toastBgStyle.alignment = TextAnchor.MiddleCenter;
-
-            _toastTextStyle = new GUIStyle(GUI.skin.label);
-            _toastTextStyle.alignment = TextAnchor.MiddleCenter;
-            _toastTextStyle.fontSize = 16;
-            _toastTextStyle.fontStyle = FontStyle.Bold;
-            _toastTextStyle.wordWrap = true;
-        }
-
-        private void OnGUI()
-        {
-            if (string.IsNullOrEmpty(_activeNotification) || Time.unscaledTime > _hideTime) return;
-
-            InitStyles();
-
-            // Dynamic color background based on error vs info
-            Texture2D bgTex = new Texture2D(1, 1);
-            if (_isErrorType)
-            {
-                bgTex.SetPixel(0, 0, new Color(0.8f, 0.2f, 0.2f, 0.95f)); // Deep Red
-                _toastTextStyle.normal.textColor = Color.white;
+                Instance.DisplayToast(message, duration, isError);
             }
             else
             {
-                bgTex.SetPixel(0, 0, new Color(0.2f, 0.6f, 0.9f, 0.95f)); // Cool Blue/Amber info
-                _toastTextStyle.normal.textColor = Color.white;
+                Debug.Log($"[NetworkNotificationUI] Toast (no instance): '{message}'");
             }
-            bgTex.Apply();
-            _toastBgStyle.normal.background = bgTex;
+        }
 
-            float width = Mathf.Min(600f, Screen.width - 40f);
-            float height = 60f;
-            float x = (Screen.width - width) / 2f;
-            float y = Screen.height - height - 30f;
+        public void DisplayToast(string message, float duration = 4f, bool isError = true)
+        {
+            if (toastRoot == null) return;
 
-            GUI.Box(new Rect(x, y, width, height), GUIContent.none, _toastBgStyle);
-            GUI.Label(new Rect(x + 10f, y + 5f, width - 20f, height - 10f), _activeNotification, _toastTextStyle);
+            if (_toastRoutine != null) StopCoroutine(_toastRoutine);
+            _toastRoutine = StartCoroutine(ToastRoutine(message, duration, isError));
+        }
+
+        private IEnumerator ToastRoutine(string message, float duration, bool isError)
+        {
+            if (toastText != null) toastText.text = message;
+
+            if (toastBackground != null)
+            {
+                toastBackground.color = isError ? new Color(0.85f, 0.2f, 0.2f, 0.95f) : new Color(0.2f, 0.5f, 0.9f, 0.95f);
+            }
+
+            toastRoot.SetActive(true);
+            UIJuice.PopIn(toastRoot.GetComponent<RectTransform>(), toastCanvasGroup, 0.2f);
+
+            yield return new WaitForSecondsRealtime(duration);
+
+            UIJuice.PopOut(toastRoot.GetComponent<RectTransform>(), toastCanvasGroup, 0.2f, () =>
+            {
+                toastRoot.SetActive(false);
+            });
+
+            _toastRoutine = null;
         }
     }
 }

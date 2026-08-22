@@ -6,17 +6,21 @@ namespace Shootopia
 {
     /// <summary>
     /// Handles lava zone logic:
-    /// - Disables player movement & action controls when inside lava (Y <= 0.5f).
-    /// - Applies the flamethrower burn effect (fiery visual glow + passive DoT) ONLY when in lava.
-    /// - Immediately removes burn effect and restores controls when player leaves lava or respawns on land.
-    /// - Slowly sinks the player downwards into the lava.
+    /// - Continuously detects players inside or below the lava surface (Y <= 0.5f).
+    /// - Disables player movement & action controls when inside lava.
+    /// - Applies continuous server-authoritative heat/burn damage every frame without stopping.
+    /// - Applies the fiery visual burn effect while inside lava.
+    /// - Sinks the player downwards into the lava at sinkSpeed.
+    /// - Instantly applies lethal damage if player falls below the kill floor (Y <= -10f).
+    /// - Restores controls and removes burn effect when player respawns on land.
     /// </summary>
     public class LavaZone : MonoBehaviour
     {
         [Header("Lava Damage & Sinking Parameters")]
-        [SerializeField] private float burnDPS = 30.0f;          // Continuous Damage Per Second while in lava
+        [SerializeField] private float burnDPS = 35.0f;          // Continuous Damage Per Second while in lava
         [SerializeField] private float sinkSpeed = 1.2f;         // Downward sinking velocity (m/s)
         [SerializeField] private float lavaSurfaceY = 0.5f;       // Surface elevation threshold for lava (Y <= 0.5f)
+        [SerializeField] private float killAbyssY = -10.0f;       // Abyss depth threshold for instant death
 
         private readonly HashSet<GameObject> _playersInLava = new HashSet<GameObject>();
 
@@ -37,33 +41,26 @@ namespace Shootopia
 
         private void Update()
         {
-            // Process sinking for all players currently in lava
-            List<GameObject> toRemove = null;
-            foreach (var player in _playersInLava)
+            // Find all player health objects in the scene to guarantee complete coverage
+            var allPlayers = FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None);
+            foreach (var health in allPlayers)
             {
-                if (player == null)
+                if (health == null || health.gameObject == null) continue;
+
+                var playerObj = health.gameObject;
+                bool isInLavaElevation = playerObj.transform.position.y <= lavaSurfaceY;
+
+                if (isInLavaElevation && !health.IsDead)
                 {
-                    if (toRemove == null) toRemove = new List<GameObject>();
-                    toRemove.Add(player);
-                    continue;
+                    if (_playersInLava.Add(playerObj))
+                    {
+                        health.ApplyBurnEffect(999f, burnDPS);
+                    }
+                    ProcessPlayerInLava(playerObj, health);
                 }
-
-                var health = player.GetComponent<PlayerHealth>();
-                if (health != null && health.IsDead)
+                else if (_playersInLava.Contains(playerObj))
                 {
-                    if (toRemove == null) toRemove = new List<GameObject>();
-                    toRemove.Add(player);
-                    continue;
-                }
-
-                ProcessPlayerInLava(player);
-            }
-
-            if (toRemove != null)
-            {
-                foreach (var p in toRemove)
-                {
-                    HandlePlayerExit(p);
+                    HandlePlayerExit(playerObj);
                 }
             }
         }
@@ -71,6 +68,7 @@ namespace Shootopia
         private void HandlePlayerEnter(GameObject playerObj)
         {
             var motor = playerObj.GetComponentInParent<CharacterMotor>();
+            if (motor == null) motor = playerObj.GetComponent<CharacterMotor>();
             if (motor == null) return;
 
             var health = motor.GetComponent<PlayerHealth>();
@@ -78,7 +76,6 @@ namespace Shootopia
 
             if (_playersInLava.Add(motor.gameObject))
             {
-                // Apply flamethrower burn effect (fiery tint + passive DoT)
                 if (health != null)
                 {
                     health.ApplyBurnEffect(999f, burnDPS);
@@ -90,24 +87,29 @@ namespace Shootopia
         {
             if (playerObj == null) return;
             var motor = playerObj.GetComponentInParent<CharacterMotor>();
+            if (motor == null) motor = playerObj.GetComponent<CharacterMotor>();
+
             if (motor != null)
             {
-                if (_playersInLava.Remove(motor.gameObject))
-                {
-                    var input = motor.GetComponent<PlayerInputRouter>();
-                    if (input != null) input.DisableControls = false;
-                    motor.IsInLava = false;
+                _playersInLava.Remove(motor.gameObject);
 
-                    var health = motor.GetComponent<PlayerHealth>();
-                    if (health != null)
-                    {
-                        health.RemoveBurnEffect();
-                    }
+                var input = motor.GetComponent<PlayerInputRouter>();
+                if (input != null) input.DisableControls = false;
+                motor.IsInLava = false;
+
+                var health = motor.GetComponent<PlayerHealth>();
+                if (health != null)
+                {
+                    health.RemoveBurnEffect();
                 }
+            }
+            else
+            {
+                _playersInLava.Remove(playerObj);
             }
         }
 
-        private void ProcessPlayerInLava(GameObject playerObj)
+        private void ProcessPlayerInLava(GameObject playerObj, PlayerHealth health)
         {
             var motor = playerObj.GetComponent<CharacterMotor>();
             if (motor == null) return;
@@ -119,7 +121,7 @@ namespace Shootopia
                 input.DisableControls = true;
             }
 
-            // 2. Slow sinking into lava
+            // 2. Sinking into lava
             motor.IsInLava = true;
             var cc = motor.GetComponent<CharacterController>();
             if (cc != null && cc.enabled)
@@ -131,13 +133,21 @@ namespace Shootopia
                 motor.transform.position += Vector3.down * sinkSpeed * Time.deltaTime;
             }
 
-            // 3. Apply server-authoritative lava damage
+            // 3. Apply server-authoritative continuous lava damage
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
-                var health = playerObj.GetComponent<PlayerHealth>();
                 if (health != null && !health.IsDead)
                 {
-                    health.TakeDamage(burnDPS * Time.deltaTime, DamageType.Environment);
+                    if (playerObj.transform.position.y <= killAbyssY)
+                    {
+                        // Instant death in deep abyss
+                        health.TakeDamage(9999f, DamageType.Environment);
+                    }
+                    else
+                    {
+                        // Continuous lava heat damage per second
+                        health.TakeDamage(burnDPS * Time.deltaTime, DamageType.Environment);
+                    }
                 }
             }
         }

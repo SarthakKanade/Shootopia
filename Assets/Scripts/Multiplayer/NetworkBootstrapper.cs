@@ -95,13 +95,18 @@ namespace Shootopia
             }
         }
 
+        private bool IsValidSpawnScene(string sceneName)
+        {
+            return !string.IsNullOrEmpty(sceneName) && sceneName != "MainMenu" && sceneName != "Bootstrap";
+        }
+
         private void OnServerStarted()
         {
             Debug.Log("[NetworkBootstrapper] NGO Server started. Registering SceneManager and Client callbacks.");
             HookNetworkEvents();
 
             string currentScene = SceneManager.GetActiveScene().name;
-            if (currentScene == "WaitingRoom" || currentScene == "Map1")
+            if (IsValidSpawnScene(currentScene))
             {
                 SpawnAllConnectedPlayers();
             }
@@ -113,12 +118,38 @@ namespace Shootopia
 
             LoadingScreenManager.HideOverlay();
 
+            SceneManager.SetActiveScene(scene);
+
+            // Client and Host local immediate safety positioning
+            if (scene.name == "Map1" || scene.name == "GameScene" || scene.name == "Shootopia_Sandbox")
+            {
+                if (SpawnPointManager.Instance != null)
+                {
+                    SpawnPointManager.Instance.InitializeSpawnPoints();
+                }
+
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.LocalClient != null && NetworkManager.Singleton.LocalClient.PlayerObject != null)
+                {
+                    var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
+                    var cc = localPlayer.GetComponent<CharacterController>();
+                    if (cc != null) cc.enabled = false;
+                    Vector3 safePos = new Vector3(120f, 16f, 2.5f);
+                    if (SpawnPointManager.Instance != null)
+                    {
+                        var sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
+                        if (sp != null) safePos = sp.position;
+                    }
+                    localPlayer.transform.position = safePos;
+                    if (cc != null) cc.enabled = true;
+                    Debug.Log($"[NetworkBootstrapper] Local player instantly positioned at safe point {safePos} on scene '{scene.name}'.");
+                }
+            }
+
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
                 HookNetworkEvents();
-                if (scene.name == "WaitingRoom" || scene.name == "Map1")
+                if (IsValidSpawnScene(scene.name))
                 {
-                    Debug.Log($"[NetworkBootstrapper] Server detected target scene '{scene.name}'. Spawning host player...");
                     SpawnPlayerForClient(NetworkManager.Singleton.LocalClientId);
                 }
             }
@@ -131,17 +162,17 @@ namespace Shootopia
             if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
             string activeSceneName = SceneManager.GetActiveScene().name;
-            if (activeSceneName != "WaitingRoom" && activeSceneName != "Map1") return;
+            if (!IsValidSpawnScene(activeSceneName)) return;
 
             if (sceneEvent.SceneEventType == SceneEventType.LoadComplete)
             {
-                Debug.Log($"[NetworkBootstrapper] Client {sceneEvent.ClientId} finished loading '{sceneEvent.SceneName}'. Spawning player...");
-                SpawnPlayerForClient(sceneEvent.ClientId);
+                Debug.Log($"[NetworkBootstrapper] Client {sceneEvent.ClientId} finished loading '{sceneEvent.SceneName}'. Positioning player...");
+                SpawnPlayerForClient(sceneEvent.ClientId, cleanRespawn: false);
             }
             else if (sceneEvent.SceneEventType == SceneEventType.LoadEventCompleted)
             {
-                Debug.Log($"[NetworkBootstrapper] All clients finished loading '{sceneEvent.SceneName}'. Ensuring all players spawned...");
-                SpawnAllConnectedPlayers();
+                Debug.Log($"[NetworkBootstrapper] All clients finished loading '{sceneEvent.SceneName}'. Ensuring all players cleanly spawned in scene...");
+                SpawnAllConnectedPlayers(cleanRespawn: false);
             }
         }
 
@@ -152,7 +183,7 @@ namespace Shootopia
             if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
             string activeSceneName = SceneManager.GetActiveScene().name;
-            if (activeSceneName == "WaitingRoom" || activeSceneName == "Map1")
+            if (IsValidSpawnScene(activeSceneName))
             {
                 SpawnPlayerForClient(clientId);
             }
@@ -175,33 +206,25 @@ namespace Shootopia
             PlayerNameRegistry.Unregister(clientId);
         }
 
-        public void SpawnAllConnectedPlayers()
+        public void SpawnAllConnectedPlayers(bool cleanRespawn = false)
         {
             if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
             {
-                SpawnPlayerForClient(client.ClientId);
+                SpawnPlayerForClient(client.ClientId, cleanRespawn);
             }
         }
 
-        public void SpawnPlayerForClient(ulong clientId)
+        public void SpawnPlayerForClient(ulong clientId, bool cleanRespawn = false)
         {
             if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
 
-            if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
-            {
-                if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
-                {
-                    Debug.Log($"[NetworkBootstrapper] Client {clientId} already has an active spawned player.");
-                    return;
-                }
-            }
-
             string currentSceneName = SceneManager.GetActiveScene().name;
+            if (!IsValidSpawnScene(currentSceneName)) return;
 
             // Resolve spawn position with safe platform fallback (never spawn in lava at 0,0,0)
-            Vector3 spawnPos = currentSceneName == "WaitingRoom" ? new Vector3(15f, 0.5f, 15f) : new Vector3(120f, 16f, 2.5f);
+            Vector3 spawnPos = new Vector3(120f, 16f, 2.5f);
             Quaternion spawnRot = Quaternion.identity;
 
             if (SpawnPointManager.Instance != null)
@@ -221,6 +244,57 @@ namespace Shootopia
                     spawnRot = sp.rotation;
                 }
             }
+            else if (currentSceneName == "WaitingRoom")
+            {
+                spawnPos = new Vector3(15f, 0.5f, 15f);
+            }
+
+            if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
+            {
+                if (client.PlayerObject != null)
+                {
+                    bool sceneMismatch = client.PlayerObject.gameObject.scene != SceneManager.GetActiveScene();
+                    bool notSpawned = !client.PlayerObject.IsSpawned;
+
+                    if (cleanRespawn || sceneMismatch || notSpawned)
+                    {
+                        Debug.Log($"[NetworkBootstrapper] Cleaning up existing player object for client {clientId} (cleanRespawn={cleanRespawn}, sceneMismatch={sceneMismatch}, notSpawned={notSpawned}).");
+                        try
+                        {
+                            if (client.PlayerObject.IsSpawned)
+                            {
+                                client.PlayerObject.Despawn(true);
+                            }
+                            else
+                            {
+                                Destroy(client.PlayerObject.gameObject);
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogWarning($"[NetworkBootstrapper] Exception while despawning old player object for client {clientId}: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[NetworkBootstrapper] Client {clientId} has spawned player. Repositioning to {spawnPos} in '{currentSceneName}'.");
+                        var health = client.PlayerObject.GetComponent<PlayerHealth>();
+                        if (health != null)
+                        {
+                            health.ResetStateForMatch(spawnPos);
+                        }
+                        else
+                        {
+                            var cc = client.PlayerObject.GetComponent<CharacterController>();
+                            if (cc != null) cc.enabled = false;
+                            client.PlayerObject.transform.position = spawnPos;
+                            client.PlayerObject.transform.rotation = spawnRot;
+                            if (cc != null) cc.enabled = true;
+                        }
+                        return;
+                    }
+                }
+            }
 
             var playerPrefab = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
             if (playerPrefab == null)
@@ -234,7 +308,7 @@ namespace Shootopia
             if (netObj != null)
             {
                 netObj.SpawnAsPlayerObject(clientId, true);
-                Debug.Log($"[NetworkBootstrapper] Successfully spawned player for client {clientId} at {spawnPos} in scene '{currentSceneName}'.");
+                Debug.Log($"[NetworkBootstrapper] Successfully spawned fresh player for client {clientId} at {spawnPos} in scene '{currentSceneName}'.");
             }
             else
             {

@@ -1,13 +1,14 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UIElements;
+using UnityEngine.UI;
+using TMPro;
 
 namespace Shootopia
 {
     /// <summary>
-    /// Persistent singleton handling smooth animated loading screen transitions between scenes.
-    /// Supports asynchronous progress tracking, rotating tips, and fade-in/out.
+    /// Persistent singleton handling smooth animated loading screen transitions between scenes using UGUI.
+    /// Supports asynchronous progress tracking, rotating tips, space loading icon animations, and fade-in/out.
     /// </summary>
     public class LoadingScreenManager : MonoBehaviour
     {
@@ -25,12 +26,14 @@ namespace Shootopia
             private set => _instance = value;
         }
 
-        [SerializeField] private UIDocument uiDocument;
-
-        private VisualElement _loadingRoot;
-        private Label _statusText;
-        private VisualElement _progressFill;
-        private Label _tipText;
+        [Header("Loading Screen Elements")]
+        [SerializeField] private GameObject loadingRoot;
+        [SerializeField] private CanvasGroup loadingCanvasGroup;
+        [SerializeField] private TextMeshProUGUI statusText;
+        [SerializeField] private Slider progressBar;
+        [SerializeField] private Image progressFillImage;
+        [SerializeField] private TextMeshProUGUI tipText;
+        [SerializeField] private Transform spinnerIcon;
 
         private readonly string[] _tips = new string[]
         {
@@ -46,7 +49,7 @@ namespace Shootopia
         {
             if (_instance != null && _instance != this)
             {
-                Destroy(this);
+                Destroy(gameObject);
                 return;
             }
 
@@ -54,31 +57,14 @@ namespace Shootopia
             DontDestroyOnLoad(gameObject);
         }
 
-        private void OnEnable()
+        private void Update()
         {
-            if (uiDocument == null)
+            if (loadingRoot != null && loadingRoot.activeInHierarchy && spinnerIcon != null)
             {
-                uiDocument = GetComponent<UIDocument>();
-            }
-
-            if (uiDocument != null && uiDocument.rootVisualElement != null)
-            {
-                BindElements();
+                spinnerIcon.Rotate(0f, 0f, -120f * Time.unscaledDeltaTime);
             }
         }
 
-        private void BindElements()
-        {
-            var root = uiDocument.rootVisualElement;
-            _loadingRoot = root.Q<VisualElement>("LoadingRoot");
-            _statusText = root.Q<Label>("LoadingStatusText");
-            _progressFill = root.Q<VisualElement>("ProgressBarFill");
-            _tipText = root.Q<Label>("LoadingTipText");
-        }
-
-        /// <summary>
-        /// Initiates an asynchronous scene load with a branded loading screen overlay.
-        /// </summary>
         public static void LoadScene(string sceneName, string customStatus = "WARPING TO ARENA...")
         {
             if (Instance != null)
@@ -109,31 +95,23 @@ namespace Shootopia
 
         private void SetVisible(bool visible, string status = "")
         {
-            if (_loadingRoot == null) BindElements();
-            if (_loadingRoot == null) return;
+            if (loadingRoot == null) return;
 
-            _loadingRoot.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            _loadingRoot.pickingMode = visible ? PickingMode.Position : PickingMode.Ignore;
+            loadingRoot.SetActive(visible);
 
             if (visible)
             {
-                _loadingRoot.AddToClassList("modal-backdrop--visible");
-                if (!string.IsNullOrEmpty(status) && _statusText != null)
+                if (loadingCanvasGroup != null) loadingCanvasGroup.alpha = 1f;
+                if (!string.IsNullOrEmpty(status) && statusText != null)
                 {
-                    _statusText.text = status;
+                    statusText.text = status;
                 }
-                if (_tipText != null)
+                if (tipText != null)
                 {
-                    _tipText.text = _tips[Random.Range(0, _tips.Length)];
+                    tipText.text = _tips[Random.Range(0, _tips.Length)];
                 }
-                if (_progressFill != null)
-                {
-                    _progressFill.style.width = new Length(0, LengthUnit.Percent);
-                }
-            }
-            else
-            {
-                _loadingRoot.RemoveFromClassList("modal-backdrop--visible");
+                if (progressBar != null) progressBar.value = 0f;
+                if (progressFillImage != null) progressFillImage.fillAmount = 0f;
             }
         }
 
@@ -141,27 +119,23 @@ namespace Shootopia
         {
             SetVisible(true, status);
 
-            yield return new WaitForSeconds(0.2f);
+            yield return new WaitForSecondsRealtime(0.2f);
 
             var asyncOp = SceneManager.LoadSceneAsync(sceneName);
             asyncOp.allowSceneActivation = false;
 
             while (asyncOp.progress < 0.9f)
             {
-                float pct = Mathf.Clamp01(asyncOp.progress / 0.9f) * 100f;
-                if (_progressFill != null)
-                {
-                    _progressFill.style.width = new Length(pct, LengthUnit.Percent);
-                }
+                float pct = Mathf.Clamp01(asyncOp.progress / 0.9f);
+                if (progressBar != null) progressBar.value = pct;
+                if (progressFillImage != null) progressFillImage.fillAmount = pct;
                 yield return null;
             }
 
-            if (_progressFill != null)
-            {
-                _progressFill.style.width = new Length(100, LengthUnit.Percent);
-            }
+            if (progressBar != null) progressBar.value = 1f;
+            if (progressFillImage != null) progressFillImage.fillAmount = 1f;
 
-            yield return new WaitForSeconds(0.3f);
+            yield return new WaitForSecondsRealtime(0.35f);
 
             asyncOp.allowSceneActivation = true;
 
@@ -170,7 +144,7 @@ namespace Shootopia
                 yield return null;
             }
 
-            yield return new WaitForSeconds(0.2f);
+            yield return new WaitForSecondsRealtime(0.2f);
             SetVisible(false);
         }
     }

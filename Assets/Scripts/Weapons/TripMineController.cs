@@ -124,9 +124,12 @@ namespace Shootopia
             Collider[] hits = Physics.OverlapSphere(transform.position, radius);
             foreach (Collider c in hits)
             {
-                if (c.TryGetComponent(out IDamageable t))
+                var t = c.GetComponentInParent<IDamageable>();
+                if (t == null) t = c.GetComponent<IDamageable>();
+                if (t != null)
                 {
-                    if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.LocalClientId == (ulong)_ownerID)
+                    bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
+                    if (isServerOrOffline)
                     {
                         var targetHealth = c.GetComponentInParent<PlayerHealth>();
                         if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();

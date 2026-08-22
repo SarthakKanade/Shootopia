@@ -23,6 +23,12 @@ namespace Shootopia
             MatchInProgress.Value = true;
             Debug.Log("[FFAMode] Match Started!");
             
+            // Ensure all players are positioned at valid FFA spawn points
+            if (NetworkBootstrapper.Instance != null)
+            {
+                NetworkBootstrapper.Instance.SpawnAllConnectedPlayers();
+            }
+
             // Broadcast initial time
             BroadcastTimeRemainingClientRpc(MatchTimeRemaining.Value);
         }

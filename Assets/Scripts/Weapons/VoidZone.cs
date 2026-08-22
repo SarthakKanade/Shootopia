@@ -95,16 +95,25 @@ namespace Shootopia
                         rb.AddForce(dir * (_data != null ? _data.pullForce : 12f), ForceMode.Acceleration);
                     }
 
-                    // Continuous damage
-                    if (c.TryGetComponent<IDamageable>(out var damageable))
+                    // Continuous damage (calculated authoritatively on server)
+                    var damageable = c.GetComponentInParent<IDamageable>();
+                    if (damageable == null) damageable = c.GetComponent<IDamageable>();
+                    if (damageable != null)
                     {
-                        if (_hasOwner && Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.LocalClientId == _ownerID)
+                        bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
+                        if (isServerOrOffline)
                         {
+                            // Skip damage if match is not active (Warmup)
+                            if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
+                            {
+                                continue;
+                            }
+
                             var targetHealth = c.GetComponentInParent<PlayerHealth>();
                             if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
                             if (targetHealth != null)
                             {
-                                targetHealth.LastAttackerClientId = _ownerID;
+                                targetHealth.LastAttackerClientId = _hasOwner ? _ownerID : Unity.Netcode.NetworkManager.ServerClientId;
                             }
 
                             // Linear falloff from centre to edge

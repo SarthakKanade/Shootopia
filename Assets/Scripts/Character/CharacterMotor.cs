@@ -211,6 +211,25 @@ namespace Shootopia
                         Debug.Log("[CharacterMotor] Set CinemachineCamera follow target to CameraTarget");
                     }
                 }
+
+                // If spawned in a gameplay arena and elevation is at or below lava level, snap immediately to spawn point
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (sceneName == "Map1" || sceneName == "GameScene")
+                {
+                    if (transform.position.y <= 1.0f && SpawnPointManager.Instance != null)
+                    {
+                        var sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
+                        if (sp != null)
+                        {
+                            if (Controller != null) Controller.enabled = false;
+                            transform.position = sp.position;
+                            transform.rotation = sp.rotation;
+                            if (Controller != null) Controller.enabled = true;
+                            VerticalVelocity = 0f;
+                            IsInLava = false;
+                        }
+                    }
+                }
             }
         }
 
