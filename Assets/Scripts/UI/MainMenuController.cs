@@ -55,6 +55,7 @@ namespace Shootopia
         [Header("Custom Rooms: Create Tab")]
         [SerializeField] private TMP_InputField inputCreateRoomName;
         [SerializeField] private Button chipModeFFA, chipModeTDM;
+        [SerializeField] private Button chipMapSectorAlpha, chipMapGasStation;
         [SerializeField] private Slider sliderMaxPlayers;
         [SerializeField] private TextMeshProUGUI labelMaxPlayers;
         [SerializeField] private Toggle togglePublicRoom;
@@ -108,6 +109,7 @@ namespace Shootopia
 
         // ── State Variables ──
         private string _selectedCreateMode = "FFA";
+        private string _selectedCreateMap = "Map1";
         private string _quickMatchMode = "ALL";
         private string _browserModeFilter = "ALL";
         private int _selectedSkin = 0;
@@ -191,6 +193,8 @@ namespace Shootopia
             // Create Tab
             if (chipModeFFA != null) chipModeFFA.onClick.AddListener(() => SetCreateMode("FFA"));
             if (chipModeTDM != null) chipModeTDM.onClick.AddListener(() => SetCreateMode("TDM"));
+            if (chipMapSectorAlpha != null) chipMapSectorAlpha.onClick.AddListener(() => SetCreateMap("Map1"));
+            if (chipMapGasStation != null) chipMapGasStation.onClick.AddListener(() => SetCreateMap("GasStationMap"));
             if (sliderMaxPlayers != null) sliderMaxPlayers.onValueChanged.AddListener(OnMaxPlayersChanged);
             if (btnConfirmCreate != null) btnConfirmCreate.onClick.AddListener(ConfirmCreateRoom);
 
@@ -368,6 +372,12 @@ namespace Shootopia
             UpdateChipVisuals();
         }
 
+        private void SetCreateMap(string mapName)
+        {
+            _selectedCreateMap = mapName;
+            UpdateChipVisuals();
+        }
+
         private void OnMaxPlayersChanged(float val)
         {
             int count = Mathf.RoundToInt(val);
@@ -390,7 +400,7 @@ namespace Shootopia
             try
             {
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
-                await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode);
+                await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode, _selectedCreateMap);
             }
             catch (Exception ex)
             {
@@ -497,10 +507,12 @@ namespace Shootopia
 
             string roomName = session.Name;
             string mode = (session.Properties != null && session.Properties.ContainsKey("GameMode")) ? session.Properties["GameMode"].Value : "FFA";
+            string map = (session.Properties != null && session.Properties.ContainsKey("MapName")) ? session.Properties["MapName"].Value : "Map1";
+            string mapDisplay = MapRegistry.GetDisplayName(map);
             int maxPlayers = session.MaxPlayers;
 
             if (texts.Length > 0) texts[0].text = roomName;
-            if (texts.Length > 1) texts[1].text = $"{mode} • MAX {maxPlayers} PLAYERS";
+            if (texts.Length > 1) texts[1].text = $"{mode} • {mapDisplay} • MAX {maxPlayers}P";
 
             if (joinBtn != null)
             {
@@ -691,6 +703,9 @@ namespace Shootopia
 
             SetChipActive(chipModeFFA, _selectedCreateMode == "FFA");
             SetChipActive(chipModeTDM, _selectedCreateMode == "TDM");
+
+            SetChipActive(chipMapSectorAlpha, _selectedCreateMap == "Map1");
+            SetChipActive(chipMapGasStation, _selectedCreateMap == "GasStationMap");
 
             SetChipActive(chipFilterAll, _browserModeFilter == "ALL");
             SetChipActive(chipFilterFFA, _browserModeFilter == "FFA");

@@ -212,11 +212,12 @@ namespace Shootopia
                     }
                 }
 
-                // If spawned in a gameplay arena and elevation is at or below lava level, snap immediately to spawn point
+                // If spawned in a gameplay arena and elevation is at or below void level, snap immediately to spawn point
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                if (sceneName == "Map1" || sceneName == "GameScene")
+                if (MapRegistry.IsGameplayMap(sceneName))
                 {
-                    if (transform.position.y <= 1.0f && SpawnPointManager.Instance != null)
+                    float voidThreshold = MapRegistry.GetVoidThreshold(sceneName);
+                    if (transform.position.y <= voidThreshold && SpawnPointManager.Instance != null)
                     {
                         var sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
                         if (sp != null)

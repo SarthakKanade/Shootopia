@@ -121,7 +121,7 @@ namespace Shootopia
             SceneManager.SetActiveScene(scene);
 
             // Client and Host local immediate safety positioning
-            if (scene.name == "Map1" || scene.name == "GameScene" || scene.name == "Shootopia_Sandbox")
+            if (MapRegistry.IsGameplayMap(scene.name))
             {
                 if (SpawnPointManager.Instance != null)
                 {
@@ -133,7 +133,7 @@ namespace Shootopia
                     var localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
                     var cc = localPlayer.GetComponent<CharacterController>();
                     if (cc != null) cc.enabled = false;
-                    Vector3 safePos = new Vector3(120f, 16f, 2.5f);
+                    Vector3 safePos = Vector3.up * 0.5f;
                     if (SpawnPointManager.Instance != null)
                     {
                         var sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
@@ -223,8 +223,8 @@ namespace Shootopia
             string currentSceneName = SceneManager.GetActiveScene().name;
             if (!IsValidSpawnScene(currentSceneName)) return;
 
-            // Resolve spawn position with safe platform fallback (never spawn in lava at 0,0,0)
-            Vector3 spawnPos = new Vector3(120f, 16f, 2.5f);
+            // Resolve spawn position with safe platform fallback
+            Vector3 spawnPos = Vector3.up * 0.5f;
             Quaternion spawnRot = Quaternion.identity;
 
             if (SpawnPointManager.Instance != null)

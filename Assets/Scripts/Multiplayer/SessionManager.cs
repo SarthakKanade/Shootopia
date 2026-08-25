@@ -35,6 +35,9 @@ namespace Shootopia
         public UnityEvent OnSessionLeft;
         public UnityEvent<string> OnSessionError;
         public UnityEvent OnPlayerReadyChanged;
+        public UnityEvent OnSessionUpdated;
+
+        public bool IsHost => _currentSession != null && _currentSession.IsHost;
 
         private ISession _currentSession;
         private bool _isProcessingSession = false;
@@ -433,23 +436,34 @@ namespace Shootopia
         private void SubscribeToSessionEvents(ISession session)
         {
             if (session == null) return;
-            session.PlayerJoined += OnSessionUpdated;
-            session.PlayerLeaving += OnSessionUpdated;
-            session.PlayerPropertiesChanged += OnSessionUpdatedNoArg;
-            session.Changed += OnSessionUpdatedNoArg;
+            session.PlayerJoined += HandlePlayerEvent;
+            session.PlayerLeaving += HandlePlayerEvent;
+            session.PlayerPropertiesChanged += HandleSessionChanged;
+            session.SessionPropertiesChanged += HandleSessionChanged;
+            session.Changed += HandleSessionChanged;
         }
 
         private void UnsubscribeFromSessionEvents(ISession session)
         {
             if (session == null) return;
-            session.PlayerJoined -= OnSessionUpdated;
-            session.PlayerLeaving -= OnSessionUpdated;
-            session.PlayerPropertiesChanged -= OnSessionUpdatedNoArg;
-            session.Changed -= OnSessionUpdatedNoArg;
+            session.PlayerJoined -= HandlePlayerEvent;
+            session.PlayerLeaving -= HandlePlayerEvent;
+            session.PlayerPropertiesChanged -= HandleSessionChanged;
+            session.SessionPropertiesChanged -= HandleSessionChanged;
+            session.Changed -= HandleSessionChanged;
         }
 
-        private void OnSessionUpdated(string playerId) => OnPlayerReadyChanged?.Invoke();
-        private void OnSessionUpdatedNoArg() => OnPlayerReadyChanged?.Invoke();
+        private void HandlePlayerEvent(string playerId)
+        {
+            OnPlayerReadyChanged?.Invoke();
+            OnSessionUpdated?.Invoke();
+        }
+
+        private void HandleSessionChanged()
+        {
+            OnPlayerReadyChanged?.Invoke();
+            OnSessionUpdated?.Invoke();
+        }
 
         public string GetJoinCode() => _currentSession != null ? _currentSession.Code : string.Empty;
         public ISession GetCurrentSession() => _currentSession;
@@ -460,7 +474,30 @@ namespace Shootopia
             {
                 if (!string.IsNullOrEmpty(prop.Value)) return prop.Value;
             }
-            return "Map1";
+            return MapRegistry.DEFAULT_MAP;
+        }
+
+        /// <summary>
+        /// Updates the session's chosen map (Host only).
+        /// </summary>
+        public async Task UpdateSessionMapAsync(string newMapName)
+        {
+            if (_currentSession == null || !_currentSession.IsHost) return;
+            try
+            {
+                var hostSession = _currentSession.AsHost();
+                if (hostSession != null)
+                {
+                    hostSession.SetProperty("MapName", new SessionProperty(newMapName, VisibilityPropertyOptions.Public, PropertyIndex.String2));
+                    await hostSession.SavePropertiesAsync();
+                    Debug.Log($"[SessionManager] Host updated session map to: {newMapName}");
+                    OnSessionUpdated?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SessionManager] Failed to update map: {ex.Message}");
+            }
         }
 
         /// <summary>

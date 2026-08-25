@@ -61,7 +61,7 @@ namespace Shootopia
             }
 
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            bool shouldLock = lockCursor && (activeScene == "GameScene" || activeScene == "Map1" || activeScene == "Shootopia_Sandbox");
+            bool shouldLock = lockCursor && MapRegistry.IsGameplayMap(activeScene);
 
             if (shouldLock)
             {

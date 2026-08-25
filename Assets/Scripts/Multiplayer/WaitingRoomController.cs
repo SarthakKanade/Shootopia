@@ -102,6 +102,7 @@ namespace Shootopia
                 SessionManager.Instance.OnSessionJoined.AddListener(RefreshLobbyUI);
                 SessionManager.Instance.OnSessionLeft.AddListener(OnSessionLeftLocally);
                 SessionManager.Instance.OnPlayerReadyChanged.AddListener(RefreshLobbyUI);
+                SessionManager.Instance.OnSessionUpdated.AddListener(RefreshLobbyUI);
             }
         }
 
@@ -118,6 +119,7 @@ namespace Shootopia
                 SessionManager.Instance.OnSessionJoined.RemoveListener(RefreshLobbyUI);
                 SessionManager.Instance.OnSessionLeft.RemoveListener(OnSessionLeftLocally);
                 SessionManager.Instance.OnPlayerReadyChanged.RemoveListener(RefreshLobbyUI);
+                SessionManager.Instance.OnSessionUpdated.RemoveListener(RefreshLobbyUI);
             }
 
             UnregisterCallbacks();
@@ -192,6 +194,21 @@ namespace Shootopia
             if (togglePublicRoom != null) togglePublicRoom.onValueChanged.AddListener(OnVisibilityToggled);
             if (btnSelectAlpha != null) btnSelectAlpha.onClick.AddListener(() => SwitchTeam(0));
             if (btnSelectOmega != null) btnSelectOmega.onClick.AddListener(() => SwitchTeam(1));
+
+            if (roomMapLabel != null)
+            {
+                var btnMap = roomMapLabel.GetComponent<Button>();
+                if (btnMap != null) btnMap.onClick.AddListener(CycleMapAsHost);
+            }
+        }
+
+        private async void CycleMapAsHost()
+        {
+            if (SessionManager.Instance == null || !SessionManager.Instance.IsHost) return;
+            string currentMap = SessionManager.Instance.GetSessionMapName();
+            string nextMap = (currentMap == "Map1") ? "GasStationMap" : "Map1";
+            await SessionManager.Instance.UpdateSessionMapAsync(nextMap);
+            RefreshLobbyUI();
         }
 
         private void UnregisterCallbacks()
@@ -205,6 +222,11 @@ namespace Shootopia
             if (togglePublicRoom != null) togglePublicRoom.onValueChanged.RemoveAllListeners();
             if (btnSelectAlpha != null) btnSelectAlpha.onClick.RemoveAllListeners();
             if (btnSelectOmega != null) btnSelectOmega.onClick.RemoveAllListeners();
+            if (roomMapLabel != null)
+            {
+                var btnMap = roomMapLabel.GetComponent<Button>();
+                if (btnMap != null) btnMap.onClick.RemoveAllListeners();
+            }
         }
 
         public void RefreshLobbyUI()
@@ -235,10 +257,10 @@ namespace Shootopia
                 roomModeBadge.color = isTeamMode ? ColorGold : ColorSapphire;
             }
 
-            string map = SessionManager.Instance != null ? SessionManager.Instance.GetSessionMapName() : "SECTOR ALPHA";
+            string map = SessionManager.Instance != null ? SessionManager.Instance.GetSessionMapName() : "Map1";
             if (roomMapLabel != null)
             {
-                roomMapLabel.text = $"MAP: {map.ToUpper()}";
+                roomMapLabel.text = $"MAP: {MapRegistry.GetDisplayName(map)}";
             }
 
             // Room Code
