@@ -2138,15 +2138,15 @@ MonoBehaviour:
   animator: {fileID: 2366634568176295071}
   modelRoot: {fileID: 8966723043960205392}
   aimProviderBehaviour: {fileID: 0}
-  moveSpeed: 4
+  moveSpeed: 5
   rotationSpeed: 900
-  gravity: -32
-  jumpForce: 2
-  dashSpeed: 10
-  rollSpeed: 8
+  gravity: -24
+  jumpForce: 2.2
+  dashSpeed: 12
+  rollSpeed: 9.5
   animDamp: 0.1
   playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
-  footstepInterval: 0.38
+  footstepInterval: 0.32
 --- !u!114 &7141895846445295742
 MonoBehaviour:
   m_ObjectHideFlags: 0

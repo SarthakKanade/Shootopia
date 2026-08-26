@@ -115,6 +115,8 @@ namespace Shootopia
         private int _currentUses;
         private float _timeRemaining;
         private Coroutine _timeRoutine;
+        private float _combatStanceTimer = 0f;
+        private const float COMBAT_STANCE_DURATION = 1.5f;
 
         // Resolved attach points (used by firing + IK)
         public WeaponAttachSO CurrentAttach { get; private set; }
@@ -211,11 +213,15 @@ namespace Shootopia
 
         private void LateUpdate()
         {
-            bool isKnife = CurrentAttach != null && (CurrentAttach.stanceId == 3 || (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.category == WeaponCategory.Melee || CurrentAttach.gameplayData.name.Contains("Knife"))));
+            // Do not lock head during melee attacks (punch or knife), allowing natural head orientation
+            bool isMelee = CurrentAttach == null || CurrentAttach.stanceId == 3 ||
+                           (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.category == WeaponCategory.Melee || CurrentAttach.gameplayData.name.Contains("Knife")));
+            if (isMelee) return;
+
             bool isFiringOrCharging = _isCharging || _isAimingTrap || (animator != null && (animator.GetBool(HashIsFiring) || animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot")));
 
-            // Freeze/lock head rotation ONLY during movement while firing, charging, or using knife
-            if (isKnife || isFiringOrCharging)
+            // Freeze/lock head rotation ONLY during movement while firing or charging ranged weapons
+            if (isFiringOrCharging)
             {
                 if (_headTransform != null)
                 {
@@ -276,10 +282,56 @@ namespace Shootopia
             }
         }
 
+        private void TriggerCombatStance()
+        {
+            _combatStanceTimer = COMBAT_STANCE_DURATION;
+            if (motor != null) motor.IsInCombat = true;
+            if (animator != null)
+            {
+                animator.SetBool(HashIsFiring, true);
+                animator.SetFloat(HashShootSpeed, 1f);
+            }
+        }
+
+        private void ExitCombatStance()
+        {
+            _combatStanceTimer = 0f;
+            if (motor != null) motor.IsInCombat = false;
+            if (animator != null)
+            {
+                animator.SetBool(HashIsFiring, false);
+                animator.SetFloat(HashShootSpeed, 1f);
+            }
+        }
+
         private void Update()
         {
             _timeSinceLastShot += Time.deltaTime;
             if (_punchTimer > 0f) _punchTimer -= Time.deltaTime;
+
+            // Manage Combat Stance persistence (holds upper-body aim for 1.5s after shooting)
+            if (_combatStanceTimer > 0f)
+            {
+                _combatStanceTimer -= Time.deltaTime;
+                if (_combatStanceTimer <= 0f)
+                {
+                    _combatStanceTimer = 0f;
+                    if (motor != null) motor.IsInCombat = false;
+                    if (animator != null)
+                    {
+                        animator.SetBool(HashIsFiring, false);
+                        animator.SetFloat(HashShootSpeed, 1f);
+                    }
+                }
+                else if (_combatStanceTimer <= COMBAT_STANCE_DURATION - 0.25f && animator != null)
+                {
+                    // Settle into steady aim pose after recoil completes
+                    if (input != null && !input.Intent.Fire)
+                    {
+                        animator.SetFloat(HashShootSpeed, 0f);
+                    }
+                }
+            }
 
             // Update charge visuals for remote players across all clients
             if (!IsOwner)
@@ -303,10 +355,7 @@ namespace Shootopia
             if (isFrozen)
             {
                 if (_isADSActive) ExitADS();
-                if (animator != null)
-                {
-                    animator.SetBool(HashIsFiring, false);
-                }
+                ExitCombatStance();
                 _lastFire = false;
                 return;
             }
@@ -505,10 +554,10 @@ namespace Shootopia
                         // Always use Punch Right (Stance = 2.0f) exclusively for unarmed punches
                         animator.SetFloat(HashStance, 2.0f);
                         animator.Play("Shoot", 1, 0f);
-                        StartCoroutine(TriggerShootAnimationOnce());
+                        StartCoroutine(TriggerMeleeAnimation(0.60f));
                     }
-                    // Delay hit infliction to frame 30 (0.5s) of the punch animation
-                    StartCoroutine(DelayedMeleeHitRoutine(0.5f, 25f, null));
+                    // Delay hit infliction to frame 27 (0.45s) of the punch animation
+                    StartCoroutine(DelayedMeleeHitRoutine(0.45f, 25f, null));
                 }
                 return;
             }
@@ -543,10 +592,11 @@ namespace Shootopia
                     _timeSinceLastShot = 0f;
                     if (animator != null)
                     {
+                        animator.SetFloat(HashStance, 3f);
                         animator.Play("Shoot", 1, 0f);
-                        StartCoroutine(TriggerShootAnimationOnce());
+                        StartCoroutine(TriggerMeleeAnimation(0.55f));
                     }
-                    PerformMeleeHit(data.Damage > 0 ? data.Damage : 50f, data);
+                    StartCoroutine(DelayedMeleeHitRoutine(0.20f, data.Damage > 0 ? data.Damage : 65f, data));
                     DecrementDurability(data);
                 }
                 return;
@@ -637,9 +687,11 @@ namespace Shootopia
                     // Fire on release (mouse up) if charged
                     if (_chargeTimer >= data.chargeTime)
                     {
+                        TriggerCombatStance();
                         FireProjectile(data);
                         if (animator != null)
                         {
+                            animator.Play("Shoot", 1, 0f);
                             animator.SetFloat(HashShootSpeed, 1f); // Play recoil
                         }
                     }
@@ -656,10 +708,15 @@ namespace Shootopia
                 {
                     if (fireHeld && CanFire(data))
                     {
+                        bool isStartingFire = firePressed || (animator != null && (!animator.GetBool(HashIsFiring) || !animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot")));
+                        TriggerCombatStance();
                         if (animator != null)
                         {
-                            animator.SetBool(HashIsFiring, true);
-                            animator.SetFloat(HashShootSpeed, 0f); // Go to shoot stance, but never play recoil
+                            if (isStartingFire)
+                            {
+                                animator.Play("Shoot", 1, 0f);
+                            }
+                            animator.SetFloat(HashShootSpeed, 0f); // Maintain steady forward aim stream stance
                         }
                         if (_timeSinceLastShot >= data.FireRate)
                         {
@@ -668,7 +725,7 @@ namespace Shootopia
                     }
                     else
                     {
-                        if (animator != null && animator.GetBool(HashIsFiring))
+                        if (_combatStanceTimer <= 0f && animator != null && animator.GetBool(HashIsFiring))
                         {
                             animator.SetBool(HashIsFiring, false);
                             animator.SetFloat(HashShootSpeed, 1f);
@@ -684,25 +741,17 @@ namespace Shootopia
                     {
                         if (CurrentAttach == null && animator != null)
                         {
-                            float randPunch = UnityEngine.Random.value > 0.5f ? 2.0f : 2.5f;
-                            animator.SetFloat(HashStance, randPunch);
+                            animator.SetFloat(HashStance, 2.0f);
                         }
+                        TriggerCombatStance();
                         FireProjectile(data);
                         if (animator != null)
                         {
                             animator.Play("Shoot", 1, 0f);
-                            if (isAuto)
-                            {
-                                animator.SetBool(HashIsFiring, true);
-                            }
-                            else
-                            {
-                                StartCoroutine(TriggerShootAnimationOnce());
-                            }
                         }
                     }
 
-                    if (isAuto && !fireHeld && animator != null)
+                    if (isAuto && !fireHeld && _combatStanceTimer <= 0f && animator != null)
                     {
                         animator.SetBool(HashIsFiring, false);
                     }
@@ -726,6 +775,16 @@ namespace Shootopia
             _timeSinceLastShot = 0f;
 
             Vector3 origin = customOrigin.HasValue ? customOrigin.Value : (Muzzle != null ? Muzzle.position : transform.position + Vector3.up * 1.2f);
+            
+            // Ensure first shot from relaxed hip-carry aligns with the shoulder/chest aim height (no low-angle shots)
+            if (!customOrigin.HasValue)
+            {
+                float minFireHeight = transform.position.y + 0.90f;
+                if (origin.y < minFireHeight)
+                {
+                    origin.y = minFireHeight;
+                }
+            }
             
             // Camera / reticle aim reference
             Camera mainCam = Camera.main;
@@ -973,6 +1032,7 @@ namespace Shootopia
 
         public void CycleWeapon()
         {
+            ExitCombatStance();
             if (loadout == null || loadout.Length == 0) return;
             int next = (_currentIndex + 1) % loadout.Length;
             if (loadout[next] != null)
@@ -1053,10 +1113,9 @@ namespace Shootopia
                 if (_timeRoutine != null) { StopCoroutine(_timeRoutine); _timeRoutine = null; }
 
                 CancelCharge();
+                ExitCombatStance();
                 if (animator != null)
                 {
-                    animator.SetBool(HashIsFiring, false);
-                    animator.SetFloat(HashShootSpeed, 1f);
                     animator.SetFloat(HashStance, 2f);
                 }
                 if (_isADSActive && IsOwner) ExitADS();
@@ -1092,11 +1151,7 @@ namespace Shootopia
             }
 
             CancelCharge();
-            if (animator != null)
-            {
-                animator.SetBool(HashIsFiring, false);
-                animator.SetFloat(HashShootSpeed, 1f);
-            }
+            ExitCombatStance();
 
             // Tear down previous visual
             if (_currentVisual != null) Destroy(_currentVisual);
@@ -1270,11 +1325,10 @@ namespace Shootopia
                 }
                 _activeChargeAudioSource = null;
             }
+            ExitCombatStance();
             if (animator != null)
             {
-                SafeSetBool(HashIsFiring, false);
                 SafeSetBool(HashIsThrowAiming, false);
-                SafeSetFloat(HashShootSpeed, 1f);
             }
         }
 
@@ -1666,11 +1720,12 @@ namespace Shootopia
             PerformMeleeHit(damage, weaponUsed);
         }
 
-        private IEnumerator TriggerShootAnimationOnce()
+        private IEnumerator TriggerMeleeAnimation(float duration)
         {
             if (animator == null) yield break;
             animator.SetBool(HashIsFiring, true);
-            yield return null;
+            animator.SetFloat(HashShootSpeed, 1f);
+            yield return new WaitForSeconds(duration);
             animator.SetBool(HashIsFiring, false);
         }
 

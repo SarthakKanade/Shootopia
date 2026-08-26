@@ -15,16 +15,35 @@ namespace Shootopia.FSM
         {
             CheckSwitchStates();
             
-            // Apply gravity
-            Ctx.VerticalVelocity += Ctx.Gravity * dt;
+            // Apply tuned gravity with apex hang and crisp fall multiplier
+            float effectiveGravity = Ctx.Gravity;
+            if (Mathf.Abs(Ctx.VerticalVelocity) < 2.5f)
+            {
+                // Near apex: reduced gravity for responsive mid-air feel and control
+                effectiveGravity *= 0.65f;
+            }
+            else if (Ctx.VerticalVelocity < 0f)
+            {
+                // Falling: slightly increased gravity for crisp landing
+                effectiveGravity *= 1.15f;
+            }
 
-            // Optional terminal velocity
+            Ctx.VerticalVelocity += effectiveGravity * dt;
+
+            // Terminal velocity
             if (Ctx.VerticalVelocity < -50f) {
                 Ctx.VerticalVelocity = -50f;
             }
         }
 
-        public override void ExitState() { }
+        public override void ExitState()
+        {
+            if (CurrentSubState != null)
+            {
+                CurrentSubState.ExitState();
+                CurrentSubState = null;
+            }
+        }
 
         public override void CheckSwitchStates()
         {

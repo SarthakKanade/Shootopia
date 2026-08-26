@@ -718,6 +718,23 @@ namespace Shootopia
         private void SetChipActive(Button chip, bool isActive)
         {
             if (chip == null) return;
+
+            // Check for Rich Map Card elements (card background border, checkmark badge, title)
+            var checkmark = chip.transform.Find("CheckmarkBadge");
+            var title = chip.transform.Find("MaskContainer/TextContainer/TitleText")?.GetComponent<TextMeshProUGUI>();
+
+            if (checkmark != null || title != null)
+            {
+                var cardBg = chip.GetComponent<Image>();
+                if (cardBg != null)
+                {
+                    cardBg.color = isActive ? new Color(0.0f, 0.95f, 1.0f, 1.0f) : new Color(0.22f, 0.26f, 0.38f, 0.7f);
+                }
+                if (checkmark != null) checkmark.gameObject.SetActive(isActive);
+                if (title != null) title.color = isActive ? new Color(1.0f, 0.92f, 0.4f, 1.0f) : Color.white;
+                return;
+            }
+
             var img = chip.GetComponent<Image>();
             if (img != null)
             {

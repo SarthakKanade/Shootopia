@@ -38,6 +38,9 @@ namespace Shootopia
         [SerializeField] private TextMeshProUGUI roomNameLabel;
         [SerializeField] private TextMeshProUGUI roomModeBadge;
         [SerializeField] private TextMeshProUGUI roomMapLabel;
+        [SerializeField] private Image roomMapThumbnail;
+        [SerializeField] private Sprite mapSectorAlphaSprite;
+        [SerializeField] private Sprite mapGasStationSprite;
         [SerializeField] private TextMeshProUGUI roomCodeDisplay;
         [SerializeField] private Button btnCopyCode;
         [SerializeField] private TextMeshProUGUI btnCopyCodeLabel;
@@ -261,6 +264,11 @@ namespace Shootopia
             if (roomMapLabel != null)
             {
                 roomMapLabel.text = $"MAP: {MapRegistry.GetDisplayName(map)}";
+            }
+            if (roomMapThumbnail != null)
+            {
+                roomMapThumbnail.sprite = (map == "GasStationMap") ? mapGasStationSprite : mapSectorAlphaSprite;
+                roomMapThumbnail.gameObject.SetActive(roomMapThumbnail.sprite != null);
             }
 
             // Room Code

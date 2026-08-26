@@ -36,7 +36,7 @@ MonoBehaviour:
   isContinuous: 1
   isTrap: 0
   projectilePrefab: {fileID: 3562189247435599777, guid: 2afc0f75a655f4bb49a9301feb7f374b, type: 3}
-  projectileSpeed: 20
+  projectileSpeed: 30
   hasGravity: 0
   throwAngle: 0
   throwForce: 12

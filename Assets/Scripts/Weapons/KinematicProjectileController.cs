@@ -317,26 +317,42 @@ namespace Shootopia
                     zoneScript.Initialize(_weaponData, ownerId);
                 }
             }
+
+            // Spawn Hit VFX / Explosion (e.g. Purple Nuke Explosion for Void Gun)
+            GameObject hitVFX = _weaponData != null ? _weaponData.HitVFXPrefab : null;
+            Quaternion hitRotation;
+            if (hit.normal != Vector3.zero)
+            {
+                // Align forward with hit.normal so wall impacts blast outward and ground impacts blast vertically towards the sky
+                if (Mathf.Abs(hit.normal.y) > 0.95f)
+                {
+                    hitRotation = Quaternion.LookRotation(hit.normal, Vector3.forward);
+                }
+                else
+                {
+                    hitRotation = Quaternion.LookRotation(hit.normal, Vector3.up);
+                }
+            }
             else
             {
-                // Spawn Hit VFX / Explosion
-                GameObject hitVFX = _weaponData != null ? _weaponData.HitVFXPrefab : null;
-                if (hitVFX != null)
-                {
-                    GameObject spawnedVFX = Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
-                    ApplyExplosionModifiers(spawnedVFX);
-                }
+                hitRotation = Quaternion.LookRotation(Vector3.up, Vector3.forward);
+            }
 
-                // Spawn extra explosion prefabs
-                if (extraExplosionPrefabs != null && extraExplosionPrefabs.Length > 0)
+            if (hitVFX != null)
+            {
+                GameObject spawnedVFX = Instantiate(hitVFX, hit.point, hitRotation);
+                ApplyExplosionModifiers(spawnedVFX);
+            }
+
+            // Spawn extra explosion prefabs if configured
+            if (extraExplosionPrefabs != null && extraExplosionPrefabs.Length > 0)
+            {
+                foreach (var extraPrefab in extraExplosionPrefabs)
                 {
-                    foreach (var extraPrefab in extraExplosionPrefabs)
+                    if (extraPrefab != null)
                     {
-                        if (extraPrefab != null)
-                        {
-                            GameObject spawnedExtra = Instantiate(extraPrefab, hit.point, Quaternion.LookRotation(hit.normal));
-                            ApplyExplosionModifiers(spawnedExtra);
-                        }
+                        GameObject spawnedExtra = Instantiate(extraPrefab, hit.point, hitRotation);
+                        ApplyExplosionModifiers(spawnedExtra);
                     }
                 }
             }

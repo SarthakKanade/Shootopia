@@ -54,7 +54,7 @@ namespace Shootopia
 
         [Header("Projectile")]
         public GameObject projectilePrefab;     // prefab to instantiate on fire
-        public float projectileSpeed = 20f;
+        public float projectileSpeed = 35f;
         public bool hasGravity = false;         // true for grenade/smoke arcs
         public float throwAngle = 0f;          // degrees above camera forward (for traps)
         public float throwForce = 12f;         // initial velocity magnitude (for traps)

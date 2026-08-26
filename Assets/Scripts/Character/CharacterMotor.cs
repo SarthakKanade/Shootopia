@@ -14,12 +14,12 @@ namespace Shootopia
         [SerializeField] private MonoBehaviour aimProviderBehaviour;
 
         [Header("Movement")]
-        public float moveSpeed = 4f;
+        public float moveSpeed = 5f;
         public float rotationSpeed = 900f;
-        public float gravity = -32f;
-        public float jumpForce = 2.0f;
-        public float dashSpeed = 10f;
-        public float rollSpeed = 8f;
+        public float gravity = -24f;
+        public float jumpForce = 2.2f;
+        public float dashSpeed = 12f;
+        public float rollSpeed = 9.5f;
         public float animDamp = 0.1f;
 
         public CharacterController Controller { get; private set; }
@@ -49,7 +49,7 @@ namespace Shootopia
 
         [Header("Audio Configuration")]
         [SerializeField] private PlayerAudioSO playerAudioConfig;
-        [SerializeField] private float footstepInterval = 0.38f;
+        [SerializeField] private float footstepInterval = 0.32f;
         private float _footstepTimer = 0f;
 
         private readonly NetworkVariable<Quaternion> _modelRotation = new NetworkVariable<Quaternion>(Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -58,6 +58,7 @@ namespace Shootopia
 
         // FSM Context
         public BaseState CurrentState { get; set; }
+        public bool IsInCombat { get; set; } = false;
         private StateFactory _factory;
 
         public static readonly int HashMoveX = Animator.StringToHash("MoveX");
@@ -173,7 +174,8 @@ namespace Shootopia
             if (Aim != null && fwd.sqrMagnitude >= 0.0004f)
             {
                 Quaternion target = Quaternion.LookRotation(fwd, Vector3.up);
-                ModelRoot.rotation = Quaternion.RotateTowards(ModelRoot.rotation, target, rotationSpeed * dt);
+                float activeRotSpeed = (IsInCombat || (animator != null && animator.GetBool(HashIsFiring))) ? 1400f : rotationSpeed;
+                ModelRoot.rotation = Quaternion.RotateTowards(ModelRoot.rotation, target, activeRotSpeed * dt);
                 _modelRotation.Value = ModelRoot.rotation;
             }
 
@@ -187,6 +189,22 @@ namespace Shootopia
 
             Vector3 velocity = worldMove * (moveSpeed * speedMultiplier * MoveSpeedMultiplier) + Vector3.up * VerticalVelocity;
             Controller.Move(velocity * dt);
+
+            // Immediate zero-latency ground contact detection
+            if (Controller.isGrounded && VerticalVelocity <= 0f && !_isInLava.Value)
+            {
+                if (animator != null)
+                {
+                    animator.SetBool(HashGrounded, true);
+                }
+                if (CurrentState is AirborneState)
+                {
+                    CurrentState.ExitState();
+                    CurrentState = _factory.Grounded();
+                    CurrentState.EnterState();
+                    VerticalVelocity = -2f;
+                }
+            }
         }
 
         public override void OnNetworkSpawn()

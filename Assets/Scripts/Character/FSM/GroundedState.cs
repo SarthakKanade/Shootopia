@@ -25,6 +25,11 @@ namespace Shootopia.FSM
 
         public override void ExitState()
         {
+            if (CurrentSubState != null)
+            {
+                CurrentSubState.ExitState();
+                CurrentSubState = null;
+            }
             Ctx.Animator.SetBool(CharacterMotor.HashGrounded, false);
         }
 

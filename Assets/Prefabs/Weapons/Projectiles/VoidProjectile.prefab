@@ -56,8 +56,8 @@ MonoBehaviour:
   homingRange: 25
   voidZonePrefab: {fileID: 285475608298830604, guid: 72affb535dd9841d69610909b08938f6, type: 3}
   projectileScale: 1
-  explosionScale: 1
-  explosionSpeed: 2
+  explosionScale: 2.8
+  explosionSpeed: 1
   extraExplosionPrefabs: []
 --- !u!1001 &4190793730535559785
 PrefabInstance:
@@ -85,11 +85,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4807006570838398, guid: bfadfc8b66986db4ab76c489f7b0f696, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071068
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4807006570838398, guid: bfadfc8b66986db4ab76c489f7b0f696, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.7071068
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4807006570838398, guid: bfadfc8b66986db4ab76c489f7b0f696, type: 3}
       propertyPath: m_LocalRotation.y

@@ -84,7 +84,15 @@ namespace Shootopia
             // Visuals
             if (_weaponData.HitVFXPrefab != null)
             {
-                Instantiate(_weaponData.HitVFXPrefab, transform.position, Quaternion.identity);
+                Vector3 blastNormal = Vector3.up;
+                if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, out RaycastHit gHit, 1.5f))
+                {
+                    blastNormal = gHit.normal;
+                }
+                Quaternion rot = Mathf.Abs(blastNormal.y) > 0.95f
+                    ? Quaternion.LookRotation(blastNormal, Vector3.forward)
+                    : Quaternion.LookRotation(blastNormal, Vector3.up);
+                Instantiate(_weaponData.HitVFXPrefab, transform.position, rot);
             }
 
             // Camera Shake

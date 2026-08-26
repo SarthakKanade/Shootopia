@@ -147,7 +147,14 @@ namespace Shootopia
 
             var vfxToSpawn = explosionVFX != null ? explosionVFX : (_data != null ? _data.HitVFXPrefab : null);
             if (vfxToSpawn != null)
-                Instantiate(vfxToSpawn, transform.position, Quaternion.identity);
+            {
+                Vector3 blastNormal = transform.up;
+                if (blastNormal == Vector3.zero) blastNormal = Vector3.up;
+                Quaternion rot = Mathf.Abs(blastNormal.y) > 0.95f
+                    ? Quaternion.LookRotation(blastNormal, Vector3.forward)
+                    : Quaternion.LookRotation(blastNormal, Vector3.up);
+                Instantiate(vfxToSpawn, transform.position, rot);
+            }
 
             if (TripMineManager.Instance != null)
                 TripMineManager.Instance.Unregister(this);
