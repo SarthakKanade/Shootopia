@@ -114,7 +114,10 @@ namespace Shootopia
 
         private void OnMouseSensChanged(float val)
         {
-            if (PlayerProfileManager.Instance != null) PlayerProfileManager.Instance.SetMouseSensitivity(val);
+            if (PlayerProfileManager.Instance != null)
+            {
+                PlayerProfileManager.Instance.SetMouseSensitivity(val);
+            }
             if (labelMouseSens != null) labelMouseSens.text = $"{val:F1}x";
         }
 

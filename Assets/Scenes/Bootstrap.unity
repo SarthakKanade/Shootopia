@@ -589,9 +589,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 746841162}
-  - component: {fileID: 746841163}
   - component: {fileID: 746841164}
-  - component: {fileID: 746841165}
   m_Layer: 0
   m_Name: BootstrapLoader
   m_TagString: Untagged
@@ -614,23 +612,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &746841163
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 746841160}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d4bfa853288d442e4ba0a13bc4396d5b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.MultiplayerBootstrapper
-  nextSceneName: MainMenu
-  autoLoadNextScene: 1
-  OnAuthComplete:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!114 &746841164
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -658,20 +639,9 @@ MonoBehaviour:
   OnPlayerReadyChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &746841165
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 746841160}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 92d7806876a634c74aa983320f353e99, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.MultiplayerSceneTransitionHelper
-  waitingRoomSceneName: WaitingRoom
-  mainMenuSceneName: MainMenu
+  OnSessionUpdated:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1335751753
 GameObject:
   m_ObjectHideFlags: 0

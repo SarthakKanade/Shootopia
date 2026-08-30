@@ -21,7 +21,12 @@ namespace Shootopia
     public class WaitingRoomController : MonoBehaviour
     {
         public static WaitingRoomController Instance { get; private set; }
-        public static bool IsLobbyMenuOpen { get; private set; } = true;
+        private static bool _isLobbyMenuOpen = false;
+        public static bool IsLobbyMenuOpen
+        {
+            get => Instance != null && Instance.gameObject.activeInHierarchy && _isLobbyMenuOpen;
+            private set => _isLobbyMenuOpen = value;
+        }
 
         [Header("Scene Configuration")]
         [SerializeField] private string gameplaySceneName = "Map1";
@@ -126,6 +131,15 @@ namespace Shootopia
             }
 
             UnregisterCallbacks();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                _isLobbyMenuOpen = false;
+                Instance = null;
+            }
         }
 
         private void Update()

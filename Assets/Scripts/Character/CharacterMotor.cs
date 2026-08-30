@@ -225,7 +225,9 @@ namespace Shootopia
                     var target = transform.Find("CameraTarget");
                     if (target != null)
                     {
-                        cinemachineCam.Follow = target;
+                        cinemachineCam.Target.TrackingTarget = target;
+                        cinemachineCam.Target.LookAtTarget = null;
+                        cinemachineCam.PreviousStateIsValid = false;
                         Debug.Log("[CharacterMotor] Set CinemachineCamera follow target to CameraTarget");
                     }
                 }

@@ -46,6 +46,12 @@ namespace Shootopia
         private float _defaultFOV;
         private float _originalMoveSpeed;
         private bool _isADSActive;
+        private CinemachineThirdPersonFollow _thirdPersonFollow;
+        private float _defaultCameraDistance = 4.5f;
+        private Vector3 _defaultShoulderOffset = new Vector3(0f, 1.5f, -1.5f);
+        private float _defaultVerticalArmLength = 0.3f;
+        private readonly System.Collections.Generic.List<Renderer> _hiddenADSRenderers = new System.Collections.Generic.List<Renderer>();
+        private LineRenderer _bounceLineInstance;
 
         private static readonly int HashStance = Animator.StringToHash("Stance");
         private static readonly int HashAimPitch = Animator.StringToHash("AimPitch");
@@ -245,7 +251,16 @@ namespace Shootopia
                     playerFollowCamera = FindAnyObjectByType<CinemachineCamera>();
 
                 if (playerFollowCamera != null)
+                {
                     _defaultFOV = playerFollowCamera.Lens.FieldOfView;
+                    _thirdPersonFollow = playerFollowCamera.GetComponent<CinemachineThirdPersonFollow>();
+                    if (_thirdPersonFollow != null)
+                    {
+                        _defaultCameraDistance = _thirdPersonFollow.CameraDistance;
+                        _defaultShoulderOffset = _thirdPersonFollow.ShoulderOffset;
+                        _defaultVerticalArmLength = _thirdPersonFollow.VerticalArmLength;
+                    }
+                }
 
                 // Create the scope overlay HUD for this local player only.
                 if (scopeOverlay != null)
@@ -269,8 +284,19 @@ namespace Shootopia
 
         public override void OnNetworkDespawn()
         {
+            if (_isADSActive) ExitADS();
+            if (_activeChargeVFX != null) CancelChargeLocal();
+            if (_bounceLineInstance != null) _bounceLineInstance.enabled = false;
+
             base.OnNetworkDespawn();
             _equippedAttachName.OnValueChanged -= OnEquippedAttachNameChanged;
+        }
+
+        private void OnDisable()
+        {
+            if (_isADSActive) ExitADS();
+            if (_activeChargeVFX != null) CancelChargeLocal();
+            if (_bounceLineInstance != null) _bounceLineInstance.enabled = false;
         }
 
         private void OnEquippedAttachNameChanged(Unity.Collections.FixedString64Bytes previousValue, Unity.Collections.FixedString64Bytes newValue)
@@ -366,19 +392,33 @@ namespace Shootopia
             HandleFire();
             HandleADS();
             HandleFOVLerp();
+            UpdateBouncePreview();
             FeedAimPitch();
             UpdateDynamicStance();
         }
 
         private void HandleFOVLerp()
         {
-            if (CurrentAttach == null || CurrentAttach.gameplayData == null || playerFollowCamera == null) return;
+            if (playerFollowCamera == null) return;
 
-            float targetFOV = _isADSActive ? CurrentAttach.gameplayData.adsFOV : _defaultFOV;
-            if (Mathf.Abs(playerFollowCamera.Lens.FieldOfView - targetFOV) > 0.1f)
+            float targetFOV = (_isADSActive && CurrentAttach != null && CurrentAttach.gameplayData != null) 
+                ? CurrentAttach.gameplayData.adsFOV 
+                : _defaultFOV;
+
+            if (Mathf.Abs(playerFollowCamera.Lens.FieldOfView - targetFOV) > 0.05f)
             {
-                float newFOV = Mathf.Lerp(playerFollowCamera.Lens.FieldOfView, targetFOV, Time.deltaTime * 10f);
-                playerFollowCamera.Lens.FieldOfView = newFOV;
+                playerFollowCamera.Lens.FieldOfView = Mathf.Lerp(playerFollowCamera.Lens.FieldOfView, targetFOV, Time.deltaTime * 12f);
+            }
+
+            if (_thirdPersonFollow != null)
+            {
+                float targetDist = _isADSActive ? 0.02f : _defaultCameraDistance;
+                Vector3 targetOffset = _isADSActive ? Vector3.zero : _defaultShoulderOffset;
+                float targetArm = _isADSActive ? 0f : _defaultVerticalArmLength;
+
+                _thirdPersonFollow.CameraDistance = Mathf.Lerp(_thirdPersonFollow.CameraDistance, targetDist, Time.deltaTime * 12f);
+                _thirdPersonFollow.ShoulderOffset = Vector3.Lerp(_thirdPersonFollow.ShoulderOffset, targetOffset, Time.deltaTime * 12f);
+                _thirdPersonFollow.VerticalArmLength = Mathf.Lerp(_thirdPersonFollow.VerticalArmLength, targetArm, Time.deltaTime * 12f);
             }
         }
 
@@ -415,6 +455,21 @@ namespace Shootopia
             {
                 motor.moveSpeed = _originalMoveSpeed * CurrentAttach.gameplayData.adsMoveSpeedMult;
             }
+
+            // Hide local player character meshes and weapons so they never obstruct the scope reticle
+            if (IsOwner)
+            {
+                _hiddenADSRenderers.Clear();
+                var renderers = GetComponentsInChildren<Renderer>(true);
+                foreach (var r in renderers)
+                {
+                    if (r != null && r.enabled && !(r is ParticleSystemRenderer))
+                    {
+                        r.enabled = false;
+                        _hiddenADSRenderers.Add(r);
+                    }
+                }
+            }
         }
 
         private void ExitADS()
@@ -426,6 +481,125 @@ namespace Shootopia
             {
                 motor.moveSpeed = _originalMoveSpeed;
             }
+
+            // Restore hidden meshes
+            if (IsOwner)
+            {
+                foreach (var r in _hiddenADSRenderers)
+                {
+                    if (r != null) r.enabled = true;
+                }
+                _hiddenADSRenderers.Clear();
+            }
+        }
+
+        private void UpdateBouncePreview()
+        {
+            if (!IsOwner || CurrentAttach == null || CurrentAttach.gameplayData == null)
+            {
+                if (_bounceLineInstance != null && _bounceLineInstance.enabled)
+                    _bounceLineInstance.enabled = false;
+                return;
+            }
+
+            bool isBounceGun = CurrentAttach.gameplayData.maxBounces > 0 || 
+                               (CurrentAttach.name != null && CurrentAttach.name.Contains("TrickShot"));
+
+            if (!isBounceGun)
+            {
+                if (_bounceLineInstance != null && _bounceLineInstance.enabled)
+                    _bounceLineInstance.enabled = false;
+                return;
+            }
+
+            EnsureBounceLineRenderer();
+            if (_bounceLineInstance == null) return;
+
+            _bounceLineInstance.enabled = true;
+
+            Transform muzzleTr = Muzzle != null ? Muzzle : transform;
+            Vector3 startPos = muzzleTr.position;
+
+            Camera mainCam = Camera.main;
+            Vector3 aimDir = mainCam != null ? mainCam.transform.forward : (Aim != null ? Aim.CameraPlanarForward : transform.forward);
+            
+            int layerMask = ~LayerMask.GetMask("Ignore Raycast", "Trigger", "UI");
+            layerMask &= ~(1 << gameObject.layer);
+
+            float previewDist = CurrentAttach.gameplayData.previewDistance > 1f ? CurrentAttach.gameplayData.previewDistance : 25f;
+
+            if (mainCam != null)
+            {
+                Ray aimRay = new Ray(mainCam.transform.position, mainCam.transform.forward);
+                if (Physics.Raycast(aimRay, out RaycastHit camHit, 100f, layerMask, QueryTriggerInteraction.Ignore))
+                {
+                    Vector3 toCamHit = (camHit.point - startPos).normalized;
+                    if (Vector3.Dot(toCamHit, aimDir) > 0.2f)
+                    {
+                        aimDir = toCamHit;
+                    }
+                }
+            }
+
+            if (Physics.Raycast(startPos, aimDir, out RaycastHit hit, previewDist, layerMask, QueryTriggerInteraction.Ignore))
+            {
+                Vector3 reflectedDir = Vector3.Reflect(aimDir, hit.normal);
+                float remainingDist = previewDist - hit.distance;
+
+                _bounceLineInstance.positionCount = 3;
+                _bounceLineInstance.SetPosition(0, startPos);
+                _bounceLineInstance.SetPosition(1, hit.point);
+                _bounceLineInstance.SetPosition(2, hit.point + reflectedDir * Mathf.Max(remainingDist, 6f));
+            }
+            else
+            {
+                _bounceLineInstance.positionCount = 2;
+                _bounceLineInstance.SetPosition(0, startPos);
+                _bounceLineInstance.SetPosition(1, startPos + aimDir * previewDist);
+            }
+        }
+
+        private void EnsureBounceLineRenderer()
+        {
+            if (_bounceLineInstance != null) return;
+
+            GameObject lineObj = new GameObject("BouncePreviewLine");
+            lineObj.transform.SetParent(transform, false);
+            _bounceLineInstance = lineObj.AddComponent<LineRenderer>();
+            _bounceLineInstance.useWorldSpace = true;
+            _bounceLineInstance.startWidth = 0.045f;
+            _bounceLineInstance.endWidth = 0.015f;
+
+            Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
+
+            Material mat = new Material(shader);
+            mat.name = "BounceLaser_Mat";
+            Color laserColor = new Color(0.15f, 1.0f, 0.45f, 0.9f);
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", laserColor);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", laserColor);
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", laserColor * 3.0f);
+            }
+            _bounceLineInstance.material = mat;
+
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { 
+                    new GradientColorKey(new Color(0.8f, 1f, 0.8f), 0.0f), 
+                    new GradientColorKey(new Color(0.15f, 1f, 0.4f), 0.4f),
+                    new GradientColorKey(new Color(0.0f, 0.9f, 0.85f), 1.0f)
+                },
+                new GradientAlphaKey[] { 
+                    new GradientAlphaKey(0.95f, 0.0f), 
+                    new GradientAlphaKey(0.85f, 0.6f), 
+                    new GradientAlphaKey(0.05f, 1.0f) 
+                }
+            );
+            _bounceLineInstance.colorGradient = gradient;
         }
 
         private void UpdateDynamicStance()
@@ -564,23 +738,6 @@ namespace Shootopia
 
             var data = CurrentAttach.gameplayData;
             if (data == null) return;
-
-            bool isBounceGun = data != null && (data.name.Contains("Trick") || data.name.Contains("Ricochet") || data.name.Contains("Bounce") || data.maxBounces > 0);
-            if (isBounceGun)
-            {
-                if (fireHeld)
-                {
-                    UpdateBounceLinePreview(data);
-                }
-                else
-                {
-                    HideBounceLinePreview();
-                }
-            }
-            else
-            {
-                HideBounceLinePreview();
-            }
 
             bool isKnifeOrMelee = CurrentAttach.stanceId == 3 ||
                                   (data != null && (data.category == WeaponCategory.Melee || data.name.Contains("Knife") || CurrentAttach.name.Contains("Knife")));
@@ -1152,6 +1309,7 @@ namespace Shootopia
 
             CancelCharge();
             ExitCombatStance();
+            if (_isADSActive && IsOwner) ExitADS();
 
             // Tear down previous visual
             if (_currentVisual != null) Destroy(_currentVisual);
@@ -1332,102 +1490,11 @@ namespace Shootopia
             }
         }
 
-        private LineRenderer _bounceLineRenderer;
-
-        private void SetupBounceLineRenderer()
-        {
-            if (_bounceLineRenderer != null) return;
-            GameObject lineObj = new GameObject("BounceLineRendererContainer");
-            lineObj.transform.SetParent(transform, false);
-            _bounceLineRenderer = lineObj.AddComponent<LineRenderer>();
-            _bounceLineRenderer.useWorldSpace = true;
-            _bounceLineRenderer.startWidth = 0.07f;
-            _bounceLineRenderer.endWidth = 0.03f;
-            _bounceLineRenderer.positionCount = 0;
-            _bounceLineRenderer.enabled = false;
-
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-            Material lineMat = new Material(shader);
-            Color neonGreen = new Color(0.15f, 1.0f, 0.35f, 0.85f);
-            lineMat.renderQueue = 3000;
-            if (lineMat.HasProperty("_BaseColor")) lineMat.SetColor("_BaseColor", neonGreen);
-            if (lineMat.HasProperty("_Color")) lineMat.SetColor("_Color", neonGreen);
-            _bounceLineRenderer.material = lineMat;
-            _bounceLineRenderer.startColor = neonGreen;
-            _bounceLineRenderer.endColor = neonGreen;
-        }
-
-        private void UpdateBounceLinePreview(WeaponSO data)
-        {
-            SetupBounceLineRenderer();
-            if (_bounceLineRenderer == null) return;
-
-            Vector3 origin;
-            Vector3 aimDir;
-
-            Camera mainCam = Camera.main;
-            if (mainCam != null)
-            {
-                Ray camRay = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-                origin = camRay.origin;
-                aimDir = camRay.direction;
-            }
-            else
-            {
-                origin = Muzzle != null ? Muzzle.position : transform.position + Vector3.up * 1.4f;
-                aimDir = transform.forward;
-                if (Aim != null && Aim.AimPoint != Vector3.zero)
-                {
-                    aimDir = (Aim.AimPoint - origin).normalized;
-                }
-            }
-
-            if (aimDir.sqrMagnitude < 0.001f) aimDir = transform.forward;
-            aimDir.Normalize();
-
-            float firstDist = data != null && data.previewDistance > 0f ? data.previewDistance : 25f;
-            float bounceDist = 15f;
-            LayerMask mask = ~0;
-
-            var points = new System.Collections.Generic.List<Vector3>();
-            points.Add(origin);
-
-            if (Physics.Raycast(origin, aimDir, out RaycastHit hit1, firstDist, mask, QueryTriggerInteraction.Ignore))
-            {
-                points.Add(hit1.point);
-
-                Vector3 bounceDir = Vector3.Reflect(aimDir, hit1.normal).normalized;
-                if (Physics.Raycast(hit1.point + hit1.normal * 0.01f, bounceDir, out RaycastHit hit2, bounceDist, mask, QueryTriggerInteraction.Ignore))
-                {
-                    points.Add(hit2.point);
-                }
-                else
-                {
-                    points.Add(hit1.point + bounceDir * bounceDist);
-                }
-            }
-            else
-            {
-                points.Add(origin + aimDir * firstDist);
-            }
-
-            _bounceLineRenderer.positionCount = points.Count;
-            _bounceLineRenderer.SetPositions(points.ToArray());
-            _bounceLineRenderer.enabled = true;
-        }
-
-        private void HideBounceLinePreview()
-        {
-            if (_bounceLineRenderer != null)
-            {
-                _bounceLineRenderer.enabled = false;
-            }
-        }
-
         private void StartChargeVisual(WeaponSO data)
         {
             if (Muzzle == null || data == null || data.chargeTime <= 0f) return;
+            // No charge visual for Bounce Gun / TrickShot
+            if (data.name.Contains("Trick") || data.weaponName.Contains("Bounce") || data.maxBounces > 0) return;
 
             // Clean up old charge visual if existing
             if (_activeChargeVFX != null)
@@ -1445,52 +1512,141 @@ namespace Shootopia
             _activeChargeVFX.transform.localRotation = Quaternion.identity;
             _activeChargeVFX.transform.localScale = Vector3.one;
 
-            // 1. Refined Translucent Glowing Charge Sphere
-            GameObject sphereObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphereObj.name = "ChargeVisualSphere";
-            sphereObj.transform.SetParent(_activeChargeVFX.transform, false);
-            sphereObj.transform.localPosition = Vector3.zero;
-            sphereObj.transform.localRotation = Quaternion.identity;
-            sphereObj.transform.localScale = Vector3.one * 0.02f;
+            Shader urpUnlitShader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (urpUnlitShader == null) urpUnlitShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (urpUnlitShader == null) urpUnlitShader = Shader.Find("Standard");
 
-            Collider col = sphereObj.GetComponent<Collider>();
-            if (col != null) DestroyImmediate(col);
+            // 1. Inner White-Hot Luminous Core
+            GameObject coreObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            coreObj.name = "ChargeCore";
+            coreObj.transform.SetParent(_activeChargeVFX.transform, false);
+            coreObj.transform.localPosition = Vector3.zero;
+            coreObj.transform.localRotation = Quaternion.identity;
+            coreObj.transform.localScale = Vector3.one * 0.015f;
+            Collider coreCol = coreObj.GetComponent<Collider>();
+            if (coreCol != null) DestroyImmediate(coreCol);
 
-            MeshRenderer mr = sphereObj.GetComponent<MeshRenderer>();
-            if (mr != null)
+            MeshRenderer coreMr = coreObj.GetComponent<MeshRenderer>();
+            if (coreMr != null)
             {
-                Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-                if (shader == null) shader = Shader.Find("Standard");
-
-                Material mat = new Material(shader);
-                mat.name = "ChargeSphere_RefinedMat";
-                mat.renderQueue = 3000;
-
-                Color baseCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, 0.25f);
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseCol);
-                if (mat.HasProperty("_Color")) mat.SetColor("_Color", baseCol);
-
-                mat.EnableKeyword("_EMISSION");
-                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                mat.EnableKeyword("_ALPHABLEND_ON");
-
-                if (mat.HasProperty("_EmissionColor"))
+                Material coreMat = new Material(urpUnlitShader);
+                coreMat.name = "ChargeCore_Mat";
+                Color hotWhiteTint = Color.Lerp(chargeColor, Color.white, 0.75f);
+                if (coreMat.HasProperty("_BaseColor")) coreMat.SetColor("_BaseColor", hotWhiteTint);
+                if (coreMat.HasProperty("_Color")) coreMat.SetColor("_Color", hotWhiteTint);
+                coreMat.EnableKeyword("_EMISSION");
+                if (coreMat.HasProperty("_EmissionColor"))
                 {
-                    mat.SetColor("_EmissionColor", chargeColor * 3.5f);
+                    coreMat.SetColor("_EmissionColor", hotWhiteTint * 4.5f);
                 }
-
-                // Enable alpha blending / transparency
-                if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1); // 1 = Transparent in URP
-                if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0); // 0 = Alpha blend
-                if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0);
-
-                mr.material = mat;
-                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadows = false;
+                coreMr.material = coreMat;
+                coreMr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                coreMr.receiveShadows = false;
             }
 
-            // 2. Instantiate Implosion VFX (vfx_Implosion_01.prefab)
+            // 2. Outer Soft Alpha Corona (Fresnel Halo)
+            GameObject haloObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            haloObj.name = "ChargeHalo";
+            haloObj.transform.SetParent(_activeChargeVFX.transform, false);
+            haloObj.transform.localPosition = Vector3.zero;
+            haloObj.transform.localRotation = Quaternion.identity;
+            haloObj.transform.localScale = Vector3.one * 0.03f;
+            Collider haloCol = haloObj.GetComponent<Collider>();
+            if (haloCol != null) DestroyImmediate(haloCol);
+
+            MeshRenderer haloMr = haloObj.GetComponent<MeshRenderer>();
+            if (haloMr != null)
+            {
+                Material haloMat = new Material(urpUnlitShader);
+                haloMat.name = "ChargeHalo_AlphaMat";
+                haloMat.renderQueue = 3050;
+
+                Color coronaCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, 0.22f);
+                if (haloMat.HasProperty("_BaseColor")) haloMat.SetColor("_BaseColor", coronaCol);
+                if (haloMat.HasProperty("_Color")) haloMat.SetColor("_Color", coronaCol);
+
+                haloMat.EnableKeyword("_EMISSION");
+                haloMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                haloMat.EnableKeyword("_ALPHABLEND_ON");
+
+                if (haloMat.HasProperty("_EmissionColor"))
+                {
+                    haloMat.SetColor("_EmissionColor", chargeColor * 2.5f);
+                }
+
+                if (haloMat.HasProperty("_Surface")) haloMat.SetFloat("_Surface", 1); // Transparent
+                if (haloMat.HasProperty("_Blend")) haloMat.SetFloat("_Blend", 0);     // Alpha blend
+                if (haloMat.HasProperty("_ZWrite")) haloMat.SetFloat("_ZWrite", 0);
+
+                haloMr.material = haloMat;
+                haloMr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                haloMr.receiveShadows = false;
+            }
+
+            // 3. Ready Particles (Crackling Energy Sparks on 100% Charge)
+            GameObject readyObj = new GameObject("ReadyParticles");
+            readyObj.transform.SetParent(_activeChargeVFX.transform, false);
+            readyObj.transform.localPosition = Vector3.zero;
+            ParticleSystem readyPs = readyObj.AddComponent<ParticleSystem>();
+
+            var main = readyPs.main;
+            main.loop = true;
+            main.playOnAwake = false;
+            main.duration = 0.5f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.4f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 1.8f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+
+            Color readyTint = Color.Lerp(chargeColor, Color.white, 0.35f);
+            readyTint.a = 0.9f;
+            main.startColor = readyTint;
+
+            var emission = readyPs.emission;
+            emission.rateOverTime = 0f; // Enabled when fully charged (t >= 1.0f)
+
+            var shape = readyPs.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.12f;
+
+            var col = readyPs.colorOverLifetime;
+            col.enabled = true;
+            Gradient readyGrad = new Gradient();
+            readyGrad.SetKeys(
+                new GradientColorKey[] {
+                    new GradientColorKey(Color.white, 0.0f),
+                    new GradientColorKey(chargeColor, 0.4f),
+                    new GradientColorKey(chargeColor * 1.5f, 1.0f)
+                },
+                new GradientAlphaKey[] {
+                    new GradientAlphaKey(0.0f, 0.0f),
+                    new GradientAlphaKey(1.0f, 0.15f),
+                    new GradientAlphaKey(0.85f, 0.65f),
+                    new GradientAlphaKey(0.0f, 1.0f)
+                }
+            );
+            col.color = new ParticleSystem.MinMaxGradient(readyGrad);
+
+            var psRenderer = readyObj.GetComponent<ParticleSystemRenderer>();
+            if (psRenderer != null)
+            {
+                Shader partShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                if (partShader == null) partShader = Shader.Find("Particles/Standard Unlit");
+                Material partMat = new Material(partShader);
+                partMat.name = "ReadySparks_Mat";
+                partMat.renderQueue = 3100;
+                if (partMat.HasProperty("_BaseColor")) partMat.SetColor("_BaseColor", chargeColor);
+                if (partMat.HasProperty("_Color")) partMat.SetColor("_Color", chargeColor);
+                if (partMat.HasProperty("_EmissionColor"))
+                {
+                    partMat.EnableKeyword("_EMISSION");
+                    partMat.SetColor("_EmissionColor", chargeColor * 4f);
+                }
+                psRenderer.material = partMat;
+            }
+
+            // 4. Implosion Particle VFX (Inward suction)
             GameObject prefabToUse = vfxImplosionPrefab;
             if (prefabToUse == null)
             {
@@ -1507,14 +1663,13 @@ namespace Shootopia
                 implosionInst.transform.localRotation = Quaternion.identity;
                 implosionInst.transform.localScale = Vector3.one * 0.175f;
 
-                // Tint particle systems in the implosion prefab to match projectile color
                 ParticleSystem[] particles = implosionInst.GetComponentsInChildren<ParticleSystem>(true);
                 foreach (ParticleSystem ps in particles)
                 {
-                    var main = ps.main;
+                    var pMain = ps.main;
                     Color pCol = chargeColor;
-                    pCol.a = main.startColor.color.a > 0.01f ? main.startColor.color.a : 0.8f;
-                    main.startColor = pCol;
+                    pCol.a = pMain.startColor.color.a > 0.01f ? pMain.startColor.color.a : 0.8f;
+                    pMain.startColor = pCol;
                 }
             }
         }
@@ -1533,48 +1688,97 @@ namespace Shootopia
 
             if (_activeChargeVFX == null) return;
 
-            Transform sphereTr = _activeChargeVFX.transform.Find("ChargeVisualSphere");
-            if (sphereTr != null)
-            {
-                float smoothT = Mathf.SmoothStep(0f, 1f, t);
-                float maxSphereScale = 0.28f;
-                float currentScale = Mathf.Lerp(0.02f, maxSphereScale, smoothT);
+            Color chargeColor = GetProjectileColor(data);
+            float smoothT = Mathf.SmoothStep(0f, 1f, t);
 
-                // Dynamically scale and pulse
+            // 1. Inner Core scaling & emission
+            Transform coreTr = _activeChargeVFX.transform.Find("ChargeCore");
+            if (coreTr != null)
+            {
+                float maxCoreScale = 0.14f;
+                float currentCoreScale = Mathf.Lerp(0.015f, maxCoreScale, smoothT);
                 if (t >= 1.0f)
                 {
-                    float pulse = Mathf.Sin(Time.time * 18f) * 0.015f;
-                    sphereTr.localScale = Vector3.one * (maxSphereScale + pulse);
+                    float pulse = Mathf.Sin(Time.time * 24f) * 0.012f;
+                    coreTr.localScale = Vector3.one * (maxCoreScale + pulse);
                 }
                 else
                 {
-                    sphereTr.localScale = Vector3.one * currentScale;
+                    coreTr.localScale = Vector3.one * currentCoreScale;
                 }
 
-                // Update sphere material alpha and emission intensity as charge builds up
-                MeshRenderer mr = sphereTr.GetComponent<MeshRenderer>();
+                MeshRenderer mr = coreTr.GetComponent<MeshRenderer>();
                 if (mr != null && mr.material != null)
                 {
-                    Color chargeColor = GetProjectileColor(data);
-                    float alpha = Mathf.Lerp(0.2f, 0.65f, smoothT);
-                    Color baseCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, alpha);
-
-                    if (mr.material.HasProperty("_BaseColor")) mr.material.SetColor("_BaseColor", baseCol);
-                    if (mr.material.HasProperty("_Color")) mr.material.SetColor("_Color", baseCol);
-
+                    float emMult = Mathf.Lerp(2.5f, 6.0f, smoothT);
+                    Color hotCore = Color.Lerp(chargeColor, Color.white, 0.7f + 0.2f * smoothT);
                     if (mr.material.HasProperty("_EmissionColor"))
                     {
-                        float emMult = Mathf.Lerp(1.5f, 4.0f, smoothT);
+                        mr.material.SetColor("_EmissionColor", hotCore * emMult);
+                    }
+                }
+            }
+
+            // 2. Outer Corona scaling & alpha falloff
+            Transform haloTr = _activeChargeVFX.transform.Find("ChargeHalo");
+            if (haloTr != null)
+            {
+                float maxHaloScale = 0.26f;
+                float currentHaloScale = Mathf.Lerp(0.03f, maxHaloScale, smoothT);
+                if (t >= 1.0f)
+                {
+                    float pulse = Mathf.Sin(Time.time * 20f + 1.2f) * 0.02f;
+                    haloTr.localScale = Vector3.one * (maxHaloScale + pulse);
+                }
+                else
+                {
+                    haloTr.localScale = Vector3.one * currentHaloScale;
+                }
+
+                MeshRenderer mr = haloTr.GetComponent<MeshRenderer>();
+                if (mr != null && mr.material != null)
+                {
+                    float alpha = Mathf.Lerp(0.05f, 0.38f, smoothT);
+                    Color baseCol = new Color(chargeColor.r, chargeColor.g, chargeColor.b, alpha);
+                    if (mr.material.HasProperty("_BaseColor")) mr.material.SetColor("_BaseColor", baseCol);
+                    if (mr.material.HasProperty("_Color")) mr.material.SetColor("_Color", baseCol);
+                    if (mr.material.HasProperty("_EmissionColor"))
+                    {
+                        float emMult = Mathf.Lerp(1.2f, 3.5f, smoothT);
                         mr.material.SetColor("_EmissionColor", chargeColor * emMult);
                     }
                 }
             }
 
-            // Adjust implosion particle simulation scale (halved to 0.1f -> 0.25f)
+            // 3. Ready Particles trigger
+            Transform readyTr = _activeChargeVFX.transform.Find("ReadyParticles");
+            if (readyTr != null)
+            {
+                ParticleSystem readyPs = readyTr.GetComponent<ParticleSystem>();
+                if (readyPs != null)
+                {
+                    var em = readyPs.emission;
+                    if (t >= 1.0f)
+                    {
+                        if (!readyPs.isPlaying)
+                        {
+                            readyPs.Play();
+                            readyPs.Emit(18); // Energetic initial ready burst
+                        }
+                        em.rateOverTime = 40f; // Continuous crackle sparks while holding full charge
+                    }
+                    else
+                    {
+                        em.rateOverTime = 0f;
+                    }
+                }
+            }
+
+            // 4. Implosion Particle scale
             Transform implosionTr = _activeChargeVFX.transform.Find("ImplosionVFX");
             if (implosionTr != null)
             {
-                float implosionScale = Mathf.Lerp(0.1f, 0.25f, t);
+                float implosionScale = Mathf.Lerp(0.08f, 0.22f, t);
                 implosionTr.localScale = Vector3.one * implosionScale;
             }
         }

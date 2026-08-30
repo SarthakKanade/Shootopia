@@ -42,6 +42,32 @@ namespace Shootopia
             }
         }
 
+        private void Start()
+        {
+            TrySpawnSelf();
+        }
+
+        private void Update()
+        {
+            if (!IsSpawned)
+            {
+                TrySpawnSelf();
+            }
+        }
+
+        private void TrySpawnSelf()
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer && !IsSpawned)
+            {
+                var netObj = GetComponent<NetworkObject>();
+                if (netObj != null && !netObj.IsSpawned)
+                {
+                    netObj.Spawn();
+                    Debug.Log("[NetworkedGameManager] Auto-spawned NetworkedGameManager NetworkObject on Server/Host.");
+                }
+            }
+        }
+
         public readonly NetworkVariable<Unity.Collections.FixedString32Bytes> ActiveModeName = new NetworkVariable<Unity.Collections.FixedString32Bytes>("FFA", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         public override void OnNetworkSpawn()

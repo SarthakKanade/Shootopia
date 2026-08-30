@@ -31,8 +31,8 @@ MonoBehaviour:
   isPickupOnly: 0
   gaugeKillFill: 32
   isAutoFire: 1
-  isCharged: 1
-  chargeTime: 0.01
+  isCharged: 0
+  chargeTime: 0
   isContinuous: 0
   isTrap: 0
   projectilePrefab: {fileID: 2377969135853823090, guid: 8bdfa4b44e67e411f9f7f8b831a96a03, type: 3}
@@ -56,7 +56,7 @@ MonoBehaviour:
   damageAtEdge: 0
   maxBounces: 4
   projectileLifetime: 3
-  previewDistance: 8
+  previewDistance: 25
   hasADS: 0
   requiresADSToFire: 0
   adsFOV: 60
