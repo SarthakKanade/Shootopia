@@ -15,38 +15,38 @@ namespace Shootopia.Editor
             var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/MainMenu.unity", UnityEditor.SceneManagement.OpenSceneMode.Single);
 
             // Load Assets
-            var bgMediumTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Space_Exploration_GUI_Kit/Background_Images/medium/home-background-medium.png");
-            var bgSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Background_Images/medium/home-background-medium.png");
+            var bgMediumTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/3rdParty/Space_Exploration_GUI_Kit/Background_Images/medium/home-background-medium.png");
+            var bgSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Background_Images/medium/home-background-medium.png");
             if (bgSprite == null)
             {
-                var all = AssetDatabase.LoadAllAssetsAtPath("Assets/Space_Exploration_GUI_Kit/Background_Images/medium/home-background-medium.png");
+                var all = AssetDatabase.LoadAllAssetsAtPath("Assets/3rdParty/Space_Exploration_GUI_Kit/Background_Images/medium/home-background-medium.png");
                 foreach (var a in all) if (a is Sprite s) { bgSprite = s; break; }
             }
 
-            var planet1Sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Icons/exoplanet-1-512.png");
-            var planet2Sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Icons/exoplanet-4-512.png");
-            var starBlue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-blue-medium.png");
-            var starPink = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-pink-medium.png");
+            var planet1Sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/exoplanet-1-512.png");
+            var planet2Sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/exoplanet-4-512.png");
+            var starBlue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-blue-medium.png");
+            var starPink = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-pink-medium.png");
 
-            var btnYellowLarge = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png");
-            var btnBlueLarge = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-blue-sparkle-large.png");
-            var btnBlueMedium = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/medium/medium-blue-medium.png");
-            var btnYellowMedium = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/medium/medium-yellow-medium.png");
-            var btnSquareBlue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/small/square-blue-small.png");
-            var btnSquareYellow = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/small/square-yellow-small.png");
+            var btnYellowLarge = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png");
+            var btnBlueLarge = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-blue-sparkle-large.png");
+            var btnBlueMedium = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/medium/medium-blue-medium.png");
+            var btnYellowMedium = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/medium/medium-yellow-medium.png");
+            var btnSquareBlue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/small/square-blue-small.png");
+            var btnSquareYellow = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/small/square-yellow-small.png");
 
-            var containerSetting = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Containers/Large/setting-container-large.png");
-            var containerPause = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Containers/Large/pause-container-large.png");
+            var containerSetting = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/setting-container-large.png");
+            var containerPause = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/pause-container-large.png");
 
-            var iconAstronaut = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Icons/astronaut-128.png");
-            var iconAlien = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Icons/alien-128.png");
-            var iconSettings = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/settings-64.png");
-            var iconSoundOn = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/sound-64.png");
-            var iconSoundOff = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/sound-off-64.png");
-            var iconCross = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-64.png");
+            var iconAstronaut = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/astronaut-128.png");
+            var iconAlien = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/alien-128.png");
+            var iconSettings = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/settings-64.png");
+            var iconSoundOn = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/sound-64.png");
+            var iconSoundOff = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/sound-off-64.png");
+            var iconCross = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-64.png");
 
-            var fontTitle = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Space_Exploration_GUI_Kit/Fonts/Righteous-Regular SDF.asset");
-            var fontBody = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Space_Exploration_GUI_Kit/Fonts/Asap-Bold SDF.asset");
+            var fontTitle = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/3rdParty/Space_Exploration_GUI_Kit/Fonts/Righteous-Regular SDF.asset");
+            var fontBody = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/3rdParty/Space_Exploration_GUI_Kit/Fonts/Asap-Bold SDF.asset");
 
             // Clean existing MainMenuCanvas roots
             foreach (var r in scene.GetRootGameObjects())
@@ -636,7 +636,7 @@ namespace Shootopia.Editor
             cbRect.anchorMin = cbRect.anchorMax = new Vector2(0.95f, 0.93f);
             cbRect.sizeDelta = new Vector2(40, 40);
             var cbImg = closeBtnGO.AddComponent<Image>();
-            var closeSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-64.png");
+            var closeSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-64.png");
             cbImg.sprite = closeSprite;
             cbImg.color = new Color(1f, 0.6f, 0.6f, 1f);
             var cbBtn = closeBtnGO.AddComponent<Button>();

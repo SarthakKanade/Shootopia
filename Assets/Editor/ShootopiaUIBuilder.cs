@@ -11,40 +11,40 @@ namespace Shootopia.Editor
 {
     public static class ShootopiaUIBuilder
     {
-        private const string FONT_TITLE_PATH = "Assets/Space_Exploration_GUI_Kit/Fonts/Righteous-Regular SDF.asset";
-        private const string FONT_BODY_PATH = "Assets/Space_Exploration_GUI_Kit/Fonts/Asap-Bold SDF.asset";
+        private const string FONT_TITLE_PATH = "Assets/3rdParty/Space_Exploration_GUI_Kit/Fonts/Righteous-Regular SDF.asset";
+        private const string FONT_BODY_PATH = "Assets/3rdParty/Space_Exploration_GUI_Kit/Fonts/Asap-Bold SDF.asset";
 
-        private const string SPRITE_SETTING_CONTAINER = "Assets/Space_Exploration_GUI_Kit/Containers/Large/setting-container-large.png";
-        private const string SPRITE_PAUSE_CONTAINER = "Assets/Space_Exploration_GUI_Kit/Containers/Large/pause-container-large.png";
-        private const string SPRITE_VICTORY_CONTAINER = "Assets/Space_Exploration_GUI_Kit/Containers/Large/victory-defeat-container-large.png";
-        private const string SPRITE_ITEM_CONTAINER = "Assets/Space_Exploration_GUI_Kit/Containers/Large/item-info-container-large.png";
-        private const string SPRITE_CARD_CONTAINER = "Assets/Space_Exploration_GUI_Kit/Containers/Large/shop-item-container-large.png";
+        private const string SPRITE_SETTING_CONTAINER = "Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/setting-container-large.png";
+        private const string SPRITE_PAUSE_CONTAINER = "Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/pause-container-large.png";
+        private const string SPRITE_VICTORY_CONTAINER = "Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/victory-defeat-container-large.png";
+        private const string SPRITE_ITEM_CONTAINER = "Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/item-info-container-large.png";
+        private const string SPRITE_CARD_CONTAINER = "Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/shop-item-container-large.png";
 
-        private const string SPRITE_BTN_YELLOW_SPARKLE = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png";
-        private const string SPRITE_BTN_BLUE_SPARKLE = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-blue-sparkle-large.png";
-        private const string SPRITE_BTN_PURPLE_MED = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-purple-large.png";
-        private const string SPRITE_BTN_BLUE_MED = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-blue-large.png";
-        private const string SPRITE_BTN_PINK_SHORT = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-pink-large.png";
-        private const string SPRITE_BTN_YELLOW_SHORT = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-yellow-large.png";
-        private const string SPRITE_BTN_BLUE_SHORT = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-blue-large.png";
-        private const string SPRITE_BTN_SQUARE_PURPLE = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-purple-large.png";
-        private const string SPRITE_BTN_SQUARE_BLUE = "Assets/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-blue-large.png";
+        private const string SPRITE_BTN_YELLOW_SPARKLE = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png";
+        private const string SPRITE_BTN_BLUE_SPARKLE = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-blue-sparkle-large.png";
+        private const string SPRITE_BTN_PURPLE_MED = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-purple-large.png";
+        private const string SPRITE_BTN_BLUE_MED = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-blue-large.png";
+        private const string SPRITE_BTN_PINK_SHORT = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-pink-large.png";
+        private const string SPRITE_BTN_YELLOW_SHORT = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-yellow-large.png";
+        private const string SPRITE_BTN_BLUE_SHORT = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/short-blue-large.png";
+        private const string SPRITE_BTN_SQUARE_PURPLE = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-purple-large.png";
+        private const string SPRITE_BTN_SQUARE_BLUE = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/square-blue-large.png";
 
-        private const string SPRITE_BAR_BG = "Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/sound-bar-container-large.png";
-        private const string SPRITE_BAR_FILL = "Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/level-bar-full-large.png";
-        private const string SPRITE_INPUT_BG = "Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/username-password-container-selected-large.png";
-        private const string SPRITE_TOGGLE_ON = "Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/on-selected-large.png";
-        private const string SPRITE_TOGGLE_OFF = "Assets/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/off-deselected-large.png";
+        private const string SPRITE_BAR_BG = "Assets/3rdParty/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/sound-bar-container-large.png";
+        private const string SPRITE_BAR_FILL = "Assets/3rdParty/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/level-bar-full-large.png";
+        private const string SPRITE_INPUT_BG = "Assets/3rdParty/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/username-password-container-selected-large.png";
+        private const string SPRITE_TOGGLE_ON = "Assets/3rdParty/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/on-selected-large.png";
+        private const string SPRITE_TOGGLE_OFF = "Assets/3rdParty/Space_Exploration_GUI_Kit/Settings_&_Menu_Components/Large/off-deselected-large.png";
 
-        private const string ICON_ASTRONAUT = "Assets/Space_Exploration_GUI_Kit/Icons/astronaut-128.png";
-        private const string ICON_ALIEN = "Assets/Space_Exploration_GUI_Kit/Icons/alien-128.png";
-        private const string ICON_CROWN = "Assets/Space_Exploration_GUI_Kit/Icons/crown-gold-128.png";
-        private const string ICON_HEART = "Assets/Space_Exploration_GUI_Kit/Icons/heart-128.png";
-        private const string ICON_GUN = "Assets/Space_Exploration_GUI_Kit/Icons/gun-128.png";
-        private const string ICON_RADAR = "Assets/Space_Exploration_GUI_Kit/Icons/radar-128.png";
-        private const string ICON_SOUND = "Assets/Space_Exploration_GUI_Kit/Icons/tv-128.png";
-        private const string ICON_STAR = "Assets/Space_Exploration_GUI_Kit/Icons/star-128.png";
-        private const string BG_HOME = "Assets/Space_Exploration_GUI_Kit/Background_Images/large/home-background-large.png";
+        private const string ICON_ASTRONAUT = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/astronaut-128.png";
+        private const string ICON_ALIEN = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/alien-128.png";
+        private const string ICON_CROWN = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/crown-gold-128.png";
+        private const string ICON_HEART = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/heart-128.png";
+        private const string ICON_GUN = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/gun-128.png";
+        private const string ICON_RADAR = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/radar-128.png";
+        private const string ICON_SOUND = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/tv-128.png";
+        private const string ICON_STAR = "Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/star-128.png";
+        private const string BG_HOME = "Assets/3rdParty/Space_Exploration_GUI_Kit/Background_Images/large/home-background-large.png";
 
         private static TMP_FontAsset TitleFont => AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_TITLE_PATH);
         private static TMP_FontAsset BodyFont => AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_BODY_PATH);

@@ -133,7 +133,7 @@ namespace Shootopia
             if (disappearVFX == null)
             {
 #if UNITY_EDITOR
-                disappearVFX = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/ImportedProjectiles/3rdParty/Polygon Arsenal/Prefabs/Combat/Explosions/Sci-Fi/Laser/LaserExplosionBlue.prefab");
+                disappearVFX = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/3rdParty/ImportedProjectiles/3rdParty/Polygon Arsenal/Prefabs/Combat/Explosions/Sci-Fi/Laser/LaserExplosionBlue.prefab");
 #endif
             }
 
