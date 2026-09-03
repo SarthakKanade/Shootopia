@@ -60,7 +60,6 @@ namespace Shootopia
             }
 
             _instance = this;
-            DontDestroyOnLoad(gameObject);
 
             LoadVolumeSettings();
             InitializeAudioPool();

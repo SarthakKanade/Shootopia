@@ -46,7 +46,50 @@ namespace Shootopia
 
         // Animator Hashes
         private static readonly int HashStance = Animator.StringToHash("Stance");
+        private static readonly int HashAimPitch = Animator.StringToHash("AimPitch");
+        private static readonly int HashIsFiring = Animator.StringToHash("IsFiring");
         private static readonly int HashShootSpeed = Animator.StringToHash("ShootSpeed");
+        private static readonly int HashIsThrowAiming = Animator.StringToHash("IsThrowAiming");
+        private static readonly int HashThrowRelease = Animator.StringToHash("ThrowRelease");
+
+        private readonly HashSet<int> _validAnimParams = new HashSet<int>();
+
+        private void CacheAnimParameters()
+        {
+            _validAnimParams.Clear();
+            if (animator == null) animator = GetComponentInChildren<Animator>(true);
+            if (animator != null)
+            {
+                foreach (var p in animator.parameters)
+                {
+                    _validAnimParams.Add(p.nameHash);
+                }
+            }
+        }
+
+        private void SafeSetBool(int hash, bool val)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+                animator.SetBool(hash, val);
+        }
+
+        private void SafeSetFloat(int hash, float val)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+                animator.SetFloat(hash, val);
+        }
+
+        private void SafeSetFloat(int hash, float val, float dampTime, float deltaTime)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+                animator.SetFloat(hash, val, dampTime, deltaTime);
+        }
+
+        private void SafeSetTrigger(int hash)
+        {
+            if (animator != null && _validAnimParams.Contains(hash))
+                animator.SetTrigger(hash);
+        }
 
         // Network State
         private readonly NetworkVariable<Unity.Collections.FixedString64Bytes> _equippedAttachName = 
@@ -58,6 +101,12 @@ namespace Shootopia
         private int _currentIndex = -1;
         private GameObject _currentVisual;
         private ParticleSystem _muzzleFlash;
+        private Transform _headTransform;
+        private Transform _neckTransform;
+        private Quaternion _initialHeadLocalRotation;
+        private Quaternion _initialNeckLocalRotation;
+        private Quaternion _initialHeadRotationRelModel;
+        private Quaternion _initialNeckRotationRelModel;
         private float _timeSinceLastShot;
         private bool _lastFire;
         private int _currentAmmo;
@@ -65,6 +114,7 @@ namespace Shootopia
         private float _timeRemaining;
         private Coroutine _timeRoutine;
         private bool _isAimingTrap;
+        private bool _isAimingBounce;
         private bool _inTrapCooldown;
         private Coroutine _trapCooldownRoutine;
 
@@ -131,6 +181,22 @@ namespace Shootopia
             if (motor == null) motor = GetComponent<CharacterMotor>();
             if (input == null) input = GetComponent<PlayerInputRouter>();
 
+            CacheAnimParameters();
+            _headTransform = FindChild(transform, "head");
+            _neckTransform = FindChild(transform, "neck_01");
+
+            Transform modelRoot = motor != null ? motor.ModelRoot : transform;
+            if (_headTransform != null)
+            {
+                _initialHeadLocalRotation = _headTransform.localRotation;
+                _initialHeadRotationRelModel = Quaternion.Inverse(modelRoot.rotation) * _headTransform.rotation;
+            }
+            if (_neckTransform != null)
+            {
+                _initialNeckLocalRotation = _neckTransform.localRotation;
+                _initialNeckRotationRelModel = Quaternion.Inverse(modelRoot.rotation) * _neckTransform.rotation;
+            }
+
             var aimRig = GetComponent<PlayerAimRig>();
             _trajectoryPredictor = GetComponent<ThrowableTrajectoryPredictor>();
             if (_trajectoryPredictor == null) _trajectoryPredictor = gameObject.AddComponent<ThrowableTrajectoryPredictor>();
@@ -138,6 +204,36 @@ namespace Shootopia
             _adsHandler = new WeaponADSHandler(transform, motor, playerFollowCamera, scopeOverlay);
             _chargeHandler = new WeaponChargeHandler(vfxImplosionPrefab);
             _aimHandler = new WeaponAimHandler(transform, animator, motor, aimRig);
+        }
+
+        private void LateUpdate()
+        {
+            // Do not lock head during melee attacks (punch or knife), allowing natural head orientation
+            bool isMelee = CurrentAttach == null || CurrentAttach.stanceId == 3 ||
+                           (CurrentAttach.gameplayData != null && (CurrentAttach.gameplayData.category == WeaponCategory.Melee || CurrentAttach.gameplayData.name.Contains("Knife")));
+            if (isMelee) return;
+
+            bool isChargingOrAiming = (_chargeHandler != null && _chargeHandler.IsCharging) || _isAimingTrap || _isAimingBounce;
+            bool isCombatStanceOrRetreating = (_aimHandler != null && _aimHandler.IsInCombatStance) || (motor != null && motor.IsInCombat);
+            bool isAnimatorFiring = animator != null && (animator.GetBool(HashIsFiring) || 
+                                                         animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot") || 
+                                                         animator.IsInTransition(1));
+
+            bool shouldLockHead = isChargingOrAiming || isCombatStanceOrRetreating || isAnimatorFiring;
+
+            // Freeze/lock head and neck rotation completely during movement, firing, charging, or retreating from ranged combat
+            if (shouldLockHead)
+            {
+                Transform model = motor != null ? motor.ModelRoot : transform;
+                if (_neckTransform != null)
+                {
+                    _neckTransform.rotation = model.rotation * _initialNeckRotationRelModel;
+                }
+                if (_headTransform != null)
+                {
+                    _headTransform.rotation = model.rotation * _initialHeadRotationRelModel;
+                }
+            }
         }
 
         public override void OnNetworkSpawn()
@@ -219,6 +315,8 @@ namespace Shootopia
             {
                 _adsHandler.ExitADS();
                 _aimHandler.ExitCombatStance();
+                _isAimingBounce = false;
+                _aimHandler.DisableBouncePreview();
                 _lastFire = false;
                 return;
             }
@@ -231,7 +329,7 @@ namespace Shootopia
             HandleFire(dt);
             _adsHandler.UpdateADS(_chargeHandler.IsCharging || _isAimingTrap, input.Intent.AltFire, CurrentAttach);
             _aimHandler.UpdateAimState(dt, input.Intent.Fire, CurrentAttach, _chargeHandler.IsCharging, _isAimingTrap);
-            _aimHandler.UpdateBouncePreview(IsOwner, CurrentAttach, Muzzle, Aim);
+            _aimHandler.UpdateBouncePreview(IsOwner, CurrentAttach, Muzzle, Aim, _isAimingBounce);
         }
 
         #region Firing Logic
@@ -303,12 +401,24 @@ namespace Shootopia
                 return;
             }
 
-            // 6. Standard Ranged (Automatic or Semi-Automatic)
+            // 6. Bounce Gun (Hold Fire to aim & preview trajectory, release Fire to shoot)
+            bool isBounceGun = data.maxBounces > 0 || (CurrentAttach != null && CurrentAttach.name.Contains("TrickShot"));
+            if (isBounceGun)
+            {
+                HandleBounceFire(data, fireHeld, fireReleased);
+                return;
+            }
+
+            // 7. Standard Ranged (Automatic or Semi-Automatic)
             bool isAuto = data.isAutomatic || data.isAutoFire;
             bool wantFire = isAuto ? fireHeld : firePressed;
 
             if (wantFire && CanFire(data) && _timeSinceLastShot >= data.FireRate)
             {
+                if (CurrentAttach == null && animator != null)
+                {
+                    animator.SetFloat(HashStance, 2.0f);
+                }
                 _aimHandler.TriggerCombatStance();
                 FireProjectile(data);
                 if (animator != null) animator.Play("Shoot", 1, 0f);
@@ -316,7 +426,7 @@ namespace Shootopia
 
             if (isAuto && !fireHeld && !_aimHandler.IsInCombatStance && animator != null)
             {
-                animator.SetBool(Animator.StringToHash("IsFiring"), false);
+                animator.SetBool(HashIsFiring, false);
             }
         }
 
@@ -335,7 +445,8 @@ namespace Shootopia
                     _isAimingTrap = true;
                     if (animator != null)
                     {
-                        animator.SetFloat(HashShootSpeed, 1f);
+                        SafeSetBool(HashIsThrowAiming, true);
+                        SafeSetFloat(HashShootSpeed, 1f);
                         animator.CrossFade("ThrowBall_Prep", 0.05f, -1, 0f);
                     }
                     if (motor != null) motor.MoveSpeedMultiplier = 0.25f;
@@ -352,7 +463,9 @@ namespace Shootopia
                 _isAimingTrap = false;
                 if (animator != null)
                 {
-                    animator.SetFloat(HashShootSpeed, 1f);
+                    SafeSetBool(HashIsThrowAiming, false);
+                    SafeSetTrigger(HashThrowRelease);
+                    SafeSetFloat(HashShootSpeed, 1f);
                     animator.CrossFade("ThrowBall_Release", 0.02f, -1, 0f);
                 }
                 if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
@@ -398,12 +511,58 @@ namespace Shootopia
                         animator.Play("Shoot", 1, 0f);
                         animator.SetFloat(HashShootSpeed, 1f);
                     }
+                    CancelCharge(exitCombatStance: false);
                 }
-                CancelCharge();
+                else
+                {
+                    CancelCharge(exitCombatStance: true);
+                }
             }
             else if (!fireHeld && _chargeHandler.IsCharging)
             {
-                CancelCharge();
+                CancelCharge(exitCombatStance: true);
+            }
+        }
+
+        private void HandleBounceFire(WeaponSO data, bool fireHeld, bool fireReleased)
+        {
+            if (fireHeld && CanFire(data))
+            {
+                if (!_isAimingBounce)
+                {
+                    _isAimingBounce = true;
+                    if (motor != null) motor.IsInCombat = true;
+                    if (animator != null)
+                    {
+                        animator.SetBool(HashIsFiring, true);
+                        animator.SetFloat(HashShootSpeed, 0f);
+                    }
+                }
+            }
+            else if (fireReleased && _isAimingBounce)
+            {
+                _isAimingBounce = false;
+                if (_timeSinceLastShot >= data.FireRate)
+                {
+                    _aimHandler.TriggerCombatStance();
+                    FireProjectile(data);
+                    if (animator != null)
+                    {
+                        animator.Play("Shoot", 1, 0f);
+                        animator.SetFloat(HashShootSpeed, 1f);
+                    }
+                }
+                else
+                {
+                    _aimHandler.ExitCombatStance();
+                }
+                _aimHandler.DisableBouncePreview();
+            }
+            else if (!fireHeld && _isAimingBounce)
+            {
+                _isAimingBounce = false;
+                _aimHandler.DisableBouncePreview();
+                _aimHandler.ExitCombatStance();
             }
         }
 
@@ -411,7 +570,7 @@ namespace Shootopia
         {
             if (fireHeld && CanFire(data))
             {
-                bool isStartingFire = firePressed || (animator != null && !animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot"));
+                bool isStartingFire = firePressed || (animator != null && (!animator.GetBool(HashIsFiring) || !animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot")));
                 _aimHandler.TriggerCombatStance();
 
                 if (animator != null)
@@ -427,7 +586,7 @@ namespace Shootopia
             }
             else if (!_aimHandler.IsInCombatStance && animator != null)
             {
-                animator.SetBool(Animator.StringToHash("IsFiring"), false);
+                animator.SetBool(HashIsFiring, false);
                 animator.SetFloat(HashShootSpeed, 1f);
             }
         }
@@ -488,6 +647,17 @@ namespace Shootopia
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
 
+                // Ignore physical collision between the spawned projectile/trap and the owner's colliders (including protection shield)
+                var projCols = proj.GetComponentsInChildren<Collider>(true);
+                var ownerCols = GetComponentsInChildren<Collider>(true);
+                foreach (var pCol in projCols)
+                {
+                    foreach (var oCol in ownerCols)
+                    {
+                        Physics.IgnoreCollision(pCol, oCol, true);
+                    }
+                }
+
                 var tb = proj.GetComponent<TrapBase>();
                 if (tb != null) tb.Initialise((int)OwnerClientId, Camera.main, data, launchVel);
             }
@@ -529,6 +699,17 @@ namespace Shootopia
                 var proj = Instantiate(data.projectilePrefab, origin, rotation);
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
+
+                // Ignore physical collision between the spawned projectile/trap and the owner's colliders (including protection shield)
+                var projCols = proj.GetComponentsInChildren<Collider>(true);
+                var ownerCols = GetComponentsInChildren<Collider>(true);
+                foreach (var pCol in projCols)
+                {
+                    foreach (var oCol in ownerCols)
+                    {
+                        Physics.IgnoreCollision(pCol, oCol, true);
+                    }
+                }
 
                 var tb = proj.GetComponent<TrapBase>();
                 if (tb != null) tb.Initialise((int)OwnerClientId, null, data, velocity);
@@ -588,10 +769,16 @@ namespace Shootopia
         }
 
         [Rpc(SendTo.Everyone)]
-        private void StartChargeRpc() => _chargeHandler.StartCharge(Muzzle, CurrentAttach != null ? CurrentAttach.gameplayData : null);
+        private void StartChargeRpc()
+        {
+            StartChargeLocal();
+        }
 
         [Rpc(SendTo.Everyone)]
-        private void CancelChargeRpc() => _chargeHandler.CancelCharge();
+        private void CancelChargeRpc(bool exitCombatStance = true)
+        {
+            CancelChargeLocal(exitCombatStance);
+        }
 
         #endregion
 
@@ -803,6 +990,8 @@ namespace Shootopia
             if (_timeRoutine != null) { StopCoroutine(_timeRoutine); _timeRoutine = null; }
 
             CancelCharge();
+            _isAimingBounce = false;
+            _aimHandler.DisableBouncePreview();
             _aimHandler.ExitCombatStance();
             if (_adsHandler.IsADSActive && IsOwner) _adsHandler.ExitADS();
 
@@ -822,14 +1011,38 @@ namespace Shootopia
         private void StartCharge(WeaponSO data)
         {
             if (IsSpawned) StartChargeRpc();
-            else _chargeHandler.StartCharge(Muzzle, data);
+            else StartChargeLocal();
         }
 
-        private void CancelCharge()
+        private void StartChargeLocal()
         {
-            if (IsSpawned) CancelChargeRpc();
-            else _chargeHandler.CancelCharge();
-            _aimHandler.ExitCombatStance();
+            _chargeHandler.StartCharge(Muzzle, CurrentAttach != null ? CurrentAttach.gameplayData : null);
+            if (animator != null)
+            {
+                animator.Play("Shoot", 1, 0f);
+                animator.SetBool(HashIsFiring, true);
+                animator.SetFloat(HashShootSpeed, 0f); // Freeze at the first frame (aim/prep stance)
+            }
+        }
+
+        private void CancelCharge(bool exitCombatStance = true)
+        {
+            if (IsSpawned) CancelChargeRpc(exitCombatStance);
+            else CancelChargeLocal(exitCombatStance);
+        }
+
+        private void CancelChargeLocal(bool exitCombatStance = true)
+        {
+            _chargeHandler.CancelCharge();
+            CancelTrapAim();
+            if (exitCombatStance)
+            {
+                _aimHandler.ExitCombatStance();
+            }
+            if (animator != null)
+            {
+                SafeSetBool(HashIsThrowAiming, false);
+            }
         }
 
         public void GetTrapLaunchParameters(WeaponSO data, out Vector3 launchOrigin, out Vector3 launchVel)
@@ -848,7 +1061,8 @@ namespace Shootopia
             _isAimingTrap = false;
             if (animator != null)
             {
-                animator.SetFloat(HashShootSpeed, 1f);
+                SafeSetBool(HashIsThrowAiming, false);
+                SafeSetFloat(HashShootSpeed, 1f);
                 animator.CrossFade("Empty", 0.15f, -1);
             }
             if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
@@ -932,10 +1146,10 @@ namespace Shootopia
         private IEnumerator TriggerMeleeAnimation(float duration)
         {
             if (animator == null) yield break;
-            animator.SetBool(Animator.StringToHash("IsFiring"), true);
+            animator.SetBool(HashIsFiring, true);
             animator.SetFloat(HashShootSpeed, 1f);
             yield return new WaitForSeconds(duration);
-            animator.SetBool(Animator.StringToHash("IsFiring"), false);
+            animator.SetBool(HashIsFiring, false);
         }
 
         #endregion
@@ -943,9 +1157,9 @@ namespace Shootopia
         private static Transform FindChild(Transform root, string childName)
         {
             if (string.IsNullOrEmpty(childName)) return null;
-            if (root.name == childName) return root;
+            if (root.name.Equals(childName, System.StringComparison.OrdinalIgnoreCase)) return root;
             foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
-                if (t.name == childName) return t;
+                if (t.name.Equals(childName, System.StringComparison.OrdinalIgnoreCase)) return t;
             return null;
         }
     }

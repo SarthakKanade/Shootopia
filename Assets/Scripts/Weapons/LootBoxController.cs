@@ -30,7 +30,7 @@ namespace Shootopia
         [SerializeField] private AudioClip lootSound;
         [SerializeField] private GameObject chestMeshObject;
 
-        [Header("Fallback Health & Shield Attachments (For Chest 1 Preview)")]
+        [Header("Fallback Health & Shield Attachments")]
         [SerializeField] private WeaponAttachSO healthBoxAttach;
         [SerializeField] private WeaponAttachSO shieldAttach;
 
@@ -39,7 +39,10 @@ namespace Shootopia
         private readonly NetworkVariable<int> _currentEntryIndex = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private readonly NetworkVariable<Vector3> _netPosition = new NetworkVariable<Vector3>(Vector3.zero, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-        public bool IsAvailable => _isAvailable.Value;
+        // Local non-networked fallback index for offline sandbox/testing
+        private int _localOfflineIndex = 0;
+
+        public bool IsAvailable => IsSpawned ? _isAvailable.Value : true;
 
         private void Awake()
         {
@@ -54,7 +57,7 @@ namespace Shootopia
                 {
                     var pObj = new GameObject("PreviewPivot");
                     pObj.transform.SetParent(transform, false);
-                    pObj.transform.localPosition = new Vector3(0f, 1.25f, 0f);
+                    pObj.transform.localPosition = new Vector3(0f, 2.25f, 0f);
                     previewPivot = pObj.transform;
                 }
             }
@@ -114,8 +117,15 @@ namespace Shootopia
 
         private void Start()
         {
-            // OnNetworkSpawn already calls RollNewItemServer on the server.
-            // For non-networked testing or late joins, just refresh visuals.
+            // For offline testing / sandbox scenes without active Netcode server
+            if (!IsSpawned || !NetworkManager.Singleton.IsListening)
+            {
+                if (lootTable != null && lootTable.Entries.Count > 0)
+                {
+                    _localOfflineIndex = lootTable.GetRandomEntryIndex();
+                }
+            }
+
             UpdateVisualState();
         }
 
@@ -123,7 +133,8 @@ namespace Shootopia
 
         private void OnTriggerEnter(Collider other)
         {
-            if (!_isAvailable.Value || _isOpening) return;
+            bool available = IsSpawned ? _isAvailable.Value : true;
+            if (!available || _isOpening) return;
 
             var health = other.GetComponentInParent<PlayerHealth>();
             if (health == null) health = other.GetComponent<PlayerHealth>();
@@ -164,11 +175,18 @@ namespace Shootopia
             _isOpening = true;
 
             // Trigger open VFX, SFX, and lid opening animation across all clients
-            TriggerLootEffectsClientRpc(transform.position);
+            if (IsSpawned)
+            {
+                TriggerLootEffectsClientRpc(transform.position);
+            }
+            else
+            {
+                TriggerLocalLootEffects(transform.position);
+            }
 
             float duration = 0.6f;
 
-            // Also clear floating preview on server
+            // Clear floating preview
             if (floatingPreview != null)
             {
                 floatingPreview.ClearPreview();
@@ -182,8 +200,16 @@ namespace Shootopia
             yield return new WaitForSeconds(0.2f);
 
             _isOpening = false;
-            _isAvailable.Value = false;
-            StartCoroutine(CooldownRoutine());
+
+            if (IsSpawned && IsServer)
+            {
+                _isAvailable.Value = false;
+                StartCoroutine(CooldownRoutine());
+            }
+            else if (!IsSpawned)
+            {
+                StartCoroutine(OfflineCooldownRoutine());
+            }
         }
 
         private System.Collections.Generic.List<Transform> GetLidBones()
@@ -238,27 +264,44 @@ namespace Shootopia
 
             if (health == null) return;
 
+            int activeIndex = GetCurrentActiveIndex();
+
             if (chestType == LootChestType.Chest1_Defense)
             {
-                if (health.GetCurrentHp() < health.GetMaxHp())
+                // Check if specific entry is configured in loot table
+                bool isShieldEntry = false;
+                if (lootTable != null && activeIndex >= 0 && activeIndex < lootTable.Entries.Count)
+                {
+                    var entry = lootTable.Entries[activeIndex];
+                    if (entry != null && entry.displayName != null && entry.displayName.ToLower().Contains("shield"))
+                    {
+                        isShieldEntry = true;
+                    }
+                }
+
+                if (isShieldEntry && shield != null)
+                {
+                    shield.GrantShield(75f);
+                    Debug.Log($"[LootBoxController] Player granted 75 HP Shield from {chestType}!");
+                }
+                else if (health.GetCurrentHp() < health.GetMaxHp())
                 {
                     health.Heal(health.GetMaxHp());
-                    Debug.Log($"[LootBoxController] Player restored to MAX HP from Chest 1!");
+                    Debug.Log($"[LootBoxController] Player restored to MAX HP from {chestType}!");
                 }
                 else if (shield != null)
                 {
                     shield.GrantShield(75f);
-                    Debug.Log($"[LootBoxController] Player granted fresh 75 HP Shield from Chest 1!");
+                    Debug.Log($"[LootBoxController] Player at full HP granted 75 Shield from {chestType}!");
                 }
             }
             else
             {
                 if (lootTable != null && lootTable.Entries.Count > 0 && weaponCtrl != null)
                 {
-                    int index = _currentEntryIndex.Value;
-                    if (index < 0 || index >= lootTable.Entries.Count) index = 0;
+                    if (activeIndex < 0 || activeIndex >= lootTable.Entries.Count) activeIndex = 0;
 
-                    var entry = lootTable.Entries[index];
+                    var entry = lootTable.Entries[activeIndex];
                     if (entry != null && entry.weaponAttach != null)
                     {
                         weaponCtrl.ReplaceCurrentWeapon(entry.weaponAttach);
@@ -278,6 +321,17 @@ namespace Shootopia
                 RollNewItemServer();
                 _isAvailable.Value = true;
             }
+        }
+
+        private IEnumerator OfflineCooldownRoutine()
+        {
+            yield return new WaitForSeconds(cooldownSeconds);
+
+            if (lootTable != null && lootTable.Entries.Count > 0)
+            {
+                _localOfflineIndex = lootTable.GetRandomEntryIndex();
+            }
+            UpdateVisualState();
         }
 
         private void RelocateToRandomSpawnPointServer()
@@ -351,6 +405,15 @@ namespace Shootopia
             }
         }
 
+        private int GetCurrentActiveIndex()
+        {
+            if (IsSpawned && _currentEntryIndex.Value >= 0)
+            {
+                return _currentEntryIndex.Value;
+            }
+            return _localOfflineIndex;
+        }
+
         private void OnAvailabilityChanged(bool previousValue, bool newValue)
         {
             UpdateVisualState();
@@ -366,9 +429,11 @@ namespace Shootopia
             var rootRenderer = GetComponent<MeshRenderer>();
             if (rootRenderer != null) rootRenderer.enabled = false;
 
+            bool available = IsSpawned ? _isAvailable.Value : true;
+
             if (chestMeshObject != null && chestMeshObject != gameObject)
             {
-                chestMeshObject.SetActive(_isAvailable.Value);
+                chestMeshObject.SetActive(available);
             }
             else
             {
@@ -377,11 +442,11 @@ namespace Shootopia
                 {
                     if (r.gameObject == gameObject) { r.enabled = false; continue; }
                     if (floatingPreview != null && r.transform.IsChildOf(floatingPreview.transform)) continue;
-                    r.enabled = _isAvailable.Value;
+                    r.enabled = available;
                 }
             }
 
-            if (!_isAvailable.Value)
+            if (!available)
             {
                 if (floatingPreview != null) floatingPreview.ClearPreview();
                 return;
@@ -393,7 +458,20 @@ namespace Shootopia
 
             GameObject previewPrefab = null;
 
-            if (chestType == LootChestType.Chest1_Defense)
+            if (lootTable != null && lootTable.Entries != null && lootTable.Entries.Count > 0)
+            {
+                int activeIndex = GetCurrentActiveIndex();
+                if (activeIndex < 0 || activeIndex >= lootTable.Entries.Count) activeIndex = 0;
+
+                var entry = lootTable.Entries[activeIndex];
+                if (entry != null)
+                {
+                    previewPrefab = entry.customPreviewPrefab != null
+                        ? entry.customPreviewPrefab
+                        : (entry.weaponAttach != null ? entry.weaponAttach.visualPrefab : null);
+                }
+            }
+            else if (chestType == LootChestType.Chest1_Defense)
             {
                 if (healthBoxAttach != null && healthBoxAttach.visualPrefab != null)
                 {
@@ -402,18 +480,6 @@ namespace Shootopia
                 else if (shieldAttach != null && shieldAttach.visualPrefab != null)
                 {
                     previewPrefab = shieldAttach.visualPrefab;
-                }
-            }
-            else
-            {
-                if (lootTable != null && lootTable.Entries != null && lootTable.Entries.Count > 0)
-                {
-                    int targetIndex = _currentEntryIndex.Value >= 0 && _currentEntryIndex.Value < lootTable.Entries.Count ? _currentEntryIndex.Value : 0;
-                    var entry = lootTable.Entries[targetIndex];
-                    if (entry != null)
-                    {
-                        previewPrefab = entry.customPreviewPrefab != null ? entry.customPreviewPrefab : (entry.weaponAttach != null ? entry.weaponAttach.visualPrefab : null);
-                    }
                 }
             }
 
@@ -429,6 +495,11 @@ namespace Shootopia
 
         [Rpc(SendTo.Everyone)]
         private void TriggerLootEffectsClientRpc(Vector3 lootPosition)
+        {
+            TriggerLocalLootEffects(lootPosition);
+        }
+
+        private void TriggerLocalLootEffects(Vector3 lootPosition)
         {
             if (chestMeshObject != null)
             {

@@ -46,11 +46,10 @@ namespace Shootopia
         {
             if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
             _instance = this;
-            DontDestroyOnLoad(gameObject);
 
             EnsureConnectionApprovalSetup();
         }
@@ -146,6 +145,7 @@ namespace Shootopia
                 {
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
                     _currentSession.CurrentPlayer.SetProperty("IsReady", new PlayerProperty("true", VisibilityPropertyOptions.Public));
+                    await _currentSession.SaveCurrentPlayerDataAsync();
                 }
 
                 Debug.Log($"[SessionManager] Session created successfully. Join Code: {_currentSession.Code}, Session ID: {_currentSession.Id}");

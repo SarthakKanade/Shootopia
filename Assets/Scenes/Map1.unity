@@ -21836,9 +21836,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59372dcfdfd7540b49d3cc174b933f38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.LootBoxSpawnManager
-  chest1DefensePrefab: {fileID: 1991562759674228321, guid: ed5c4589265d54ad88df7d21224947df, type: 3}
-  chest2TrapsPrefab: {fileID: 8324565400849662335, guid: 861225f0d63dd4427a8261f7fe9e8fdf, type: 3}
-  chest3AdvancedPrefab: {fileID: 7573953143407254062, guid: 63d0c1df4ec524923a460c9f0d411182, type: 3}
+  chest1DefensePrefab: {fileID: 6102936684620647954, guid: ed5c4589265d54ad88df7d21224947df, type: 3}
+  chest2TrapsPrefab: {fileID: 3249151452987198751, guid: 861225f0d63dd4427a8261f7fe9e8fdf, type: 3}
+  chest3AdvancedPrefab: {fileID: 7219438844821375034, guid: 63d0c1df4ec524923a460c9f0d411182, type: 3}
   spawnPoints:
   - {fileID: 969719962}
   - {fileID: 37659734}

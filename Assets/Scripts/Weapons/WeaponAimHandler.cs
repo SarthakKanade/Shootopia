@@ -71,7 +71,7 @@ namespace Shootopia
             }
 
             FeedAimPitch();
-            UpdateDynamicStance(currentAttach);
+            UpdateDynamicStance(currentAttach, isCharging);
         }
 
         private void FeedAimPitch()
@@ -81,7 +81,7 @@ namespace Shootopia
             _animator.SetFloat(HashAimPitch, pitch01, 0.1f, Time.deltaTime);
         }
 
-        public void UpdateDynamicStance(WeaponAttachSO currentAttach)
+        public void UpdateDynamicStance(WeaponAttachSO currentAttach, bool isCharging = false)
         {
             if (_animator == null) return;
 
@@ -108,16 +108,16 @@ namespace Shootopia
 
             if (currentAttach.name.Contains("Sniper"))
             {
-                bool isFiring = _animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot");
+                bool isFiring = isCharging || (_animator != null && (_animator.GetBool(HashIsFiring) || _animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot")));
                 float targetStance = isFiring ? 1f : 0f;
                 float currentStance = _animator.GetFloat(HashStance);
                 _animator.SetFloat(HashStance, Mathf.MoveTowards(currentStance, targetStance, Time.deltaTime * 6f));
             }
         }
 
-        public void UpdateBouncePreview(bool isOwner, WeaponAttachSO currentAttach, Transform muzzle, IAimProvider aim)
+        public void UpdateBouncePreview(bool isOwner, WeaponAttachSO currentAttach, Transform muzzle, IAimProvider aim, bool isAiming = true)
         {
-            if (!isOwner || currentAttach == null || currentAttach.gameplayData == null)
+            if (!isOwner || !isAiming || currentAttach == null || currentAttach.gameplayData == null)
             {
                 DisableBouncePreview();
                 return;
@@ -138,42 +138,59 @@ namespace Shootopia
             Vector3 startPos = muzzleTr.position;
 
             Camera mainCam = Camera.main;
-            Vector3 aimDir = mainCam != null ? mainCam.transform.forward : (aim != null ? aim.CameraPlanarForward : _ownerTransform.forward);
+            Vector3 camForward = mainCam != null ? mainCam.transform.forward : (aim != null ? aim.CameraPlanarForward : _ownerTransform.forward);
+            Vector3 aimPoint = (aim != null && aim.AimPoint != Vector3.zero) ? aim.AimPoint : (startPos + camForward * 100f);
+            Vector3 aimDir = (aimPoint - startPos).normalized;
+            if (aimDir.sqrMagnitude < 0.001f) aimDir = camForward;
 
-            int layerMask = ~LayerMask.GetMask("Ignore Raycast", "Trigger", "UI");
-            if (_ownerTransform != null) layerMask &= ~(1 << _ownerTransform.gameObject.layer);
+            // Retain Layer 0 (Default) so all level geometry/colliders are hit; only ignore UI and raycast-ignore layers
+            int layerMask = ~LayerMask.GetMask("Ignore Raycast", "UI");
 
-            float previewDist = currentAttach.gameplayData.previewDistance > 1f ? currentAttach.gameplayData.previewDistance : 25f;
+            float previewDist = currentAttach.gameplayData.previewDistance > 1f ? currentAttach.gameplayData.previewDistance : 35f;
+            int maxBounces = currentAttach.gameplayData.maxBounces > 0 ? currentAttach.gameplayData.maxBounces : 3;
 
-            if (mainCam != null)
+            var points = new System.Collections.Generic.List<Vector3>();
+            points.Add(startPos);
+
+            Vector3 curOrigin = startPos;
+            Vector3 curDir = aimDir;
+            float remainingDist = previewDist;
+
+            for (int b = 0; b <= maxBounces; b++)
             {
-                Ray aimRay = new Ray(mainCam.transform.position, mainCam.transform.forward);
-                if (Physics.Raycast(aimRay, out RaycastHit camHit, 100f, layerMask, QueryTriggerInteraction.Ignore))
+                Ray ray = new Ray(curOrigin, curDir);
+                RaycastHit[] hits = Physics.RaycastAll(ray, remainingDist, layerMask, QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (h1, h2) => h1.distance.CompareTo(h2.distance));
+
+                bool hitFound = false;
+                for (int i = 0; i < hits.Length; i++)
                 {
-                    Vector3 toCamHit = (camHit.point - startPos).normalized;
-                    if (Vector3.Dot(toCamHit, aimDir) > 0.2f)
+                    var h = hits[i];
+                    if (_ownerTransform != null && (h.collider.transform == _ownerTransform || h.collider.transform.IsChildOf(_ownerTransform)))
                     {
-                        aimDir = toCamHit;
+                        continue; // Do not hit own body
                     }
+
+                    points.Add(h.point);
+                    remainingDist -= h.distance;
+                    curDir = Vector3.Reflect(curDir, h.normal).normalized;
+                    curOrigin = h.point + h.normal * 0.02f;
+                    hitFound = true;
+                    break;
+                }
+
+                if (!hitFound || remainingDist <= 0.5f)
+                {
+                    if (!hitFound)
+                    {
+                        points.Add(curOrigin + curDir * remainingDist);
+                    }
+                    break;
                 }
             }
 
-            if (Physics.Raycast(startPos, aimDir, out RaycastHit hit, previewDist, layerMask, QueryTriggerInteraction.Ignore))
-            {
-                Vector3 reflectedDir = Vector3.Reflect(aimDir, hit.normal);
-                float remainingDist = previewDist - hit.distance;
-
-                _bounceLineInstance.positionCount = 3;
-                _bounceLineInstance.SetPosition(0, startPos);
-                _bounceLineInstance.SetPosition(1, hit.point);
-                _bounceLineInstance.SetPosition(2, hit.point + reflectedDir * Mathf.Max(remainingDist, 6f));
-            }
-            else
-            {
-                _bounceLineInstance.positionCount = 2;
-                _bounceLineInstance.SetPosition(0, startPos);
-                _bounceLineInstance.SetPosition(1, startPos + aimDir * previewDist);
-            }
+            _bounceLineInstance.positionCount = points.Count;
+            _bounceLineInstance.SetPositions(points.ToArray());
         }
 
         public void DisableBouncePreview()
@@ -192,41 +209,23 @@ namespace Shootopia
             lineObj.transform.SetParent(_ownerTransform, false);
             _bounceLineInstance = lineObj.AddComponent<LineRenderer>();
             _bounceLineInstance.useWorldSpace = true;
-            _bounceLineInstance.startWidth = 0.045f;
-            _bounceLineInstance.endWidth = 0.015f;
+            _bounceLineInstance.startWidth = 0.08f;
+            _bounceLineInstance.endWidth = 0.04f;
 
-            Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
-                         ?? Shader.Find("Universal Render Pipeline/Unlit") 
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") 
                          ?? Shader.Find("Sprites/Default");
 
             if (shader != null)
             {
                 Material mat = new Material(shader) { name = "BounceLaser_Mat" };
-                Color laserColor = new Color(0.15f, 1.0f, 0.45f, 0.9f);
+                Color laserColor = new Color(0.15f, 1.0f, 0.45f, 1.0f);
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", laserColor);
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", laserColor);
-                if (mat.HasProperty("_EmissionColor"))
-                {
-                    mat.EnableKeyword("_EMISSION");
-                    mat.SetColor("_EmissionColor", laserColor * 3.0f);
-                }
+                mat.renderQueue = 3000;
                 _bounceLineInstance.material = mat;
+                _bounceLineInstance.startColor = laserColor;
+                _bounceLineInstance.endColor = laserColor;
             }
-
-            Gradient gradient = new Gradient();
-            gradient.SetKeys(
-                new GradientColorKey[] { 
-                    new GradientColorKey(new Color(0.8f, 1f, 0.8f), 0.0f), 
-                    new GradientColorKey(new Color(0.15f, 1f, 0.4f), 0.4f),
-                    new GradientColorKey(new Color(0.0f, 0.9f, 0.85f), 1.0f)
-                },
-                new GradientAlphaKey[] { 
-                    new GradientAlphaKey(0.95f, 0.0f), 
-                    new GradientAlphaKey(0.85f, 0.6f), 
-                    new GradientAlphaKey(0.05f, 1.0f) 
-                }
-            );
-            _bounceLineInstance.colorGradient = gradient;
         }
 
         public void Cleanup()

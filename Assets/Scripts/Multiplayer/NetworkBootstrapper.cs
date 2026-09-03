@@ -30,12 +30,11 @@ namespace Shootopia
         {
             if (_instance != null && _instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
             _instance = this;
-            DontDestroyOnLoad(gameObject);
 
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
@@ -148,7 +147,8 @@ namespace Shootopia
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
                 HookNetworkEvents();
-                if (IsValidSpawnScene(scene.name))
+                // If NetworkSceneManager is not active (offline/singleplayer testing), fallback to local spawn
+                if (NetworkManager.Singleton.SceneManager == null && IsValidSpawnScene(scene.name))
                 {
                     SpawnPlayerForClient(NetworkManager.Singleton.LocalClientId);
                 }
@@ -166,8 +166,11 @@ namespace Shootopia
 
             if (sceneEvent.SceneEventType == SceneEventType.LoadComplete)
             {
-                Debug.Log($"[NetworkBootstrapper] Client {sceneEvent.ClientId} finished loading '{sceneEvent.SceneName}'. Positioning player...");
-                SpawnPlayerForClient(sceneEvent.ClientId, cleanRespawn: false);
+                Debug.Log($"[NetworkBootstrapper] Client {sceneEvent.ClientId} finished loading '{sceneEvent.SceneName}'. Ensuring player spawned...");
+                if (NetworkManager.Singleton.ConnectedClients.TryGetValue(sceneEvent.ClientId, out var client) && (client.PlayerObject == null || !client.PlayerObject.IsSpawned))
+                {
+                    SpawnPlayerForClient(sceneEvent.ClientId, cleanRespawn: false);
+                }
             }
             else if (sceneEvent.SceneEventType == SceneEventType.LoadEventCompleted)
             {

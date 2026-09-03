@@ -74,6 +74,9 @@ namespace Shootopia
             var points = new System.Collections.Generic.List<Vector3> { currentPos };
             bool hitFound = false;
 
+            // Ensure collision mask ignores Layer 2 (Ignore Raycast) and UI
+            int effectiveMask = collisionMask & ~(1 << 2) & ~(1 << 5);
+
             for (int i = 0; i < maxSteps; i++)
             {
                 Vector3 nextPos = currentPos + currentVel * timeStep + 0.5f * gravity * (timeStep * timeStep);
@@ -82,19 +85,38 @@ namespace Shootopia
 
                 if (stepDist > 0.001f)
                 {
-                    if (Physics.Raycast(currentPos, stepDelta.normalized, out RaycastHit hit, stepDist, collisionMask, QueryTriggerInteraction.Ignore))
+                    RaycastHit[] hits = Physics.RaycastAll(currentPos, stepDelta.normalized, stepDist, effectiveMask, QueryTriggerInteraction.Ignore);
+                    if (hits != null && hits.Length > 0)
                     {
-                        points.Add(hit.point);
-
-                        if (_impactMarkerInstance != null)
+                        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                        for (int h = 0; h < hits.Length; h++)
                         {
-                            _impactMarkerInstance.SetActive(true);
-                            _impactMarkerInstance.transform.position = hit.point + hit.normal * 0.02f;
-                            _impactMarkerInstance.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                            var hit = hits[h];
+
+                            // Ignore self/owner hierarchy (body colliders, weapons, attached shield instance)
+                            if (hit.transform.root == transform.root || hit.collider.transform.IsChildOf(transform))
+                                continue;
+
+                            // Ignore any protection shield colliders
+                            if (hit.collider.GetComponent<ShieldColliderReceiver>() != null ||
+                                hit.collider.GetComponentInParent<PlayerShield>() != null ||
+                                hit.collider.name.Contains("Shield"))
+                                continue;
+
+                            points.Add(hit.point);
+
+                            if (_impactMarkerInstance != null)
+                            {
+                                _impactMarkerInstance.SetActive(true);
+                                _impactMarkerInstance.transform.position = hit.point + hit.normal * 0.02f;
+                                _impactMarkerInstance.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                            }
+
+                            hitFound = true;
+                            break;
                         }
 
-                        hitFound = true;
-                        break;
+                        if (hitFound) break;
                     }
                 }
 

@@ -106,6 +106,11 @@ namespace Shootopia
             }
             _activeChests.Clear();
 
+            if (chest1DefensePrefab == null || chest2TrapsPrefab == null || chest3AdvancedPrefab == null)
+            {
+                LoadDefaultPrefabs();
+            }
+
             if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
 
             // Find any pre-placed or existing chests in scene

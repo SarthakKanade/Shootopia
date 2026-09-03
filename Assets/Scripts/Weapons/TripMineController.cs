@@ -49,8 +49,15 @@ namespace Shootopia
         {
             if (_stuck) return;
             
-            // Don't stick to player
-            if (col.gameObject.CompareTag("Player") || col.gameObject.layer == LayerMask.NameToLayer("Player")) return;
+            // Don't stick to player or any protection shield
+            if (col.gameObject.CompareTag("Player") || 
+                col.gameObject.layer == LayerMask.NameToLayer("Player") ||
+                col.gameObject.GetComponentInParent<PlayerShield>() != null ||
+                col.gameObject.GetComponent<ShieldColliderReceiver>() != null ||
+                col.gameObject.name.Contains("Shield"))
+            {
+                return;
+            }
 
             _stuck = true;
             rb.isKinematic = true;

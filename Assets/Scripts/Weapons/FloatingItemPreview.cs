@@ -3,45 +3,61 @@ using UnityEngine;
 namespace Shootopia
 {
     /// <summary>
-    /// Animates a 3D item visual floating and rotating continuously above a Loot Box.
-    /// Robustly normalizes model bounds, centers pivots, and strips gameplay components/particles.
+    /// Displays a floating and continuously rotating 3D preview model above a loot box.
+    /// Handles centering, proper bounds normalization, and stripping non-visual components.
     /// </summary>
     public class FloatingItemPreview : MonoBehaviour
     {
-        [Header("Animation Configuration")]
-        [SerializeField] private float rotationSpeed = 90f;
-        [SerializeField] private float bobSpeed = 2.5f;
-        [SerializeField] private float bobHeight = 0.08f;
-        [SerializeField] private float targetWorldSize = 0.45f; // Well-proportioned size floating above chest
+        [Header("Animation Settings")]
+        [Tooltip("Degrees of rotation per second around the vertical axis.")]
+        [SerializeField] private float rotationSpeed = 65f;
 
-        private Vector3 _initialLocalPos;
-        private GameObject _currentPreviewInstance;
-        private float _bobTimer;
+        [Tooltip("Vertical bobbing oscillation frequency.")]
+        [SerializeField] private float bobSpeed = 2.2f;
+
+        [Tooltip("Vertical bobbing oscillation height amplitude.")]
+        [SerializeField] private float bobHeight = 0.07f;
+
+        [Tooltip("Target visual scale dimension relative to the loot box.")]
+        [SerializeField] private float targetWorldSize = 0.85f;
+
+        [Tooltip("Vertical offset from the pivot anchor.")]
+        [SerializeField] private Vector3 heightOffset = new Vector3(0f, 0.2f, 0f);
+
+        private Vector3 _baseLocalPos;
+        private GameObject _previewInstance;
+        private float _timer;
 
         private void Awake()
         {
-            if (_initialLocalPos == Vector3.zero)
-                _initialLocalPos = transform.localPosition;
+            InitializeBasePosition();
         }
 
         private void Start()
         {
-            if (_initialLocalPos == Vector3.zero)
-                _initialLocalPos = transform.localPosition;
+            InitializeBasePosition();
+        }
+
+        private void InitializeBasePosition()
+        {
+            if (_baseLocalPos == Vector3.zero || _baseLocalPos.y < 1.8f)
+            {
+                float targetY = transform.localPosition.y < 1.8f ? 2.25f : transform.localPosition.y;
+                _baseLocalPos = new Vector3(transform.localPosition.x, targetY, transform.localPosition.z);
+            }
         }
 
         private void Update()
         {
-            _bobTimer += Time.deltaTime * bobSpeed;
-            float newY = _initialLocalPos.y + Mathf.Sin(_bobTimer) * bobHeight;
+            _timer += Time.deltaTime * bobSpeed;
+            float yOffset = Mathf.Sin(_timer) * bobHeight;
 
-            // Apply gentle bobbing motion and smooth local Y-axis rotation
-            transform.localPosition = new Vector3(_initialLocalPos.x, newY, _initialLocalPos.z);
+            transform.localPosition = _baseLocalPos + new Vector3(0f, yOffset, 0f);
             transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.Self);
         }
 
         /// <summary>
-        /// Clears previous preview and instantiates a cosmetic 3D visual preview model.
+        /// Clears any existing preview and instantiates a normalized, centered 3D preview.
         /// </summary>
         public void SetPreviewVisual(GameObject visualPrefab)
         {
@@ -49,114 +65,143 @@ namespace Shootopia
 
             if (visualPrefab == null) return;
 
-            _currentPreviewInstance = Instantiate(visualPrefab, transform);
-            _currentPreviewInstance.transform.localPosition = Vector3.zero;
-            _currentPreviewInstance.transform.localRotation = Quaternion.identity;
-            _currentPreviewInstance.transform.localScale = Vector3.one;
+            // Instantiate cosmetic copy under this pivot
+            _previewInstance = Instantiate(visualPrefab, transform);
+            _previewInstance.transform.localPosition = Vector3.zero;
+            _previewInstance.transform.localRotation = Quaternion.identity;
+            _previewInstance.transform.localScale = Vector3.one;
 
-            // Strip physics, particles, lights, audio, & interaction scripts from cosmetic preview copy
-            var colliders = _currentPreviewInstance.GetComponentsInChildren<Collider>(true);
-            foreach (var col in colliders) col.enabled = false;
+            // Disable physics, colliders, and gameplay scripts
+            var colliders = _previewInstance.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++) colliders[i].enabled = false;
 
-            var rbs = _currentPreviewInstance.GetComponentsInChildren<Rigidbody>(true);
-            foreach (var rb in rbs) rb.isKinematic = true;
+            var rigidbodies = _previewInstance.GetComponentsInChildren<Rigidbody>(true);
+            for (int i = 0; i < rigidbodies.Length; i++) rigidbodies[i].isKinematic = true;
 
-            var particleSystems = _currentPreviewInstance.GetComponentsInChildren<ParticleSystem>(true);
-            foreach (var ps in particleSystems) ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var animators = _previewInstance.GetComponentsInChildren<Animator>(true);
+            for (int i = 0; i < animators.Length; i++) animators[i].enabled = false;
 
-            var particleRenderers = _currentPreviewInstance.GetComponentsInChildren<ParticleSystemRenderer>(true);
-            foreach (var pr in particleRenderers) pr.enabled = false;
+            var lineRenderers = _previewInstance.GetComponentsInChildren<LineRenderer>(true);
+            for (int i = 0; i < lineRenderers.Length; i++) lineRenderers[i].enabled = false;
 
-            var lights = _currentPreviewInstance.GetComponentsInChildren<Light>(true);
-            foreach (var l in lights) l.enabled = false;
+            var trailRenderers = _previewInstance.GetComponentsInChildren<TrailRenderer>(true);
+            for (int i = 0; i < trailRenderers.Length; i++) trailRenderers[i].enabled = false;
 
-            var audioSources = _currentPreviewInstance.GetComponentsInChildren<AudioSource>(true);
-            foreach (var a in audioSources) a.enabled = false;
-
-            var traps = _currentPreviewInstance.GetComponentsInChildren<TrapBase>(true);
-            foreach (var t in traps) t.enabled = false;
-
-            var scripts = _currentPreviewInstance.GetComponentsInChildren<MonoBehaviour>(true);
-            foreach (var s in scripts)
+            var particles = _previewInstance.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < particles.Length; i++)
             {
-                if (s != null && s != this) s.enabled = false;
+                particles[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var pr = particles[i].GetComponent<ParticleSystemRenderer>();
+                if (pr != null) pr.enabled = false;
             }
 
-            // Gather valid mesh renderers to calculate unscaled mesh bounds
-            var meshRenderers = _currentPreviewInstance.GetComponentsInChildren<MeshRenderer>(true);
-            var skinnedRenderers = _currentPreviewInstance.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            var lights = _previewInstance.GetComponentsInChildren<Light>(true);
+            for (int i = 0; i < lights.Length; i++) lights[i].enabled = false;
 
+            var audios = _previewInstance.GetComponentsInChildren<AudioSource>(true);
+            for (int i = 0; i < audios.Length; i++) audios[i].enabled = false;
+
+            var scripts = _previewInstance.GetComponentsInChildren<MonoBehaviour>(true);
+            for (int i = 0; i < scripts.Length; i++)
+            {
+                if (scripts[i] != null && scripts[i] != this)
+                {
+                    scripts[i].enabled = false;
+                }
+            }
+
+            // Calculate precise composite bounds across only visual mesh renderers in preview local space
+            var renderers = _previewInstance.GetComponentsInChildren<Renderer>(true);
             Bounds localBounds = new Bounds();
             bool hasBounds = false;
 
-            foreach (var mr in meshRenderers)
+            for (int i = 0; i < renderers.Length; i++)
             {
-                var mf = mr.GetComponent<MeshFilter>();
-                if (mf != null && mf.sharedMesh != null)
-                {
-                    Bounds b = mf.sharedMesh.bounds;
-                    Vector3 localCenter = _currentPreviewInstance.transform.InverseTransformPoint(mr.transform.TransformPoint(b.center));
-                    Vector3 localSize = Vector3.Scale(b.size, mr.transform.localScale);
+                var r = renderers[i];
+                if (r == null || !(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
+                r.enabled = true;
 
-                    Bounds scaledLocalBounds = new Bounds(localCenter, localSize);
+                Bounds rb = r.bounds;
+                Vector3 center = rb.center;
+                Vector3 extents = rb.extents;
+
+                // Transform all 8 world bounding corners into local space to handle nested rotations
+                Vector3[] corners = new Vector3[]
+                {
+                    center + new Vector3( extents.x,  extents.y,  extents.z),
+                    center + new Vector3( extents.x,  extents.y, -extents.z),
+                    center + new Vector3( extents.x, -extents.y,  extents.z),
+                    center + new Vector3( extents.x, -extents.y, -extents.z),
+                    center + new Vector3(-extents.x,  extents.y,  extents.z),
+                    center + new Vector3(-extents.x,  extents.y, -extents.z),
+                    center + new Vector3(-extents.x, -extents.y,  extents.z),
+                    center + new Vector3(-extents.x, -extents.y, -extents.z),
+                };
+
+                for (int c = 0; c < corners.Length; c++)
+                {
+                    Vector3 localCorner = _previewInstance.transform.InverseTransformPoint(corners[c]);
                     if (!hasBounds)
                     {
-                        localBounds = scaledLocalBounds;
+                        localBounds = new Bounds(localCorner, Vector3.zero);
                         hasBounds = true;
                     }
                     else
                     {
-                        localBounds.Encapsulate(scaledLocalBounds);
+                        localBounds.Encapsulate(localCorner);
                     }
                 }
             }
-
-            foreach (var smr in skinnedRenderers)
-            {
-                if (smr != null && smr.sharedMesh != null)
-                {
-                    Bounds b = smr.sharedMesh.bounds;
-                    Vector3 localCenter = _currentPreviewInstance.transform.InverseTransformPoint(smr.transform.TransformPoint(b.center));
-                    Vector3 localSize = Vector3.Scale(b.size, smr.transform.localScale);
-
-                    Bounds scaledLocalBounds = new Bounds(localCenter, localSize);
-                    if (!hasBounds)
-                    {
-                        localBounds = scaledLocalBounds;
-                        hasBounds = true;
-                    }
-                    else
-                    {
-                        localBounds.Encapsulate(scaledLocalBounds);
-                    }
-                }
-            }
-
-            // Enable mesh renderers for visual display
-            foreach (var mr in meshRenderers) mr.enabled = true;
-            foreach (var smr in skinnedRenderers) smr.enabled = true;
 
             if (hasBounds)
             {
-                float maxDimension = Mathf.Max(localBounds.size.x, localBounds.size.y, localBounds.size.z);
-                if (maxDimension > 0.001f)
+                float maxDim = Mathf.Max(localBounds.size.x, localBounds.size.y, localBounds.size.z);
+                if (maxDim > 0.001f)
                 {
-                    float scaleFactor = targetWorldSize / maxDimension;
-                    _currentPreviewInstance.transform.localScale = Vector3.one * scaleFactor;
-                    _currentPreviewInstance.transform.localPosition = -localBounds.center * scaleFactor;
+                    // Scale factor: maintain comparable size to chest (~0.85m), with soft clamp for cubic items
+                    float minDim = Mathf.Min(localBounds.size.x, localBounds.size.y, localBounds.size.z);
+                    float aspect = minDim / maxDim;
+                    float effectiveTarget = Mathf.Lerp(targetWorldSize, targetWorldSize * 0.7f, aspect);
+                    float scaleFactor = effectiveTarget / maxDim;
+
+                    _previewInstance.transform.localScale = Vector3.one * scaleFactor;
+                    _previewInstance.transform.localPosition = heightOffset - (localBounds.center * scaleFactor);
                 }
             }
         }
 
-        /// <summary>
-        /// Removes current floating preview.
-        /// </summary>
         public void ClearPreview()
         {
-            if (_currentPreviewInstance != null)
+            if (_previewInstance != null)
             {
-                Destroy(_currentPreviewInstance);
-                _currentPreviewInstance = null;
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    DestroyImmediate(_previewInstance);
+                else
+                    Destroy(_previewInstance);
+#else
+                Destroy(_previewInstance);
+#endif
+                _previewInstance = null;
+            }
+
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var child = transform.GetChild(i).gameObject;
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                {
+                    DestroyImmediate(child);
+                }
+                else
+                {
+                    child.transform.SetParent(null);
+                    Destroy(child);
+                }
+#else
+                child.transform.SetParent(null);
+                Destroy(child);
+#endif
             }
         }
     }

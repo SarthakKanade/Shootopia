@@ -1068,6 +1068,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1587940139
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1587940141}
+  - component: {fileID: 1587940140}
+  m_Layer: 0
+  m_Name: LootBoxSpawnManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1587940140
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587940139}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59372dcfdfd7540b49d3cc174b933f38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.LootBoxSpawnManager
+  chest1DefensePrefab: {fileID: 6102936684620647954, guid: ed5c4589265d54ad88df7d21224947df, type: 3}
+  chest2TrapsPrefab: {fileID: 3249151452987198751, guid: 861225f0d63dd4427a8261f7fe9e8fdf, type: 3}
+  chest3AdvancedPrefab: {fileID: 7219438844821375034, guid: 63d0c1df4ec524923a460c9f0d411182, type: 3}
+  spawnPoints:
+  - {fileID: 821234574}
+  - {fileID: 742866993}
+  - {fileID: 1222459979}
+  - {fileID: 1118962352}
+  - {fileID: 1331326532}
+  - {fileID: 1389810965}
+  - {fileID: 1149885855}
+  - {fileID: 2209928}
+  - {fileID: 533743662}
+--- !u!4 &1587940141
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587940139}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1625250922
 GameObject:
   m_ObjectHideFlags: 0
@@ -1649,3 +1706,4 @@ SceneRoots:
   - {fileID: 1168124308}
   - {fileID: 473982429}
   - {fileID: 1000705083}
+  - {fileID: 1587940141}

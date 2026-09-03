@@ -23,7 +23,6 @@ namespace Shootopia
             }
 
             Instance = this;
-            DontDestroyOnLoad(gameObject);
         }
 
         private static void EnsureInstance()

@@ -92,10 +92,11 @@ namespace Shootopia
                 ActiveModeName.Value = selectedMode;
                 ApplyActiveGameMode(selectedMode);
 
-                // If in a multiplayer session with WaitingRoom UI, wait for host to start match
-                if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
+                // If in a multiplayer session with WaitingRoom UI present, wait for host to start match
+                if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null
+                    && WaitingRoomController.Instance != null)
                 {
-                    Debug.Log("[NetworkedGameManager] Multiplayer session active. Waiting in Warmup until host starts match.");
+                    Debug.Log("[NetworkedGameManager] Multiplayer session active with WaitingRoom UI. Waiting in Warmup until host starts match.");
                     if (_activeGameMode != null)
                     {
                         _activeGameMode.MatchActive.Value = false;
@@ -104,7 +105,8 @@ namespace Shootopia
                     return;
                 }
 
-                // Fallback for singleplayer / offline: start pre-match sequence directly
+                // Start match immediately: either singleplayer/offline or no WaitingRoom UI to gate on
+                Debug.Log("[NetworkedGameManager] Starting match sequence directly (no WaitingRoom UI gate).");
                 StartCoroutine(PreMatchSequence());
             }
             else

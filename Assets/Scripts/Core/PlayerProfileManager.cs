@@ -50,7 +50,6 @@ namespace Shootopia
             }
 
             _instance = this;
-            DontDestroyOnLoad(gameObject);
 
             LoadProfile();
         }

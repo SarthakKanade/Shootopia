@@ -410,7 +410,7 @@ namespace Shootopia
         private void ResetLocomotionAnimator()
         {
             var anim = GetComponentInChildren<Animator>(true);
-            if (anim != null)
+            if (anim != null && anim.runtimeAnimatorController != null && anim.isActiveAndEnabled)
             {
                 anim.ResetTrigger("Die");
                 anim.CrossFade("Locomotion", 0.1f, 0);

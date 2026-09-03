@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 291252703965283402}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.25, z: 0}
+  m_LocalPosition: {x: 0, y: 2.25, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -44,10 +44,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cba681ef77f144a4a565def92c8ace2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.FloatingItemPreview
-  rotationSpeed: 90
-  bobSpeed: 2.5
-  bobHeight: 0.08
-  targetWorldSize: 0.55
+  rotationSpeed: 65
+  bobSpeed: 2.2
+  bobHeight: 0.07
+  targetWorldSize: 0.85
+  heightOffset: {x: 0, y: 0.2, z: 0}
 --- !u!1 &7219438844821375034
 GameObject:
   m_ObjectHideFlags: 0
@@ -96,7 +97,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1628560648
+  GlobalObjectIdHash: 428239462
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -149,8 +150,8 @@ MonoBehaviour:
   cooldownSeconds: 30
   previewPivot: {fileID: 5891716122689219285}
   floatingPreview: {fileID: 4857176975514337226}
-  lootVFXPrefab: {fileID: 0}
-  lootSound: {fileID: 0}
+  lootVFXPrefab: {fileID: 1193953125369175018, guid: 7d39067bead4bc14aa0b451564aa5198, type: 3}
+  lootSound: {fileID: 8300000, guid: 4869f8f53c1064090a83b524e94e4333, type: 3}
   chestMeshObject: {fileID: 8562560729683209214}
   healthBoxAttach: {fileID: 11400000, guid: 8b94421a7c7aa4bd985a2cd3a612f6db, type: 2}
   shieldAttach: {fileID: 11400000, guid: dc21ae42783e74ca197e0f90cb3f343b, type: 2}
