@@ -24,7 +24,7 @@ namespace Shootopia.FSM
             {
                 SwitchState(Factory.JumpStart());
             }
-            else if (Ctx.InputIntent.Dash && Ctx.IsMoving)
+            else if (Ctx.InputIntent.Dash)
             {
                 SwitchState(Factory.Dash());
             }

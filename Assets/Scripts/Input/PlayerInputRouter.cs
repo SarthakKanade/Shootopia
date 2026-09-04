@@ -30,6 +30,16 @@ namespace Shootopia
         /// <summary>Optional injected look delta (e.g. mobile right-side drag). Added to device look.</summary>
         public Vector2 ExternalLookDelta { get; set; }
 
+        private bool _queuedJump;
+        private bool _queuedDash;
+        private bool _queuedReload;
+        private bool _queuedRoll;
+
+        public void QueueJump() => _queuedJump = true;
+        public void QueueDash() => _queuedDash = true;
+        public void QueueReload() => _queuedReload = true;
+        public void QueueRoll() => _queuedRoll = true;
+
         /// <summary>Disables all player controls (e.g., when sinking in lava).</summary>
         public bool DisableControls { get; set; } = false;
 
@@ -50,7 +60,7 @@ namespace Shootopia
 
         private void UpdateCursorLock()
         {
-            if (CursorManager.IsCursorUnlocked || WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused)
+            if (DeviceProfileManager.IsTouchActive || CursorManager.IsCursorUnlocked || WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused)
             {
                 if (Cursor.lockState != CursorLockMode.None)
                 {
@@ -180,7 +190,14 @@ namespace Shootopia
                 intent.Roll |= ext.Roll;
                 intent.Jump |= ext.Jump;
                 intent.SwapWeapon |= ext.SwapWeapon;
+                intent.ToggleShield |= ext.ToggleShield;
             }
+
+            // Merge queued pulses (guaranteed active for this full frame)
+            if (_queuedJump) { intent.Jump = true; _queuedJump = false; }
+            if (_queuedDash) { intent.Dash = true; _queuedDash = false; }
+            if (_queuedReload) { intent.Reload = true; _queuedReload = false; }
+            if (_queuedRoll) { intent.Roll = true; _queuedRoll = false; }
 
             Intent = intent;
         }

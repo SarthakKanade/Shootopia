@@ -21,7 +21,21 @@ namespace Shootopia
         [SerializeField] private Transform rowsContainer;
         [SerializeField] private GameObject rowPrefab;
 
+        public static ScoreboardController Instance { get; private set; }
+
         private bool _isShowing = false;
+        private bool _lastKeyboardTab = false;
+
+        private void Awake()
+        {
+            Instance = this;
+        }
+
+        public void ToggleScoreboard()
+        {
+            _isShowing = !_isShowing;
+            ToggleScoreboard(_isShowing);
+        }
 
         private void Update()
         {
@@ -46,8 +60,9 @@ namespace Shootopia
                 tabHeld = Input.GetKey(KeyCode.Tab);
             }
 
-            if (tabHeld != _isShowing)
+            if (tabHeld != _lastKeyboardTab)
             {
+                _lastKeyboardTab = tabHeld;
                 _isShowing = tabHeld;
                 ToggleScoreboard(_isShowing);
             }

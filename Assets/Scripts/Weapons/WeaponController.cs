@@ -512,6 +512,12 @@ namespace Shootopia
                         animator.SetFloat(HashShootSpeed, 1f);
                     }
                     CancelCharge(exitCombatStance: false);
+
+                    if (CurrentAttach == null || _currentUses <= 0 || _currentAmmo <= 0)
+                    {
+                        if (_adsHandler != null && _adsHandler.IsADSActive) _adsHandler.ExitADS(instant: true);
+                        if (MobileControlsCanvas.Instance != null) MobileControlsCanvas.Instance.ResetAltFireToggle();
+                    }
                 }
                 else
                 {
@@ -991,9 +997,13 @@ namespace Shootopia
 
             CancelCharge();
             _isAimingBounce = false;
-            _aimHandler.DisableBouncePreview();
-            _aimHandler.ExitCombatStance();
-            if (_adsHandler.IsADSActive && IsOwner) _adsHandler.ExitADS();
+            if (_aimHandler != null)
+            {
+                _aimHandler.DisableBouncePreview();
+                _aimHandler.ExitCombatStance();
+            }
+            if (_adsHandler != null && _adsHandler.IsADSActive) _adsHandler.ExitADS(instant: true);
+            if (MobileControlsCanvas.Instance != null) MobileControlsCanvas.Instance.ResetAltFireToggle();
 
             if (_currentVisual != null) Destroy(_currentVisual);
             Muzzle = GripR = GripL = null;
@@ -1033,9 +1043,9 @@ namespace Shootopia
 
         private void CancelChargeLocal(bool exitCombatStance = true)
         {
-            _chargeHandler.CancelCharge();
+            if (_chargeHandler != null) _chargeHandler.CancelCharge();
             CancelTrapAim();
-            if (exitCombatStance)
+            if (exitCombatStance && _aimHandler != null)
             {
                 _aimHandler.ExitCombatStance();
             }

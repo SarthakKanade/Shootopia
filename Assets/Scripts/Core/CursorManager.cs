@@ -92,7 +92,8 @@ namespace Shootopia
             string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             bool isMenuScene = (activeScene == "MainMenu" || activeScene == "WaitingRoom");
 
-            if (isMenuScene || _unlockRequesters.Count > 0 || WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused)
+            bool isTouch = DeviceProfileManager.IsTouchActive;
+            if (isTouch || isMenuScene || _unlockRequesters.Count > 0 || WaitingRoomController.IsLobbyMenuOpen || PauseMenuController.IsMenuPaused)
             {
                 if (Cursor.lockState != CursorLockMode.None)
                 {

@@ -34,6 +34,14 @@ namespace Shootopia
         [SerializeField] private Button btnMinusSens, btnPlusSens;
         [SerializeField] private Button btnActionLeave, btnActionReset, btnActionResume;
 
+        [Header("Cross-Platform Controls Settings")]
+        [SerializeField] private TMP_Dropdown dropdownControlMode;
+        [SerializeField] private Slider sliderTouchSens;
+        [SerializeField] private TextMeshProUGUI labelTouchSens;
+        [SerializeField] private TMP_Dropdown dropdownJoystickMode;
+        [SerializeField] private Slider sliderTouchMoveSens;
+        [SerializeField] private TextMeshProUGUI labelTouchMoveSens;
+
         private bool _isPaused = false;
         public bool IsPaused => _isPaused;
 
@@ -92,6 +100,62 @@ namespace Shootopia
             if (toggleFullscreen != null) toggleFullscreen.isOn = fullscreen;
             if (switchInvertY != null) switchInvertY.SetState(invertY, false);
             if (switchFullscreen != null) switchFullscreen.SetState(fullscreen, false);
+
+            if (dropdownControlMode != null)
+            {
+                dropdownControlMode.ClearOptions();
+                dropdownControlMode.AddOptions(new System.Collections.Generic.List<string> { "Auto (Recommended)", "Desktop (Keyboard & Mouse)", "Mobile (Touch Controls)" });
+                dropdownControlMode.value = (int)DeviceProfileManager.ConfiguredMode;
+                dropdownControlMode.onValueChanged.AddListener(OnControlModeSelected);
+            }
+
+            if (sliderTouchSens != null)
+            {
+                sliderTouchSens.minValue = 0.5f;
+                sliderTouchSens.maxValue = 5.0f;
+                sliderTouchSens.value = DeviceProfileManager.TouchSensitivity;
+                sliderTouchSens.onValueChanged.AddListener(OnTouchSensChanged);
+                if (labelTouchSens != null) labelTouchSens.text = $"{DeviceProfileManager.TouchSensitivity:F1}x";
+            }
+
+            if (dropdownJoystickMode != null)
+            {
+                dropdownJoystickMode.ClearOptions();
+                dropdownJoystickMode.AddOptions(new System.Collections.Generic.List<string> { "Fixed (Stationary)", "Dynamic (Follows Finger)" });
+                dropdownJoystickMode.value = (int)DeviceProfileManager.JoystickMode;
+                dropdownJoystickMode.onValueChanged.AddListener(OnJoystickModeSelected);
+            }
+
+            if (sliderTouchMoveSens != null)
+            {
+                sliderTouchMoveSens.minValue = 0.5f;
+                sliderTouchMoveSens.maxValue = 2.5f;
+                sliderTouchMoveSens.value = DeviceProfileManager.TouchMoveSensitivity;
+                sliderTouchMoveSens.onValueChanged.AddListener(OnTouchMoveSensChanged);
+                if (labelTouchMoveSens != null) labelTouchMoveSens.text = $"{DeviceProfileManager.TouchMoveSensitivity:F1}x";
+            }
+        }
+
+        private void OnControlModeSelected(int index)
+        {
+            DeviceProfileManager.ConfiguredMode = (InputControlMode)index;
+        }
+
+        private void OnTouchSensChanged(float val)
+        {
+            DeviceProfileManager.TouchSensitivity = val;
+            if (labelTouchSens != null) labelTouchSens.text = $"{val:F1}x";
+        }
+
+        private void OnJoystickModeSelected(int index)
+        {
+            DeviceProfileManager.JoystickMode = (MobileJoystickMode)index;
+        }
+
+        private void OnTouchMoveSensChanged(float val)
+        {
+            DeviceProfileManager.TouchMoveSensitivity = val;
+            if (labelTouchMoveSens != null) labelTouchMoveSens.text = $"{val:F1}x";
         }
 
         private void OnMasterVolumeChanged(float val)

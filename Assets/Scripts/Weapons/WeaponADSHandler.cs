@@ -59,14 +59,16 @@ namespace Shootopia
         {
             if (currentAttach == null)
             {
-                if (IsADSActive) ExitADS();
+                if (IsADSActive) ExitADS(instant: true);
+                else HandleFOVLerp(null);
                 return;
             }
 
-            bool isSniper = currentAttach.name.Contains("Sniper") || (currentAttach.gameplayData != null && currentAttach.gameplayData.hasADS);
+            bool isSniper = currentAttach != null && (currentAttach.name.Contains("Sniper") || (currentAttach.gameplayData != null && currentAttach.gameplayData.hasADS));
             if (!isSniper)
             {
                 if (IsADSActive) ExitADS();
+                HandleFOVLerp(currentAttach);
                 return;
             }
 
@@ -87,39 +89,77 @@ namespace Shootopia
         {
             if (_camera == null) return;
 
-            float targetFOV = (IsADSActive && currentAttach != null && currentAttach.gameplayData != null)
-                ? currentAttach.gameplayData.adsFOV
-                : _defaultFOV;
+            bool isSniper = currentAttach != null && (currentAttach.name.Contains("Sniper") || (currentAttach.gameplayData != null && currentAttach.gameplayData.hasADS));
+
+            float targetFOV = _defaultFOV;
+            if (IsADSActive && isSniper)
+            {
+                if (currentAttach.gameplayData != null && currentAttach.gameplayData.adsFOV > 0)
+                {
+                    targetFOV = currentAttach.gameplayData.adsFOV;
+                }
+                else
+                {
+                    targetFOV = 20f;
+                }
+            }
 
             if (Mathf.Abs(_camera.Lens.FieldOfView - targetFOV) > 0.05f)
             {
                 _camera.Lens.FieldOfView = Mathf.Lerp(_camera.Lens.FieldOfView, targetFOV, Time.deltaTime * 12f);
             }
+            else
+            {
+                _camera.Lens.FieldOfView = targetFOV;
+            }
 
             if (_thirdPersonFollow != null)
             {
-                float targetDist = IsADSActive ? 0.02f : _defaultCameraDistance;
-                Vector3 targetOffset = IsADSActive ? Vector3.zero : _defaultShoulderOffset;
-                float targetArm = IsADSActive ? 0f : _defaultVerticalArmLength;
+                float targetDist = _defaultCameraDistance;
+                Vector3 targetOffset = _defaultShoulderOffset;
+                float targetArm = _defaultVerticalArmLength;
+
+                if (IsADSActive && isSniper)
+                {
+                    targetDist = 0.02f;
+                    targetOffset = Vector3.zero;
+                    targetArm = 0f;
+                }
 
                 _thirdPersonFollow.CameraDistance = Mathf.Lerp(_thirdPersonFollow.CameraDistance, targetDist, Time.deltaTime * 12f);
                 _thirdPersonFollow.ShoulderOffset = Vector3.Lerp(_thirdPersonFollow.ShoulderOffset, targetOffset, Time.deltaTime * 12f);
                 _thirdPersonFollow.VerticalArmLength = Mathf.Lerp(_thirdPersonFollow.VerticalArmLength, targetArm, Time.deltaTime * 12f);
+
+                if (!IsADSActive)
+                {
+                    if (Mathf.Abs(_thirdPersonFollow.CameraDistance - targetDist) < 0.05f)
+                        _thirdPersonFollow.CameraDistance = targetDist;
+                }
             }
         }
 
         public void EnterADS(WeaponAttachSO currentAttach)
         {
-            IsADSActive = true;
-            if (_scopeOverlayInstance != null) _scopeOverlayInstance.SetActive(true);
+            bool isSniper = currentAttach != null && (currentAttach.name.Contains("Sniper") || (currentAttach.gameplayData != null && currentAttach.gameplayData.hasADS));
+            if (!isSniper) return;
 
-            if (_motor != null && currentAttach != null && currentAttach.gameplayData != null)
+            IsADSActive = true;
+
+            if (_scopeOverlayInstance != null)
             {
-                _motor.moveSpeed = _originalMoveSpeed * currentAttach.gameplayData.adsMoveSpeedMult;
+                _scopeOverlayInstance.SetActive(true);
             }
 
-            // Hide character meshes so they never obstruct scope reticle
-            if (_ownerTransform != null)
+            if (_motor != null)
+            {
+                float speedMult = (currentAttach != null && currentAttach.gameplayData != null && currentAttach.gameplayData.adsMoveSpeedMult > 0)
+                    ? currentAttach.gameplayData.adsMoveSpeedMult
+                    : 0.8f;
+                _motor.moveSpeed = _originalMoveSpeed * speedMult;
+            }
+
+            // Hide character meshes only for sniper so they never obstruct scope reticle
+            if (isSniper && _ownerTransform != null)
             {
                 _hiddenADSRenderers.Clear();
                 var renderers = _ownerTransform.GetComponentsInChildren<Renderer>(true);
@@ -134,7 +174,7 @@ namespace Shootopia
             }
         }
 
-        public void ExitADS()
+        public void ExitADS(bool instant = false)
         {
             IsADSActive = false;
             if (_scopeOverlayInstance != null) _scopeOverlayInstance.SetActive(false);
@@ -149,6 +189,17 @@ namespace Shootopia
                 if (r != null) r.enabled = true;
             }
             _hiddenADSRenderers.Clear();
+
+            if (instant)
+            {
+                if (_camera != null) _camera.Lens.FieldOfView = _defaultFOV;
+                if (_thirdPersonFollow != null)
+                {
+                    _thirdPersonFollow.CameraDistance = _defaultCameraDistance;
+                    _thirdPersonFollow.ShoulderOffset = _defaultShoulderOffset;
+                    _thirdPersonFollow.VerticalArmLength = _defaultVerticalArmLength;
+                }
+            }
         }
 
         public void Cleanup()

@@ -42,6 +42,16 @@ namespace Shootopia
         [SerializeField] private GameObject cooldownBarRoot;
         [SerializeField] private Image cooldownFill;
 
+        [Header("Mobile Adaptation Layout")]
+        [SerializeField] private RectTransform playerStatusGroup;
+        [SerializeField] private RectTransform weaponStatusGroup;
+        [SerializeField] private Vector2 mobilePlayerStatusOffset = new Vector2(0f, 150f);
+        [SerializeField] private Vector2 mobileWeaponStatusOffset = new Vector2(0f, 180f);
+        [SerializeField] private GameObject mobileControlsPrefab;
+        private Vector2 _defaultPlayerStatusPos;
+        private Vector2 _defaultWeaponStatusPos;
+        private GameObject _mobileControlsInstance;
+
         [Header("Kill Feed & System Feed")]
         [SerializeField] private Transform killFeedContainer;
         [SerializeField] private GameObject killFeedEntryPrefab;
@@ -115,10 +125,25 @@ namespace Shootopia
             if (deathBannerRoot != null) deathBannerRoot.SetActive(false);
             if (hitMarkerRoot != null) hitMarkerRoot.SetActive(false);
             if (damageFlashGroup != null) damageFlashGroup.alpha = 0f;
+
+            DeviceProfileManager.OnControlModeChanged += HandleControlModeChanged;
+            if (playerStatusGroup != null) _defaultPlayerStatusPos = playerStatusGroup.anchoredPosition;
+            if (weaponStatusGroup != null) _defaultWeaponStatusPos = weaponStatusGroup.anchoredPosition;
+            ApplyControlModeLayout(DeviceProfileManager.EffectiveMode);
+
+            EnsureMobileControls();
         }
 
         private void OnDisable()
         {
+            DeviceProfileManager.OnControlModeChanged -= HandleControlModeChanged;
+
+            if (_mobileControlsInstance != null)
+            {
+                Destroy(_mobileControlsInstance);
+                _mobileControlsInstance = null;
+            }
+
             GameModeBase.OnKillFeedReceived -= OnKillFeedEvent;
             GameModeBase.OnSystemMessageReceived -= AddSystemFeedEntry;
             PlayerHealth.OnLocalPlayerHitConfirmed -= OnPlayerHitConfirmed;
@@ -132,6 +157,50 @@ namespace Shootopia
             if (_preMatchRoutine != null) { StopCoroutine(_preMatchRoutine); _preMatchRoutine = null; }
 
             if (Instance == this) Instance = null;
+        }
+
+        private void EnsureMobileControls()
+        {
+            if (UnityEngine.EventSystems.EventSystem.current == null)
+            {
+                new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
+            }
+
+            if (_mobileControlsInstance != null || MobileControlsCanvas.Instance != null) return;
+
+            GameObject prefabToSpawn = mobileControlsPrefab;
+            if (prefabToSpawn == null)
+            {
+                prefabToSpawn = Resources.Load<GameObject>("UI/MobileControlsCanvas");
+            }
+
+            if (prefabToSpawn != null)
+            {
+                _mobileControlsInstance = Instantiate(prefabToSpawn);
+                _mobileControlsInstance.name = "MobileControlsCanvas";
+            }
+        }
+
+        private void HandleControlModeChanged(InputControlMode mode)
+        {
+            ApplyControlModeLayout(mode);
+        }
+
+        private void ApplyControlModeLayout(InputControlMode mode)
+        {
+            bool isMobile = (mode == InputControlMode.MobileTouch);
+            if (playerStatusGroup != null)
+            {
+                playerStatusGroup.anchoredPosition = isMobile
+                    ? _defaultPlayerStatusPos + mobilePlayerStatusOffset
+                    : _defaultPlayerStatusPos;
+            }
+            if (weaponStatusGroup != null)
+            {
+                weaponStatusGroup.anchoredPosition = isMobile
+                    ? _defaultWeaponStatusPos + mobileWeaponStatusOffset
+                    : _defaultWeaponStatusPos;
+            }
         }
 
         private void Update()
