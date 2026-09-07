@@ -71,7 +71,8 @@ namespace Shootopia
             _aliveTime += dt;
             if (_aliveTime >= lifetime)
             {
-                Destroy(gameObject);
+                if (GlobalPoolManager.Instance != null) GlobalPoolManager.Instance.Despawn(gameObject);
+                else Destroy(gameObject);
                 return;
             }
 
@@ -158,7 +159,8 @@ namespace Shootopia
             SpawnVoidZone(hit);
             SpawnExplosionVFX(hit);
 
-            Destroy(gameObject);
+            if (GlobalPoolManager.Instance != null) GlobalPoolManager.Instance.Despawn(gameObject);
+            else Destroy(gameObject);
         }
 
         private void ApplySplashDamage(Vector3 poc, RaycastHit directHit)

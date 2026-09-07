@@ -17,11 +17,12 @@ namespace Shootopia
         private int _activePointerId = -1;
         private Vector2 _lastPointerPosition;
         private Vector2 _accumulatedLookDelta = Vector2.zero;
+        private WeaponController _localWeapon;
 
         private void OnEnable()
         {
             DeviceProfileManager.OnTouchSensitivityChanged += HandleSensitivityChanged;
-            baseSensitivity = DeviceProfileManager.TouchSensitivity;
+            baseSensitivity = DeviceProfileManager.TouchSensitivityX;
         }
 
         private void OnDisable()
@@ -33,6 +34,22 @@ namespace Shootopia
         private void HandleSensitivityChanged(float newSensitivity)
         {
             baseSensitivity = newSensitivity;
+        }
+
+        private void EnsureLocalWeapon()
+        {
+            if (_localWeapon == null)
+            {
+                var networkManager = Unity.Netcode.NetworkManager.Singleton;
+                if (networkManager != null && networkManager.SpawnManager != null)
+                {
+                    var localObj = networkManager.SpawnManager.GetLocalPlayerObject();
+                    if (localObj != null)
+                    {
+                        _localWeapon = localObj.GetComponent<WeaponController>();
+                    }
+                }
+            }
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -50,11 +67,18 @@ namespace Shootopia
             Vector2 delta = eventData.position - _lastPointerPosition;
             _lastPointerPosition = eventData.position;
 
-            if (invertPitch) delta.y = -delta.y;
+            bool shouldInvert = invertPitch || (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY);
+            if (shouldInvert) delta.y = -delta.y;
 
-            // Invert Y delta if needed: PlayerAimRig subtracts look.y * pitchSensitivity from pitch,
-            // which expects upward mouse/touch delta to look up.
-            _accumulatedLookDelta += delta * baseSensitivity;
+            EnsureLocalWeapon();
+            bool isScoped = _localWeapon != null && _localWeapon.IsADSActive;
+            float adsMult = isScoped ? DeviceProfileManager.TouchSensitivityADS : 1.0f;
+
+            float sensX = DeviceProfileManager.TouchSensitivityX;
+            float sensY = DeviceProfileManager.TouchSensitivityY;
+
+            _accumulatedLookDelta.x += delta.x * (sensX * adsMult);
+            _accumulatedLookDelta.y += delta.y * (sensY * adsMult);
         }
 
         public void OnPointerUp(PointerEventData eventData)

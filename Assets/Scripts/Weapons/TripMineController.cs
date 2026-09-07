@@ -163,6 +163,9 @@ namespace Shootopia
                 Instantiate(vfxToSpawn, transform.position, rot);
             }
 
+            CameraShakeManager.Instance?.ShakeExplosion(transform.position, radius, 1.2f);
+            MobileHapticsManager.TriggerExplosion();
+
             if (TripMineManager.Instance != null)
                 TripMineManager.Instance.Unregister(this);
 

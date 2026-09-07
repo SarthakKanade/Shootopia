@@ -43,8 +43,20 @@ namespace Shootopia
             if (input == null || aimPivot == null) return;
 
             Vector2 look = input.LookDelta;
-            _yaw += look.x * yawSensitivity;
-            _pitch -= look.y * pitchSensitivity;
+            float mouseSens = (PlayerProfileManager.Instance != null) ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
+            bool invertY = (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY);
+
+            // On desktop KBM, apply profile mouse sensitivity; mobile touch already scales per-axis deltas
+            float sensMult = DeviceProfileManager.IsTouchActive ? 1.0f : mouseSens;
+
+            _yaw += look.x * yawSensitivity * sensMult;
+
+            float pitchDelta = look.y * pitchSensitivity * sensMult;
+            if (!DeviceProfileManager.IsTouchActive && invertY)
+            {
+                pitchDelta = -pitchDelta;
+            }
+            _pitch -= pitchDelta;
             _pitch = Mathf.Clamp(_pitch, minPitch, maxPitch);
 
             aimPivot.localRotation = Quaternion.Euler(_pitch, _yaw, 0f);

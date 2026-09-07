@@ -42,6 +42,23 @@ namespace Shootopia
         [SerializeField] private Slider sliderTouchMoveSens;
         [SerializeField] private TextMeshProUGUI labelTouchMoveSens;
 
+        [Header("Split Touch Sensitivity & Haptics")]
+        [SerializeField] private Slider sliderTouchSensX;
+        [SerializeField] private TextMeshProUGUI labelTouchSensX;
+        [SerializeField] private Slider sliderTouchSensY;
+        [SerializeField] private TextMeshProUGUI labelTouchSensY;
+        [SerializeField] private Slider sliderTouchSensADS;
+        [SerializeField] private TextMeshProUGUI labelTouchSensADS;
+        [SerializeField] private Toggle toggleHaptics;
+        [SerializeField] private SpaceGUISwitch switchHaptics;
+        [SerializeField] private SpaceGUISwitch switchJoystickMode;
+
+        [Header("Settings Tabs")]
+        [SerializeField] private Button btnTabGeneral;
+        [SerializeField] private Button btnTabTouch;
+        [SerializeField] private GameObject tabContentGeneral;
+        [SerializeField] private GameObject tabContentTouch;
+
         private bool _isPaused = false;
         public bool IsPaused => _isPaused;
 
@@ -80,6 +97,12 @@ namespace Shootopia
             if (btnActionLeave != null) btnActionLeave.onClick.AddListener(OnLeaveMatchClicked);
             if (btnActionReset != null) btnActionReset.onClick.AddListener(ResetSettingsToDefaults);
             if (btnActionResume != null) btnActionResume.onClick.AddListener(() => TogglePause(false));
+
+            if (toggleHaptics != null) toggleHaptics.onValueChanged.AddListener(OnHapticsToggled);
+            if (switchHaptics != null) switchHaptics.OnValueChanged += OnHapticsToggled;
+
+            if (btnTabGeneral != null) btnTabGeneral.onClick.AddListener(() => SelectTab(0));
+            if (btnTabTouch != null) btnTabTouch.onClick.AddListener(() => SelectTab(1));
         }
 
         private void InitSettings()
@@ -113,9 +136,36 @@ namespace Shootopia
             {
                 sliderTouchSens.minValue = 0.5f;
                 sliderTouchSens.maxValue = 5.0f;
-                sliderTouchSens.value = DeviceProfileManager.TouchSensitivity;
+                sliderTouchSens.value = DeviceProfileManager.TouchSensitivityX;
                 sliderTouchSens.onValueChanged.AddListener(OnTouchSensChanged);
-                if (labelTouchSens != null) labelTouchSens.text = $"{DeviceProfileManager.TouchSensitivity:F1}x";
+                if (labelTouchSens != null) labelTouchSens.text = $"{DeviceProfileManager.TouchSensitivityX:F1}x";
+            }
+
+            if (sliderTouchSensX != null)
+            {
+                sliderTouchSensX.minValue = 0.5f;
+                sliderTouchSensX.maxValue = 4.0f;
+                sliderTouchSensX.value = DeviceProfileManager.TouchSensitivityX;
+                sliderTouchSensX.onValueChanged.AddListener(OnTouchSensXChanged);
+                if (labelTouchSensX != null) labelTouchSensX.text = $"{DeviceProfileManager.TouchSensitivityX:F1}x";
+            }
+
+            if (sliderTouchSensY != null)
+            {
+                sliderTouchSensY.minValue = 0.5f;
+                sliderTouchSensY.maxValue = 4.0f;
+                sliderTouchSensY.value = DeviceProfileManager.TouchSensitivityY;
+                sliderTouchSensY.onValueChanged.AddListener(OnTouchSensYChanged);
+                if (labelTouchSensY != null) labelTouchSensY.text = $"{DeviceProfileManager.TouchSensitivityY:F1}x";
+            }
+
+            if (sliderTouchSensADS != null)
+            {
+                sliderTouchSensADS.minValue = 0.2f;
+                sliderTouchSensADS.maxValue = 1.5f;
+                sliderTouchSensADS.value = DeviceProfileManager.TouchSensitivityADS;
+                sliderTouchSensADS.onValueChanged.AddListener(OnTouchSensADSChanged);
+                if (labelTouchSensADS != null) labelTouchSensADS.text = $"{DeviceProfileManager.TouchSensitivityADS:F2}x";
             }
 
             if (dropdownJoystickMode != null)
@@ -134,6 +184,20 @@ namespace Shootopia
                 sliderTouchMoveSens.onValueChanged.AddListener(OnTouchMoveSensChanged);
                 if (labelTouchMoveSens != null) labelTouchMoveSens.text = $"{DeviceProfileManager.TouchMoveSensitivity:F1}x";
             }
+
+            bool hapticsOn = MobileHapticsManager.IsHapticsEnabled;
+            if (toggleHaptics != null) toggleHaptics.isOn = hapticsOn;
+            if (switchHaptics != null) switchHaptics.SetState(hapticsOn, false);
+
+            if (switchJoystickMode != null)
+            {
+                bool isDynamic = DeviceProfileManager.JoystickMode == MobileJoystickMode.Dynamic;
+                switchJoystickMode.SetState(isDynamic, false);
+                switchJoystickMode.OnValueChanged += (val) =>
+                {
+                    DeviceProfileManager.JoystickMode = val ? MobileJoystickMode.Dynamic : MobileJoystickMode.Fixed;
+                };
+            }
         }
 
         private void OnControlModeSelected(int index)
@@ -143,8 +207,37 @@ namespace Shootopia
 
         private void OnTouchSensChanged(float val)
         {
-            DeviceProfileManager.TouchSensitivity = val;
+            DeviceProfileManager.TouchSensitivityX = val;
+            DeviceProfileManager.TouchSensitivityY = Mathf.Clamp(val * 0.75f, 0.5f, 4.0f);
             if (labelTouchSens != null) labelTouchSens.text = $"{val:F1}x";
+            if (sliderTouchSensX != null) sliderTouchSensX.value = DeviceProfileManager.TouchSensitivityX;
+            if (sliderTouchSensY != null) sliderTouchSensY.value = DeviceProfileManager.TouchSensitivityY;
+        }
+
+        private void OnTouchSensXChanged(float val)
+        {
+            DeviceProfileManager.TouchSensitivityX = val;
+            if (labelTouchSensX != null) labelTouchSensX.text = $"{val:F1}x";
+            if (labelTouchSens != null) labelTouchSens.text = $"{val:F1}x";
+        }
+
+        private void OnTouchSensYChanged(float val)
+        {
+            DeviceProfileManager.TouchSensitivityY = val;
+            if (labelTouchSensY != null) labelTouchSensY.text = $"{val:F1}x";
+        }
+
+        private void OnTouchSensADSChanged(float val)
+        {
+            DeviceProfileManager.TouchSensitivityADS = val;
+            if (labelTouchSensADS != null) labelTouchSensADS.text = $"{val:F2}x";
+        }
+
+        private void OnHapticsToggled(bool val)
+        {
+            MobileHapticsManager.SetHapticsEnabled(val);
+            if (toggleHaptics != null) toggleHaptics.isOn = val;
+            if (switchHaptics != null && switchHaptics.IsOn != val) switchHaptics.SetState(val, false);
         }
 
         private void OnJoystickModeSelected(int index)
@@ -202,6 +295,18 @@ namespace Shootopia
             if (sliderMouseSens != null) sliderMouseSens.value = 1.0f;
             if (switchInvertY != null) switchInvertY.SetState(false, true);
             if (switchFullscreen != null) switchFullscreen.SetState(true, true);
+
+            if (DeviceProfileManager.Instance != null)
+            {
+                DeviceProfileManager.Instance.ResetTouchSettingsToDefaults();
+            }
+            if (sliderTouchSensX != null) sliderTouchSensX.value = 1.70f;
+            if (sliderTouchSensY != null) sliderTouchSensY.value = 1.30f;
+            if (sliderTouchSensADS != null) sliderTouchSensADS.value = 0.65f;
+            if (sliderTouchSens != null) sliderTouchSens.value = 1.70f;
+            if (sliderTouchMoveSens != null) sliderTouchMoveSens.value = 1.40f;
+            if (dropdownJoystickMode != null) dropdownJoystickMode.value = (int)MobileJoystickMode.Fixed;
+            OnHapticsToggled(true);
         }
 
         private void OnInvertYToggled(bool val)
@@ -275,6 +380,24 @@ namespace Shootopia
                 settingsSubPanel.SetActive(true);
                 var cg = settingsCanvasGroup != null ? settingsCanvasGroup : settingsSubPanel.GetComponent<CanvasGroup>();
                 UIJuice.PopIn(settingsSubPanel.GetComponent<RectTransform>(), cg);
+                SelectTab(DeviceProfileManager.IsTouchActive ? 1 : 0);
+            }
+        }
+
+        public void SelectTab(int tabIndex)
+        {
+            if (tabContentGeneral != null) tabContentGeneral.SetActive(tabIndex == 0);
+            if (tabContentTouch != null) tabContentTouch.SetActive(tabIndex == 1);
+
+            if (btnTabGeneral != null)
+            {
+                var img = btnTabGeneral.GetComponent<Image>();
+                if (img != null) img.color = tabIndex == 0 ? Color.white : new Color(0.65f, 0.65f, 0.75f, 0.75f);
+            }
+            if (btnTabTouch != null)
+            {
+                var img = btnTabTouch.GetComponent<Image>();
+                if (img != null) img.color = tabIndex == 1 ? Color.white : new Color(0.65f, 0.65f, 0.75f, 0.75f);
             }
         }
 

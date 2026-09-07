@@ -29,11 +29,16 @@ namespace Shootopia
         [SerializeField] private Button pauseButton;
         [SerializeField] private Button scoreboardButton;
 
+        [Header("Tuning")]
+        [Tooltip("Aim sensitivity dampening factor applied while dragging the Fire button to aim and shoot simultaneously.")]
+        [SerializeField] private float fireAimSensitivityMultiplier = 0.70f;
+
         [Header("Visual Display")]
         [SerializeField] private CanvasGroup canvasGroup;
 
         private PlayerInputRouter _localInputRouter;
         private CharacterMotor _localMotor;
+        private WeaponController _localWeapon;
 
         private void Awake()
         {
@@ -48,7 +53,13 @@ namespace Shootopia
                     EnsureLocalPlayerReference();
                     if (_localInputRouter != null)
                     {
-                        _localInputRouter.ExternalLookDelta += delta * DeviceProfileManager.TouchSensitivity;
+                        bool isScoped = _localWeapon != null && _localWeapon.IsADSActive;
+                        float adsMult = isScoped ? DeviceProfileManager.TouchSensitivityADS : 1.0f;
+                        Vector2 scaledDelta = new Vector2(
+                            delta.x * (DeviceProfileManager.TouchSensitivityX * fireAimSensitivityMultiplier * adsMult),
+                            delta.y * (DeviceProfileManager.TouchSensitivityY * fireAimSensitivityMultiplier * adsMult)
+                        );
+                        _localInputRouter.ExternalLookDelta += scaledDelta;
                     }
                 };
             }
@@ -64,6 +75,7 @@ namespace Shootopia
                 {
                     EnsureLocalPlayerReference();
                     _localInputRouter?.QueueJump();
+                    MobileHapticsManager.TriggerLightTap();
                 };
             }
 
@@ -73,6 +85,7 @@ namespace Shootopia
                 {
                     EnsureLocalPlayerReference();
                     _localInputRouter?.QueueDash();
+                    MobileHapticsManager.TriggerLightTap();
                 };
             }
 
@@ -184,6 +197,7 @@ namespace Shootopia
                 {
                     _localInputRouter = localPlayer.GetComponent<PlayerInputRouter>();
                     _localMotor = localPlayer.GetComponent<CharacterMotor>();
+                    _localWeapon = localPlayer.GetComponent<WeaponController>();
                     return;
                 }
             }
@@ -195,6 +209,7 @@ namespace Shootopia
                 {
                     _localInputRouter = router;
                     _localMotor = router.GetComponent<CharacterMotor>();
+                    _localWeapon = router.GetComponent<WeaponController>();
                     break;
                 }
             }

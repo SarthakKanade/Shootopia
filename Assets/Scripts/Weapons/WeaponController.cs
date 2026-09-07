@@ -124,6 +124,7 @@ namespace Shootopia
         public Transform GripR { get; private set; }
         public Transform GripL { get; private set; }
         public bool IsArmed => CurrentAttach != null && _currentVisual != null;
+        public bool IsADSActive => _adsHandler != null && _adsHandler.IsADSActive;
         public int CurrentAmmo => _currentAmmo;
         public int CurrentUses => _currentUses;
         public float TimeRemaining => _timeRemaining;
@@ -645,11 +646,15 @@ namespace Shootopia
             if (IsOwner)
             {
                 FireWeaponServerRpc(origin, dir, data.name);
+                CameraShakeManager.Instance?.ShakeWeaponFire(data);
+                MobileHapticsManager.TriggerShotFired();
             }
 
             if (data.projectilePrefab != null)
             {
-                var proj = Instantiate(data.projectilePrefab, origin, rot);
+                var proj = GlobalPoolManager.Instance != null
+                    ? GlobalPoolManager.Instance.Spawn(data.projectilePrefab, origin, rot)
+                    : Instantiate(data.projectilePrefab, origin, rot);
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
 
@@ -673,7 +678,16 @@ namespace Shootopia
                 if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
                 {
                     GameObject hitVFX = data.HitVFXPrefab != null ? data.HitVFXPrefab : fallbackHitscanImpactVFX;
-                    if (hitVFX != null) Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
+                    if (hitVFX != null)
+                    {
+                        var vfx = GlobalPoolManager.Instance != null
+                            ? GlobalPoolManager.Instance.Spawn(hitVFX, hit.point, Quaternion.LookRotation(hit.normal))
+                            : Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
+                        if (vfx != null && vfx.GetComponent<PooledParticleEffect>() == null)
+                        {
+                            vfx.AddComponent<PooledParticleEffect>();
+                        }
+                    }
                     if (hitscanImpactSound != null) AudioSource.PlayClipAtPoint(hitscanImpactSound, hit.point, 0.6f);
                 }
             }
@@ -702,7 +716,9 @@ namespace Shootopia
 
             if (data.projectilePrefab != null)
             {
-                var proj = Instantiate(data.projectilePrefab, origin, rotation);
+                var proj = GlobalPoolManager.Instance != null
+                    ? GlobalPoolManager.Instance.Spawn(data.projectilePrefab, origin, rotation)
+                    : Instantiate(data.projectilePrefab, origin, rotation);
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
 
@@ -725,7 +741,16 @@ namespace Shootopia
                 if (Physics.Raycast(origin, rotation * Vector3.forward, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
                 {
                     GameObject hitVFX = data.HitVFXPrefab != null ? data.HitVFXPrefab : fallbackHitscanImpactVFX;
-                    if (hitVFX != null) Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
+                    if (hitVFX != null)
+                    {
+                        var vfx = GlobalPoolManager.Instance != null
+                            ? GlobalPoolManager.Instance.Spawn(hitVFX, hit.point, Quaternion.LookRotation(hit.normal))
+                            : Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
+                        if (vfx != null && vfx.GetComponent<PooledParticleEffect>() == null)
+                        {
+                            vfx.AddComponent<PooledParticleEffect>();
+                        }
+                    }
                     if (hitscanImpactSound != null) AudioSource.PlayClipAtPoint(hitscanImpactSound, hit.point, 0.6f);
                 }
             }

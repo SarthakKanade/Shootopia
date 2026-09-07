@@ -122,7 +122,12 @@ namespace Shootopia
             {
                 impulseSource.GenerateImpulse(0.25f);
             }
+            else
+            {
+                CameraShakeManager.Instance?.ShakeExplosion(transform.position, blastRadius, 1.2f);
+            }
 
+            MobileHapticsManager.TriggerExplosion();
             Destroy(gameObject);
         }
     }

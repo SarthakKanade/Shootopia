@@ -34,6 +34,7 @@ namespace Shootopia
         public ulong LastAttackerClientId { get; set; }
 
         public static event Action<bool> OnLocalPlayerHitConfirmed;
+        public static event Action<Vector3, float> OnLocalPlayerDamagedWithPosition;
 
         private bool _isDead = false;
         private bool _isInvincible = false;
@@ -104,7 +105,20 @@ namespace Shootopia
             string weaponName = weaponUsed != null ? (!string.IsNullOrEmpty(weaponUsed.weaponName) ? weaponUsed.weaponName : weaponUsed.name)
                               : (type == DamageType.Melee ? "Melee" : "Unknown");
 
-            TakeDamageServerRpc(amount, type, weaponName, LastAttackerClientId);
+            if (IsSpawned)
+            {
+                TakeDamageServerRpc(amount, type, weaponName, LastAttackerClientId);
+            }
+            else
+            {
+                // Offline / sandbox fallback
+                float previousHp = _currentHp.Value;
+                _currentHp.Value = Mathf.Max(_currentHp.Value - amount, 0f);
+                float actual = previousHp - _currentHp.Value;
+                Vector3 fallbackPos = transform.position - transform.forward * 10f;
+                OnLocalPlayerDamagedWithPosition?.Invoke(fallbackPos, actual);
+                HUDController.Instance?.TriggerDamageFlash(actual);
+            }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
@@ -153,6 +167,21 @@ namespace Shootopia
                     };
                     NotifyHitConfirmedClientRpc(isKill, clientParams);
                 }
+
+                // Notify victim of attacker position for 360 threat indicator & damage flash
+                Vector3 attackerPos = transform.position + transform.forward * 8f;
+                if (NetworkManager.Singleton != null && 
+                    NetworkManager.Singleton.ConnectedClients.TryGetValue(attackerClientId, out var client) && 
+                    client.PlayerObject != null)
+                {
+                    attackerPos = client.PlayerObject.transform.position;
+                }
+
+                var victimParams = new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+                };
+                NotifyDamageTakenClientRpc(attackerPos, actualDamage, victimParams);
 
                 if (isKill)
                 {
@@ -219,6 +248,17 @@ namespace Shootopia
             {
                 AudioManager.Instance.PlaySFX2D(playerAudioConfig.hitMarkerClip);
             }
+        }
+
+        [ClientRpc]
+        private void NotifyDamageTakenClientRpc(Vector3 attackerWorldPos, float damageAmount, ClientRpcParams clientRpcParams = default)
+        {
+            if (!IsOwner) return;
+
+            OnLocalPlayerDamagedWithPosition?.Invoke(attackerWorldPos, damageAmount);
+            HUDController.Instance?.TriggerDamageFlash(damageAmount);
+            CameraShakeManager.Instance?.ShakeDamage(damageAmount);
+            MobileHapticsManager.TriggerDamageTaken();
         }
 
         [ClientRpc]
