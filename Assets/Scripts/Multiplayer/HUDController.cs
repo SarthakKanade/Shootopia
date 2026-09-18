@@ -17,8 +17,23 @@ namespace Shootopia
     {
         public static HUDController Instance { get; private set; }
 
-        [Header("Match Header & Timer")]
+        [Header("Match Header (Call of Duty Style)")]
+        [SerializeField] private GameObject matchHeaderRoot;
         [SerializeField] private TextMeshProUGUI timerText;
+        [SerializeField] private TextMeshProUGUI matchLimitText;
+        [SerializeField] private TextMeshProUGUI gameModeBadgeText;
+
+        [Header("TDM Team Scores & Bars")]
+        [SerializeField] private GameObject tdmScoreRoot;
+        [SerializeField] private TextMeshProUGUI teamBlueNameText;
+        [SerializeField] private TextMeshProUGUI teamBlueScoreText;
+        [SerializeField] private Image teamBlueScoreBar;
+        [SerializeField] private TextMeshProUGUI teamRedNameText;
+        [SerializeField] private TextMeshProUGUI teamRedScoreText;
+        [SerializeField] private Image teamRedScoreBar;
+
+        [Header("FFA Score & Placement")]
+        [SerializeField] private GameObject ffaScoreRoot;
         [SerializeField] private TextMeshProUGUI scoreText;
         [SerializeField] private TextMeshProUGUI placementText;
 
@@ -56,22 +71,37 @@ namespace Shootopia
         [SerializeField] private Transform killFeedContainer;
         [SerializeField] private GameObject killFeedEntryPrefab;
 
+        [Header("Kill Feed Weapon Icons")]
+        [SerializeField] private Sprite defaultWeaponSprite;
+        [SerializeField] private Sprite pistolSprite;
+        [SerializeField] private Sprite rifleSprite;
+        [SerializeField] private Sprite sniperSprite;
+        [SerializeField] private Sprite flameSprite;
+        [SerializeField] private Sprite cryoSprite;
+        [SerializeField] private Sprite voidSprite;
+        [SerializeField] private Sprite bounceSprite;
+        [SerializeField] private Sprite meleeSprite;
+        [SerializeField] private Sprite skullSprite;
+
         [Header("Combat Feel & Juice")]
         [SerializeField] private CanvasGroup damageFlashGroup;
         [SerializeField] private GameObject hitMarkerRoot;
         [SerializeField] private Image[] hitMarkerTicks;
 
-        [Header("Dynamic Elimination Banner")]
+        [Header("Dynamic Elimination Banner (COD Style)")]
         [SerializeField] private GameObject eliminationBannerRoot;
         [SerializeField] private CanvasGroup eliminationBannerGroup;
         [SerializeField] private TextMeshProUGUI eliminationTitleText;
         [SerializeField] private TextMeshProUGUI eliminationSubtitleText;
+        [SerializeField] private TextMeshProUGUI eliminationXpText;
+        [SerializeField] private Image eliminationIcon;
 
-        [Header("Death Recap Banner")]
+        [Header("Death Recap Banner (COD Style)")]
         [SerializeField] private GameObject deathBannerRoot;
         [SerializeField] private CanvasGroup deathBannerGroup;
         [SerializeField] private TextMeshProUGUI deathTitleText;
         [SerializeField] private TextMeshProUGUI deathSubtitleText;
+        [SerializeField] private Image deathIcon;
 
         [Header("Combat Audio")]
         [SerializeField] private AudioClip hitSound;
@@ -356,6 +386,10 @@ namespace Shootopia
         {
             if (activeMode == null)
             {
+                if (matchLimitText != null) matchLimitText.text = "";
+                if (gameModeBadgeText != null) gameModeBadgeText.text = "WARMUP";
+                if (tdmScoreRoot != null) tdmScoreRoot.SetActive(false);
+                if (ffaScoreRoot != null) ffaScoreRoot.SetActive(false);
                 if (placementText != null) placementText.text = "";
                 if (scoreText != null) scoreText.text = "";
                 return;
@@ -363,8 +397,44 @@ namespace Shootopia
 
             ulong localId = NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId : 0;
 
-            if (activeMode is FFAMode ffa)
+            if (activeMode is TDMMode tdm)
             {
+                if (tdmScoreRoot != null) tdmScoreRoot.SetActive(true);
+                if (ffaScoreRoot != null) ffaScoreRoot.SetActive(false);
+
+                int blue = tdm.ScoreBlue;
+                int red = tdm.ScoreRed;
+                const int limit = 15;
+
+                int localTeam = tdm.GetPlayerTeam(localId);
+
+                if (teamBlueScoreText != null) teamBlueScoreText.text = blue.ToString();
+                if (teamRedScoreText != null) teamRedScoreText.text = red.ToString();
+
+                if (teamBlueScoreBar != null) teamBlueScoreBar.fillAmount = Mathf.Clamp01((float)blue / limit);
+                if (teamRedScoreBar != null) teamRedScoreBar.fillAmount = Mathf.Clamp01((float)red / limit);
+
+                if (teamBlueNameText != null)
+                {
+                    teamBlueNameText.text = (localTeam == 0) ? "ALLIES <size=11><color=#00F0FF>[YOU]</color></size>" : "BLUE";
+                }
+                if (teamRedNameText != null)
+                {
+                    teamRedNameText.text = (localTeam == 1) ? "AXIS <size=11><color=#FF4444>[YOU]</color></size>" : "RED";
+                }
+
+                if (matchLimitText != null) matchLimitText.text = $"FIRST TO {limit}";
+                if (gameModeBadgeText != null) gameModeBadgeText.text = "TEAM DEATHMATCH";
+
+                // Fallback backwards-compatible labels
+                if (placementText != null) placementText.text = "TDM";
+                if (scoreText != null) scoreText.text = $"<color=#00F0FF>{blue}</color> <size=13>—</size> <color=#FF4444>{red}</color>";
+            }
+            else if (activeMode is FFAMode ffa)
+            {
+                if (tdmScoreRoot != null) tdmScoreRoot.SetActive(false);
+                if (ffaScoreRoot != null) ffaScoreRoot.SetActive(true);
+
                 int kills = ffa.GetPlayerKills(localId);
                 int rank = ffa.GetPlayerRank(localId);
                 int totalPlayers = NetworkManager.Singleton != null ? NetworkManager.Singleton.ConnectedClientsList.Count : 1;
@@ -378,18 +448,16 @@ namespace Shootopia
                 {
                     scoreText.text = $"<color=#00F0FF>{kills}</color> <size=12><color=#8A99B5>/ 10 KILLS</color></size>";
                 }
-            }
-            else if (activeMode is TDMMode tdm)
-            {
-                if (placementText != null)
-                {
-                    placementText.text = "TDM";
-                }
 
-                if (scoreText != null)
-                {
-                    scoreText.text = $"<color=#FF4444>{tdm.ScoreRed}</color> <size=13>—</size> <color=#4488FF>{tdm.ScoreBlue}</color>";
-                }
+                if (matchLimitText != null) matchLimitText.text = "FIRST TO 10";
+                if (gameModeBadgeText != null) gameModeBadgeText.text = "FREE FOR ALL";
+            }
+            else
+            {
+                if (tdmScoreRoot != null) tdmScoreRoot.SetActive(false);
+                if (ffaScoreRoot != null) ffaScoreRoot.SetActive(false);
+                if (gameModeBadgeText != null) gameModeBadgeText.text = "WARMUP";
+                if (matchLimitText != null) matchLimitText.text = "";
             }
         }
 
@@ -596,27 +664,41 @@ namespace Shootopia
         private IEnumerator EliminationBannerRoutine(string victimName, string weaponName, int streak)
         {
             string streakTitle = "ELIMINATED";
-            if (streak == 2) streakTitle = "DOUBLE KILL!";
-            else if (streak == 3) streakTitle = "TRIPLE KILL!";
-            else if (streak >= 4) streakTitle = "RAMPAGE!";
+            string xpAmount = "+100";
+            if (streak == 2) { streakTitle = "DOUBLE KILL!"; xpAmount = "+200"; }
+            else if (streak == 3) { streakTitle = "TRIPLE KILL!"; xpAmount = "+300"; }
+            else if (streak >= 4) { streakTitle = "RAMPAGE!"; xpAmount = "+500"; }
+
+            if (eliminationXpText != null)
+            {
+                eliminationXpText.text = $"{xpAmount} PTS";
+                eliminationXpText.color = new Color(1.0f, 0.85f, 0.2f);
+            }
 
             if (eliminationTitleText != null)
             {
                 eliminationTitleText.text = streakTitle;
-                eliminationTitleText.color = streak > 1 ? new Color(1.0f, 0.84f, 0.0f) : new Color(0.0f, 0.94f, 1.0f);
+                eliminationTitleText.color = streak > 1 ? new Color(1.0f, 0.85f, 0.2f) : new Color(0.0f, 0.94f, 1.0f);
             }
 
             if (eliminationSubtitleText != null)
             {
-                string pts = $"+{100 * streak} PTS";
-                eliminationSubtitleText.text = $"{victimName.ToUpper()} • <color=#FFE066>{pts}</color>";
+                string wpn = string.IsNullOrEmpty(weaponName) ? "" : $" • <color=#8A99B5>{weaponName.ToUpper()}</color>";
+                eliminationSubtitleText.text = $"<color=#FFFFFF>{victimName.ToUpper()}</color>{wpn}";
+            }
+
+            if (eliminationIcon != null && skullSprite != null)
+            {
+                eliminationIcon.sprite = skullSprite;
             }
 
             eliminationBannerRoot.SetActive(true);
-            var rt = eliminationBannerRoot.GetComponent<RectTransform>();
-            if (rt != null) UIJuice.PunchScale(rt, 0.28f);
+            if (eliminationBannerGroup != null) eliminationBannerGroup.alpha = 1f;
 
-            yield return new WaitForSeconds(2.2f);
+            var rt = eliminationBannerRoot.GetComponent<RectTransform>();
+            if (rt != null) UIJuice.PunchScale(rt, 0.32f);
+
+            yield return new WaitForSeconds(2.0f);
 
             if (eliminationBannerGroup != null)
             {
@@ -651,15 +733,24 @@ namespace Shootopia
             if (deathTitleText != null)
             {
                 deathTitleText.text = "YOU WERE ELIMINATED";
+                deathTitleText.color = new Color(1f, 0.3f, 0.3f);
             }
 
             if (deathSubtitleText != null)
             {
-                string wpn = string.IsNullOrEmpty(weaponName) ? "" : $" WITH {weaponName.ToUpper()}";
-                deathSubtitleText.text = $"KILLED BY <color=#FF5555>{killerName.ToUpper()}</color>{wpn}";
+                string wpn = string.IsNullOrEmpty(weaponName) ? "" : $" WITH <color=#FFE066>{weaponName.ToUpper()}</color>";
+                deathSubtitleText.text = $"KILLED BY <color=#FFFFFF>{killerName.ToUpper()}</color>{wpn}";
+            }
+
+            if (deathIcon != null && skullSprite != null)
+            {
+                deathIcon.sprite = skullSprite;
+                deathIcon.color = new Color(1f, 0.3f, 0.3f, 0.9f);
             }
 
             deathBannerRoot.SetActive(true);
+            if (deathBannerGroup != null) deathBannerGroup.alpha = 1f;
+
             var rt = deathBannerRoot.GetComponent<RectTransform>();
             if (rt != null) UIJuice.PunchScale(rt, 0.25f);
 
@@ -683,11 +774,42 @@ namespace Shootopia
 
         // ──────────────────────── KILL FEED ────────────────────────
 
+        public Sprite GetWeaponSprite(string weaponName)
+        {
+            if (string.IsNullOrEmpty(weaponName)) return skullSprite;
+            string lower = weaponName.ToLower();
+            if (lower.Contains("flame")) return flameSprite != null ? flameSprite : defaultWeaponSprite;
+            if (lower.Contains("freeze") || lower.Contains("cryo")) return cryoSprite != null ? cryoSprite : defaultWeaponSprite;
+            if (lower.Contains("void")) return voidSprite != null ? voidSprite : defaultWeaponSprite;
+            if (lower.Contains("bounce") || lower.Contains("trick") || lower.Contains("laser")) return bounceSprite != null ? bounceSprite : defaultWeaponSprite;
+            if (lower.Contains("sniper")) return sniperSprite != null ? sniperSprite : defaultWeaponSprite;
+            if (lower.Contains("knife") || lower.Contains("sword") || lower.Contains("melee") || lower.Contains("axe")) return meleeSprite != null ? meleeSprite : defaultWeaponSprite;
+            if (lower.Contains("pistol") || lower.Contains("sidearm")) return pistolSprite != null ? pistolSprite : defaultWeaponSprite;
+            if (lower.Contains("machine") || lower.Contains("rifle") || lower.Contains("gun")) return rifleSprite != null ? rifleSprite : defaultWeaponSprite;
+            return skullSprite != null ? skullSprite : defaultWeaponSprite;
+        }
+
         private void OnKillFeedEvent(string killerName, string victimName, string weaponName, ulong killerId, ulong victimId)
         {
             ulong localClientId = NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId : 9999;
             bool isLocalKiller = (killerId == localClientId);
             bool isLocalVictim = (victimId == localClientId);
+
+            var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+            bool isKillerFriendly = false;
+            bool isVictimFriendly = false;
+
+            if (activeMode is TDMMode tdm)
+            {
+                int localTeam = tdm.GetPlayerTeam(localClientId);
+                int killerTeam = tdm.GetPlayerTeam(killerId);
+                int victimTeam = tdm.GetPlayerTeam(victimId);
+                if (localTeam >= 0)
+                {
+                    isKillerFriendly = (killerTeam == localTeam);
+                    isVictimFriendly = (victimTeam == localTeam);
+                }
+            }
 
             // Trigger local player banners
             if (isLocalKiller)
@@ -699,13 +821,27 @@ namespace Shootopia
                 ShowDeathBanner(killerName, weaponName);
             }
 
-            // Spawn Kill Feed Item
-            AddKillFeedEntry(killerName, victimName, weaponName, isLocalKiller, isLocalVictim);
+            // Spawn Kill Feed Item with icon & team identification
+            Sprite icon = GetWeaponSprite(weaponName);
+            AddKillFeedEntry(killerName, victimName, weaponName, icon, isLocalKiller, isLocalVictim, isKillerFriendly, isVictimFriendly);
         }
 
         public void AddKillFeedEntry(string killer, string victim, string weapon, bool isLocalKiller, bool isLocalVictim)
         {
+            Sprite icon = GetWeaponSprite(weapon);
+            AddKillFeedEntry(killer, victim, weapon, icon, isLocalKiller, isLocalVictim, false, false);
+        }
+
+        public void AddKillFeedEntry(string killer, string victim, string weapon, Sprite weaponIcon, bool isLocalKiller, bool isLocalVictim, bool isKillerFriendly = false, bool isVictimFriendly = false)
+        {
             if (killFeedContainer == null) return;
+
+            // Enforce max active entries
+            if (killFeedContainer.childCount >= 6)
+            {
+                var oldest = killFeedContainer.GetChild(0);
+                if (oldest != null) Destroy(oldest.gameObject);
+            }
 
             GameObject entryObj = null;
             if (killFeedEntryPrefab != null)
@@ -717,15 +853,14 @@ namespace Shootopia
                 entryObj = new GameObject("KillEntry");
                 entryObj.transform.SetParent(killFeedContainer, false);
                 var txt = entryObj.AddComponent<TextMeshProUGUI>();
-                txt.fontSize = 16;
+                txt.fontSize = 15;
                 txt.color = Color.white;
             }
 
             var kfItem = entryObj.GetComponent<KillFeedItem>();
             if (kfItem != null)
             {
-                Sprite weaponIcon = null; // Can lookup from WeaponSO icon if desired
-                kfItem.Initialize(killer, victim, weapon, weaponIcon, isLocalKiller, isLocalVictim);
+                kfItem.Initialize(killer, victim, weapon, weaponIcon, isLocalKiller, isLocalVictim, isKillerFriendly, isVictimFriendly);
             }
             else
             {
@@ -733,7 +868,7 @@ namespace Shootopia
                 if (label != null)
                 {
                     string wpnStr = !string.IsNullOrEmpty(weapon) ? $" [{weapon}] " : " ➔ ";
-                    label.text = $"<color=#FFE066>{killer}</color>{wpnStr}<color=#FF6666>{victim}</color>";
+                    label.text = $"<color=#00F0FF>{killer}</color>{wpnStr}<color=#FF4D4D>{victim}</color>";
                 }
                 StartCoroutine(FadeAndDestroyKillEntry(entryObj, 4.0f));
             }

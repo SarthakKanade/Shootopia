@@ -26,15 +26,16 @@ namespace Shootopia
 
         [Header("Colors")]
         [SerializeField] private Color localPlayerColor = new Color(0.0f, 0.94f, 1.0f, 1.0f); // Bright Cyan #00F0FF
-        [SerializeField] private Color enemyPlayerColor = new Color(0.95f, 0.35f, 0.35f, 1.0f); // Light Crimson #F25A5A
+        [SerializeField] private Color friendlyPlayerColor = new Color(0.25f, 0.65f, 1.0f, 1.0f); // Allied Blue #40A6FF
+        [SerializeField] private Color enemyPlayerColor = new Color(0.98f, 0.28f, 0.28f, 1.0f); // Light Crimson #FA4747
         [SerializeField] private Color defaultTextColor = new Color(0.90f, 0.93f, 0.98f, 1.0f); // Soft White
-        [SerializeField] private Color localKillBgColor = new Color(0.0f, 0.45f, 0.65f, 0.75f);
-        [SerializeField] private Color localDeathBgColor = new Color(0.65f, 0.15f, 0.15f, 0.75f);
-        [SerializeField] private Color neutralBgColor = new Color(0.05f, 0.08f, 0.14f, 0.65f);
+        [SerializeField] private Color localKillBgColor = new Color(0.04f, 0.22f, 0.30f, 0.88f);
+        [SerializeField] private Color localDeathBgColor = new Color(0.32f, 0.08f, 0.08f, 0.88f);
+        [SerializeField] private Color neutralBgColor = new Color(0.06f, 0.08f, 0.12f, 0.82f);
 
         private Coroutine _fadeRoutine;
 
-        public void Initialize(string killerName, string victimName, string weaponName, Sprite weaponIcon, bool isLocalKiller, bool isLocalVictim)
+        public void Initialize(string killerName, string victimName, string weaponName, Sprite weaponIcon, bool isLocalKiller, bool isLocalVictim, bool isKillerFriendly = false, bool isVictimFriendly = false)
         {
             if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
@@ -43,17 +44,31 @@ namespace Shootopia
             // Set killer text
             if (killerText != null)
             {
-                killerText.text = string.IsNullOrEmpty(killerName) ? "Unknown" : killerName;
-                killerText.color = isLocalKiller ? localPlayerColor : (isLocalVictim ? enemyPlayerColor : defaultTextColor);
-                if (isLocalKiller) killerText.fontStyle = FontStyles.Bold;
+                string kName = string.IsNullOrEmpty(killerName) ? "Unknown" : killerName;
+                killerText.text = isLocalKiller ? $"<b>{kName}</b>" : kName;
+                if (isLocalKiller)
+                    killerText.color = localPlayerColor;
+                else if (isKillerFriendly)
+                    killerText.color = friendlyPlayerColor;
+                else if (isVictimFriendly || isLocalVictim)
+                    killerText.color = enemyPlayerColor;
+                else
+                    killerText.color = defaultTextColor;
             }
 
             // Set victim text
             if (victimText != null)
             {
-                victimText.text = string.IsNullOrEmpty(victimName) ? "Unknown" : victimName;
-                victimText.color = isLocalVictim ? localPlayerColor : (isLocalKiller ? enemyPlayerColor : defaultTextColor);
-                if (isLocalVictim) victimText.fontStyle = FontStyles.Bold;
+                string vName = string.IsNullOrEmpty(victimName) ? "Unknown" : victimName;
+                victimText.text = isLocalVictim ? $"<b>{vName}</b>" : vName;
+                if (isLocalVictim)
+                    victimText.color = enemyPlayerColor;
+                else if (isVictimFriendly)
+                    victimText.color = friendlyPlayerColor;
+                else if (isLocalKiller || isKillerFriendly)
+                    victimText.color = enemyPlayerColor;
+                else
+                    victimText.color = defaultTextColor;
             }
 
             // Set weapon icon or fallback text
@@ -62,6 +77,7 @@ namespace Shootopia
                 if (weaponIcon != null)
                 {
                     weaponIconImage.sprite = weaponIcon;
+                    weaponIconImage.color = isLocalKiller ? new Color(1f, 0.9f, 0.35f, 1f) : Color.white;
                     weaponIconImage.gameObject.SetActive(true);
                     if (weaponFallbackText != null) weaponFallbackText.gameObject.SetActive(false);
                 }
@@ -108,7 +124,7 @@ namespace Shootopia
 
         private IEnumerator AnimateLifeCycle()
         {
-            // Pop in quickly
+            // Pop in quickly with punch scale
             float elapsed = 0f;
             float popDuration = 0.15f;
             Vector3 startScale = new Vector3(0.85f, 0.85f, 1f);
