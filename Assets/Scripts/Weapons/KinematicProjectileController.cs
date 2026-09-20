@@ -39,6 +39,9 @@ namespace Shootopia
         private float _aliveTime;
         private int _bounceCount;
         private Transform _homingTarget;
+        private Vector3 _startPosition;
+        private float _distanceTraveled;
+        private float _maxDistance;
 
         public override void Init(WeaponSO data, GameObject owner)
         {
@@ -50,14 +53,42 @@ namespace Shootopia
                 hasGravity = data.hasGravity;
                 canBounce = data.maxBounces > 0;
                 maxBounces = data.maxBounces;
-                lifetime = data.projectileLifetime > 0.1f ? data.projectileLifetime : 5f;
+
+                if (data.projectileLifetime > 0.05f)
+                {
+                    lifetime = data.projectileLifetime;
+                }
+                else if (data.maxRange > 0.1f)
+                {
+                    lifetime = data.maxRange / Mathf.Max(speed, 0.1f);
+                }
+                else
+                {
+                    lifetime = lifetime > 0.1f ? lifetime : 5f;
+                }
+
+                _maxDistance = data.maxRange > 0.1f ? data.maxRange : 0f;
+            }
+            else
+            {
+                _maxDistance = 0f;
             }
 
+            _startPosition = transform.position;
+            _distanceTraveled = 0f;
             _velocity = transform.forward * speed;
             _aliveTime = 0f;
             _bounceCount = 0;
 
             transform.localScale = Vector3.one * projectileScale;
+
+            // Clear and restart any child particle systems for pooled projectile reuse
+            var particleSystems = GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var ps in particleSystems)
+            {
+                ps.Clear();
+                ps.Play();
+            }
 
             if (isHoming)
             {
@@ -99,6 +130,14 @@ namespace Shootopia
             Vector3 currentPos = transform.position;
             Vector3 delta = _velocity * dt;
             float distance = delta.magnitude;
+
+            _distanceTraveled += distance;
+            if (_maxDistance > 0.1f && _distanceTraveled >= _maxDistance)
+            {
+                if (GlobalPoolManager.Instance != null) GlobalPoolManager.Instance.Despawn(gameObject);
+                else Destroy(gameObject);
+                return;
+            }
 
             if (distance > 0.0001f)
             {

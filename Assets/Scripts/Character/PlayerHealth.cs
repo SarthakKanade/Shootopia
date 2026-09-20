@@ -228,6 +228,10 @@ namespace Shootopia
             SetCharacterPosition(spawnPos);
             ResetMovementState();
 
+            // Ensure player respawns unarmed
+            var weaponCtrl = GetComponent<WeaponController>();
+            if (weaponCtrl != null) weaponCtrl.UnequipAll();
+
             RemoveBurnEffect();
             RespawnClientRpc(spawnPos);
         }
@@ -308,6 +312,10 @@ namespace Shootopia
             SetPlayerVisibility(true);
             RemoveBurnEffect();
 
+            // Ensure player respawns unarmed on client
+            var weaponCtrl = GetComponent<WeaponController>();
+            if (weaponCtrl != null) weaponCtrl.UnequipAllLocal();
+
             if (spawnVFXPrefab != null) Instantiate(spawnVFXPrefab, transform.position, Quaternion.identity);
             if (spawnSound != null) AudioSource.PlayClipAtPoint(spawnSound, transform.position, 1f);
 
@@ -375,6 +383,10 @@ namespace Shootopia
             ResetMovementState();
             RemoveBurnEffect();
 
+            // Ensure player starts match unarmed
+            var weaponCtrl = GetComponent<WeaponController>();
+            if (weaponCtrl != null) weaponCtrl.UnequipAll();
+
             ResetPlayerClientRpc(position);
         }
 
@@ -388,6 +400,10 @@ namespace Shootopia
             ResetMovementState();
             ResetLocomotionAnimator();
             RemoveBurnEffect();
+
+            // Ensure player starts match unarmed on client
+            var weaponCtrl = GetComponent<WeaponController>();
+            if (weaponCtrl != null) weaponCtrl.UnequipAllLocal();
         }
 
         #endregion

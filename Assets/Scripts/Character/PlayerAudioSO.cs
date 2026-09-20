@@ -16,6 +16,9 @@ namespace Shootopia
 
         [Header("Movement Audio Clips")]
         public AudioClip footstepClip;
+        public AudioClip[] footstepVariations;
         public AudioClip jumpClip;
+        public AudioClip dashClip;
+        public AudioClip rollClip;
     }
 }

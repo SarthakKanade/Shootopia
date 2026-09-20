@@ -40,6 +40,12 @@ namespace Shootopia
             {
                 gameObject.AddComponent<NetworkNotificationUI>();
             }
+
+            if (_activeGameMode == null)
+            {
+                var ffa = GetComponent<FFAMode>();
+                _activeGameMode = ffa != null ? (GameModeBase)ffa : GetComponent<TDMMode>();
+            }
         }
 
         private void Start()
@@ -69,12 +75,14 @@ namespace Shootopia
         }
 
         public readonly NetworkVariable<Unity.Collections.FixedString32Bytes> ActiveModeName = new NetworkVariable<Unity.Collections.FixedString32Bytes>("FFA", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public readonly NetworkVariable<bool> MatchStarted = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
 
             ActiveModeName.OnValueChanged += OnActiveModeChanged;
+            MatchStarted.OnValueChanged += OnMatchStartedChanged;
 
             if (IsServer)
             {
@@ -113,6 +121,11 @@ namespace Shootopia
             {
                 ApplyActiveGameMode(ActiveModeName.Value.ToString());
             }
+
+            if (MatchStarted.Value)
+            {
+                CloseLobbyUI();
+            }
         }
 
         /// <summary>
@@ -141,20 +154,33 @@ namespace Shootopia
             if (!IsServer) return;
             Debug.Log("[NetworkedGameManager] Host officially started match from lobby!");
 
-            // Notify all clients to close and destroy waiting room UI
-            OnMatchStartedClientRpc();
+            MatchStarted.Value = true;
+            CloseWaitingRoomRpc();
 
             // Start the official pre-match sequence and spawn players
             StartCoroutine(PreMatchSequence());
         }
 
         [Rpc(SendTo.Everyone)]
-        private void OnMatchStartedClientRpc()
+        private void CloseWaitingRoomRpc()
         {
-            Debug.Log("[NetworkedGameManager] Match started - closing waiting room UI.");
+            CloseLobbyUI();
+        }
+
+        public static void CloseLobbyUI()
+        {
+            Debug.Log("[NetworkedGameManager] Closing waiting room UI.");
             if (WaitingRoomController.Instance != null)
             {
                 WaitingRoomController.Instance.OnMatchStarted();
+            }
+            else
+            {
+                var wrc = Object.FindAnyObjectByType<WaitingRoomController>();
+                if (wrc != null)
+                {
+                    wrc.OnMatchStarted();
+                }
             }
         }
 
@@ -162,6 +188,34 @@ namespace Shootopia
         {
             base.OnNetworkDespawn();
             ActiveModeName.OnValueChanged -= OnActiveModeChanged;
+            MatchStarted.OnValueChanged -= OnMatchStartedChanged;
+
+            if (_activeGameMode != null)
+            {
+                _activeGameMode.MatchActive.OnValueChanged -= OnMatchActiveChanged;
+            }
+        }
+
+        private void OnMatchStartedChanged(bool previousValue, bool newValue)
+        {
+            if (newValue)
+            {
+                Debug.Log("[NetworkedGameManager] MatchStarted became true — closing waiting room UI.");
+                CloseLobbyUI();
+            }
+        }
+
+        /// <summary>
+        /// Called on all clients when MatchActive changes. Ensures lobby UI is closed
+        /// when the match becomes active, regardless of how it was triggered.
+        /// </summary>
+        private void OnMatchActiveChanged(bool previousValue, bool newValue)
+        {
+            if (newValue && !previousValue)
+            {
+                Debug.Log("[NetworkedGameManager] MatchActive became true — ensuring waiting room is closed.");
+                CloseLobbyUI();
+            }
         }
 
         private void OnActiveModeChanged(Unity.Collections.FixedString32Bytes previousValue, Unity.Collections.FixedString32Bytes newValue)
@@ -171,6 +225,11 @@ namespace Shootopia
 
         public void ApplyActiveGameMode(string selectedMode)
         {
+            if (_activeGameMode != null)
+            {
+                _activeGameMode.MatchActive.OnValueChanged -= OnMatchActiveChanged;
+            }
+
             var ffa = GetComponent<FFAMode>();
             var tdm = GetComponent<TDMMode>();
 
@@ -203,12 +262,24 @@ namespace Shootopia
                 }
             }
 
+            if (_activeGameMode != null)
+            {
+                _activeGameMode.MatchActive.OnValueChanged += OnMatchActiveChanged;
+                if (_activeGameMode.MatchActive.Value || MatchStarted.Value)
+                {
+                    CloseLobbyUI();
+                }
+            }
+
             Debug.Log($"[NetworkedGameManager] Applied GameMode '{selectedMode}' (IsServer: {IsServer})");
         }
 
         private System.Collections.IEnumerator PreMatchSequence()
         {
             if (_activeGameMode == null) yield break;
+
+            MatchStarted.Value = true;
+            CloseWaitingRoomRpc();
 
             _activeGameMode.MatchActive.Value = false;
             _activeGameMode.PreMatchCountdown.Value = -1;
@@ -272,6 +343,7 @@ namespace Shootopia
 
             _activeGameMode.PreMatchCountdown.Value = 0;
             _activeGameMode.MatchActive.Value = true;
+            CloseWaitingRoomRpc();
             Debug.Log("[NetworkedGameManager] Match started - players released");
 
             // 3. Start match game mode logic

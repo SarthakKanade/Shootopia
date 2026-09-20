@@ -59,7 +59,7 @@ MonoBehaviour:
   previewDistance: 0
   hasADS: 1
   requiresADSToFire: 1
-  adsFOV: 10
+  adsFOV: 22
   adsMoveSpeedMult: 0.6
   damagePerSecond: 0
   maxRange: 0

@@ -26,6 +26,7 @@ namespace Shootopia.FSM
             }
 
             Ctx.Animator.SetTrigger(CharacterMotor.HashDash);
+            Ctx.PlayDashAudio();
         }
 
         public override void UpdateState(float dt)

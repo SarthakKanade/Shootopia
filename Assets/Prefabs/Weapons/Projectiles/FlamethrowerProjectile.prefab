@@ -78,8 +78,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7c228816b4fb4e08b023d275a5ae10d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.KinematicProjectileController
-  speed: 40
-  lifetime: 5
+  speed: 22
+  lifetime: 0.6
   hasGravity: 0
   gravityScale: 1
   canBounce: 0

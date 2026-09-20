@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using Shootopia.FSM;
 using Unity.Netcode;
@@ -51,6 +52,7 @@ namespace Shootopia
         [SerializeField] private PlayerAudioSO playerAudioConfig;
         [SerializeField] private float footstepInterval = 0.32f;
         private float _footstepTimer = 0f;
+        private int _footstepIndex = 0;
 
         private readonly NetworkVariable<Quaternion> _modelRotation = new NetworkVariable<Quaternion>(Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
@@ -128,13 +130,51 @@ namespace Shootopia
             CurrentState?.UpdateStates(dt);
         }
 
-        public void PlayJumpAudio()
+        public void PlayJumpAudio(float delay = 0.11f)
+        {
+            if (delay <= 0f)
+            {
+                TriggerJumpAudio();
+            }
+            else
+            {
+                StartCoroutine(DelayedJumpAudioRoutine(delay));
+            }
+        }
+
+        private IEnumerator DelayedJumpAudioRoutine(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            TriggerJumpAudio();
+        }
+
+        private void TriggerJumpAudio()
         {
             if (AudioManager.Instance == null) return;
             AudioClip clip = (playerAudioConfig != null && playerAudioConfig.jumpClip != null) ? playerAudioConfig.jumpClip : null;
             if (clip != null)
             {
-                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position);
+                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.70f);
+            }
+        }
+
+        public void PlayDashAudio()
+        {
+            if (AudioManager.Instance == null) return;
+            AudioClip clip = (playerAudioConfig != null && playerAudioConfig.dashClip != null) ? playerAudioConfig.dashClip : null;
+            if (clip != null)
+            {
+                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.75f);
+            }
+        }
+
+        public void PlayRollAudio()
+        {
+            if (AudioManager.Instance == null) return;
+            AudioClip clip = (playerAudioConfig != null && playerAudioConfig.rollClip != null) ? playerAudioConfig.rollClip : null;
+            if (clip != null)
+            {
+                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.70f);
             }
         }
 
@@ -150,10 +190,23 @@ namespace Shootopia
                 if (_footstepTimer >= footstepInterval)
                 {
                     _footstepTimer = 0f;
-                    AudioClip clip = (playerAudioConfig != null && playerAudioConfig.footstepClip != null) ? playerAudioConfig.footstepClip : null;
+                    AudioClip clip = null;
+                    if (playerAudioConfig != null)
+                    {
+                        if (playerAudioConfig.footstepVariations != null && playerAudioConfig.footstepVariations.Length > 0)
+                        {
+                            clip = playerAudioConfig.footstepVariations[_footstepIndex % playerAudioConfig.footstepVariations.Length];
+                            _footstepIndex++;
+                        }
+                        else
+                        {
+                            clip = playerAudioConfig.footstepClip;
+                        }
+                    }
+
                     if (clip != null)
                     {
-                        AudioManager.Instance.PlaySFXAtPosition(clip, transform.position);
+                        AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.65f);
                     }
                 }
             }

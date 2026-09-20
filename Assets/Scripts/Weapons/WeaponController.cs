@@ -249,10 +249,7 @@ namespace Shootopia
 
                 _adsHandler.SetCamera(playerFollowCamera);
 
-                if (loadout != null && loadout.Length > 0 && loadout[0] != null)
-                {
-                    EquipNetworkedWeapon(loadout[0].name);
-                }
+                // Players always spawn unarmed — weapons are picked up from the map
             }
 
             string currentNetName = _equippedAttachName.Value.ToString();
@@ -329,7 +326,7 @@ namespace Shootopia
 
             HandleFire(dt);
             _adsHandler.UpdateADS(_chargeHandler.IsCharging || _isAimingTrap, input.Intent.AltFire, CurrentAttach);
-            _aimHandler.UpdateAimState(dt, input.Intent.Fire, CurrentAttach, _chargeHandler.IsCharging, _isAimingTrap);
+            _aimHandler.UpdateAimState(dt, input.Intent.Fire, CurrentAttach, _chargeHandler.IsCharging, _isAimingTrap, _isAimingBounce);
             _aimHandler.UpdateBouncePreview(IsOwner, CurrentAttach, Muzzle, Aim, _isAimingBounce);
         }
 
@@ -509,8 +506,11 @@ namespace Shootopia
                     FireProjectile(data);
                     if (animator != null)
                     {
-                        animator.Play("Shoot", 1, 0f);
                         animator.SetFloat(HashShootSpeed, 1f);
+                        if (!animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot"))
+                        {
+                            animator.Play("Shoot", 1, 0f);
+                        }
                     }
                     CancelCharge(exitCombatStance: false);
 
@@ -543,6 +543,10 @@ namespace Shootopia
                     {
                         animator.SetBool(HashIsFiring, true);
                         animator.SetFloat(HashShootSpeed, 0f);
+                        if (!animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot"))
+                        {
+                            animator.Play("Shoot", 1, 0f);
+                        }
                     }
                 }
             }
@@ -555,8 +559,11 @@ namespace Shootopia
                     FireProjectile(data);
                     if (animator != null)
                     {
-                        animator.Play("Shoot", 1, 0f);
                         animator.SetFloat(HashShootSpeed, 1f);
+                        if (!animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot"))
+                        {
+                            animator.Play("Shoot", 1, 0f);
+                        }
                     }
                 }
                 else
@@ -799,13 +806,13 @@ namespace Shootopia
             EquipAttachByNameLocal(attachName, forceFresh: true);
         }
 
-        [Rpc(SendTo.Everyone)]
+        [Rpc(SendTo.NotMe)]
         private void StartChargeRpc()
         {
             StartChargeLocal();
         }
 
-        [Rpc(SendTo.Everyone)]
+        [Rpc(SendTo.NotMe)]
         private void CancelChargeRpc(bool exitCombatStance = true)
         {
             CancelChargeLocal(exitCombatStance);
@@ -1045,31 +1052,35 @@ namespace Shootopia
 
         private void StartCharge(WeaponSO data)
         {
+            StartChargeLocal();
             if (IsSpawned) StartChargeRpc();
-            else StartChargeLocal();
         }
 
         private void StartChargeLocal()
         {
             _chargeHandler.StartCharge(Muzzle, CurrentAttach != null ? CurrentAttach.gameplayData : null);
+            if (motor != null) motor.IsInCombat = true;
             if (animator != null)
             {
-                animator.Play("Shoot", 1, 0f);
                 animator.SetBool(HashIsFiring, true);
                 animator.SetFloat(HashShootSpeed, 0f); // Freeze at the first frame (aim/prep stance)
+                if (!animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot"))
+                {
+                    animator.Play("Shoot", 1, 0f);
+                }
             }
         }
 
         private void CancelCharge(bool exitCombatStance = true)
         {
+            CancelChargeLocal(exitCombatStance);
             if (IsSpawned) CancelChargeRpc(exitCombatStance);
-            else CancelChargeLocal(exitCombatStance);
         }
 
         private void CancelChargeLocal(bool exitCombatStance = true)
         {
             if (_chargeHandler != null) _chargeHandler.CancelCharge();
-            CancelTrapAim();
+            if (_isAimingTrap) CancelTrapAim();
             if (exitCombatStance && _aimHandler != null)
             {
                 _aimHandler.ExitCombatStance();
@@ -1093,6 +1104,7 @@ namespace Shootopia
 
         private void CancelTrapAim()
         {
+            if (!_isAimingTrap) return;
             _isAimingTrap = false;
             if (animator != null)
             {
@@ -1185,6 +1197,32 @@ namespace Shootopia
             animator.SetFloat(HashShootSpeed, 1f);
             yield return new WaitForSeconds(duration);
             animator.SetBool(HashIsFiring, false);
+        }
+
+        #endregion
+
+        #region Unequip (for spawn/respawn)
+
+        /// <summary>
+        /// Server-side: clears the equipped weapon NetworkVariable and broadcasts unequip to all clients.
+        /// Call this during respawn/match-reset to ensure players spawn unarmed.
+        /// </summary>
+        public void UnequipAll()
+        {
+            if (IsServer)
+            {
+                _equippedAttachName.Value = "";
+                ForceEquipWeaponRpc("");
+            }
+        }
+
+        /// <summary>
+        /// Local-only: clears the local weapon visual and state.
+        /// Call this on the client during RespawnClientRpc to ensure the weapon is cleared.
+        /// </summary>
+        public void UnequipAllLocal()
+        {
+            ResetWeaponState();
         }
 
         #endregion

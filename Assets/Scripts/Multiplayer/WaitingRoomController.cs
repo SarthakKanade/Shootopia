@@ -191,7 +191,7 @@ namespace Shootopia
                     lobbyCanvasGroup.blocksRaycasts = false;
                     lobbyCanvasGroup.interactable = false;
                 }
-                if (warmupHudBadge != null) warmupHudBadge.SetActive(true);
+                if (warmupHudBadge != null) warmupHudBadge.SetActive(!_matchStarted);
             }
         }
 
@@ -548,13 +548,13 @@ namespace Shootopia
 
         private void StartMatchAsHost()
         {
-            if (_matchStarted) return;
-            _matchStarted = true;
-
             if (startMatchClip != null && AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlaySFX2D(startMatchClip, 1.0f);
             }
+
+            // Immediately close lobby locally on host
+            OnMatchStarted();
 
             // Trigger match start on NetworkedGameManager
             if (NetworkedGameManager.Instance != null)

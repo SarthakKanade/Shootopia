@@ -54,11 +54,22 @@ namespace Shootopia
             }
         }
 
-        public void UpdateAimState(float dt, bool fireHeld, WeaponAttachSO currentAttach, bool isCharging, bool isAimingTrap)
+        public void UpdateAimState(float dt, bool fireHeld, WeaponAttachSO currentAttach, bool isCharging, bool isAimingTrap, bool isAimingBounce = false)
         {
-            // Combat stance timer decay
-            if (_combatStanceTimer > 0f)
+            if (isCharging || isAimingBounce)
             {
+                // Maintain combat stance continuously while charging or aiming bounce shot
+                _combatStanceTimer = COMBAT_STANCE_DURATION;
+                if (_motor != null) _motor.IsInCombat = true;
+                if (_animator != null)
+                {
+                    _animator.SetBool(HashIsFiring, true);
+                    _animator.SetFloat(HashShootSpeed, 0f); // Steady aim/charge pose
+                }
+            }
+            else if (_combatStanceTimer > 0f)
+            {
+                // Combat stance timer decay after firing or exiting charge
                 _combatStanceTimer -= dt;
                 if (_combatStanceTimer <= 0f)
                 {

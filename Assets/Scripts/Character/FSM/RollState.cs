@@ -24,6 +24,7 @@ namespace Shootopia.FSM
             }
 
             Ctx.Animator.SetTrigger(CharacterMotor.HashRoll);
+            Ctx.PlayRollAudio();
         }
 
         public override void UpdateState(float dt)
