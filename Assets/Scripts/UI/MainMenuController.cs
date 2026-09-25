@@ -57,6 +57,8 @@ namespace Shootopia
         [SerializeField] private Button chipModeFFA, chipModeTDM;
         [SerializeField] private Button chipMapSectorAlpha, chipMapGasStation;
         [SerializeField] private Slider sliderMaxPlayers;
+        [SerializeField] private Button btnDecreasePlayers;
+        [SerializeField] private Button btnIncreasePlayers;
         [SerializeField] private TextMeshProUGUI labelMaxPlayers;
         [SerializeField] private Toggle togglePublicRoom;
         [SerializeField] private Button btnConfirmCreate;
@@ -196,6 +198,8 @@ namespace Shootopia
             if (chipMapSectorAlpha != null) chipMapSectorAlpha.onClick.AddListener(() => SetCreateMap("Map1"));
             if (chipMapGasStation != null) chipMapGasStation.onClick.AddListener(() => SetCreateMap("GasStationMap"));
             if (sliderMaxPlayers != null) sliderMaxPlayers.onValueChanged.AddListener(OnMaxPlayersChanged);
+            if (btnDecreasePlayers != null) btnDecreasePlayers.onClick.AddListener(() => AdjustMaxPlayers(-1));
+            if (btnIncreasePlayers != null) btnIncreasePlayers.onClick.AddListener(() => AdjustMaxPlayers(1));
             if (btnConfirmCreate != null) btnConfirmCreate.onClick.AddListener(ConfirmCreateRoom);
 
             // Join Tab
@@ -376,6 +380,14 @@ namespace Shootopia
         {
             _selectedCreateMap = mapName;
             UpdateChipVisuals();
+        }
+
+        private void AdjustMaxPlayers(int delta)
+        {
+            if (sliderMaxPlayers != null)
+            {
+                sliderMaxPlayers.value = Mathf.Clamp(sliderMaxPlayers.value + delta, 2, 12);
+            }
         }
 
         private void OnMaxPlayersChanged(float val)
