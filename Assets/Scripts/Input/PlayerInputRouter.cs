@@ -36,7 +36,7 @@ namespace Shootopia
         private bool _queuedRoll;
 
         public void QueueJump() => _queuedJump = true;
-        public void QueueDash() => _queuedDash = true;
+        public void QueueDash() => _queuedRoll = true; // Legacy Dash redirected to Roll
         public void QueueReload() => _queuedReload = true;
         public void QueueRoll() => _queuedRoll = true;
 
@@ -163,7 +163,7 @@ namespace Shootopia
             if (kb != null)
             {
                 if (kb.rKey.wasPressedThisFrame) intent.Reload = true;
-                if (kb.leftShiftKey.wasPressedThisFrame) intent.Dash = true;
+                if (kb.leftShiftKey.wasPressedThisFrame) intent.Roll = true;
                 if (kb.spaceKey.wasPressedThisFrame) intent.Jump = true;
                 if (kb.oKey.wasPressedThisFrame) intent.Roll = true;
                 if (kb.qKey.wasPressedThisFrame) intent.SwapWeapon = true;
@@ -174,7 +174,7 @@ namespace Shootopia
                 if (pad.buttonWest.wasPressedThisFrame) intent.Reload = true;
                 if (pad.buttonEast.wasPressedThisFrame) intent.Roll = true;
                 if (pad.buttonSouth.wasPressedThisFrame) intent.Jump = true;
-                if (pad.leftShoulder.wasPressedThisFrame) intent.Dash = true;
+                if (pad.leftShoulder.wasPressedThisFrame) intent.Roll = true;
                 if (pad.buttonNorth.wasPressedThisFrame) intent.SwapWeapon = true;
             }
 
@@ -186,8 +186,7 @@ namespace Shootopia
                 intent.Fire |= ext.Fire;
                 intent.AltFire |= ext.AltFire;
                 intent.Reload |= ext.Reload;
-                intent.Dash |= ext.Dash;
-                intent.Roll |= ext.Roll;
+                intent.Roll |= ext.Roll || ext.Dash;
                 intent.Jump |= ext.Jump;
                 intent.SwapWeapon |= ext.SwapWeapon;
                 intent.ToggleShield |= ext.ToggleShield;
@@ -195,7 +194,7 @@ namespace Shootopia
 
             // Merge queued pulses (guaranteed active for this full frame)
             if (_queuedJump) { intent.Jump = true; _queuedJump = false; }
-            if (_queuedDash) { intent.Dash = true; _queuedDash = false; }
+            if (_queuedDash) { intent.Roll = true; _queuedDash = false; }
             if (_queuedReload) { intent.Reload = true; _queuedReload = false; }
             if (_queuedRoll) { intent.Roll = true; _queuedRoll = false; }
 

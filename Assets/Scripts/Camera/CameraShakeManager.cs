@@ -14,7 +14,7 @@ namespace Shootopia
 
         [Header("Global Shake Multiplier")]
         [Range(0f, 2f)]
-        [SerializeField] private float shakeMultiplier = 1.0f;
+        [SerializeField] private float shakeMultiplier = 0.35f;
 
         [Header("Impulse Sources")]
         [SerializeField] private CinemachineImpulseSource recoilSource;

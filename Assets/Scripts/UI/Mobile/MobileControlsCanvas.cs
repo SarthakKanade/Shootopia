@@ -84,7 +84,7 @@ namespace Shootopia
                 dashButton.OnPressed += () =>
                 {
                     EnsureLocalPlayerReference();
-                    _localInputRouter?.QueueDash();
+                    _localInputRouter?.QueueRoll();
                     MobileHapticsManager.TriggerLightTap();
                 };
             }
@@ -170,7 +170,7 @@ namespace Shootopia
             if (fireButton != null) intent.Fire = fireButton.IsPressed;
             if (altFireButton != null) intent.AltFire = altFireButton.IsPressed;
             if (jumpButton != null) intent.Jump = jumpButton.ConsumeWasPressed();
-            if (dashButton != null) intent.Dash = dashButton.ConsumeWasPressed();
+            if (dashButton != null) intent.Roll = dashButton.ConsumeWasPressed();
 
             // Inject into PlayerInputRouter
             _localInputRouter.ExternalIntent = intent;

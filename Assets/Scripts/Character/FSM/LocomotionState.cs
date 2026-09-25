@@ -6,7 +6,13 @@ namespace Shootopia.FSM
     {
         public LocomotionState(CharacterMotor context, StateFactory factory) : base(context, factory) { }
 
-        public override void EnterState() { }
+        public override void EnterState()
+        {
+            if (Ctx.Animator != null && Ctx.Animator.layerCount > 1)
+            {
+                Ctx.Animator.SetLayerWeight(1, 1f);
+            }
+        }
 
         public override void UpdateState(float dt)
         {
@@ -24,11 +30,7 @@ namespace Shootopia.FSM
             {
                 SwitchState(Factory.JumpStart());
             }
-            else if (Ctx.InputIntent.Dash)
-            {
-                SwitchState(Factory.Dash());
-            }
-            else if (Ctx.InputIntent.Roll && Ctx.IsMoving)
+            else if (Ctx.InputIntent.Roll)
             {
                 SwitchState(Factory.Roll());
             }

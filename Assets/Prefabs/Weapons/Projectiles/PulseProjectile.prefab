@@ -208,8 +208,8 @@ MonoBehaviour:
   homingTurnSpeed: 15
   homingRange: 25
   voidZonePrefab: {fileID: 0}
-  projectileScale: 2
-  explosionScale: 4
+  projectileScale: 3
+  explosionScale: 6
   explosionSpeed: 0.6
   extraExplosionPrefabs:
   - {fileID: 1212891642701542, guid: 5dbe86494ac8cfd46bd61c777a7c8ea6, type: 3}

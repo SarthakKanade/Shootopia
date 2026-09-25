@@ -16,6 +16,8 @@ namespace Shootopia
         [SerializeField] private float aimRayDistance = 200f;
         [Tooltip("Layers the reticle raycast can hit (exclude the player layer).")]
         [SerializeField] private LayerMask aimMask = ~0;
+        [Tooltip("Viewport position of the crosshair (0-1). Default centre = (0.5, 0.5).")]
+        [SerializeField] private Vector2 crosshairViewportPosition = new Vector2(0.5f, 0.5f);
 
         private Vector3 _aimPoint;
 
@@ -57,8 +59,8 @@ namespace Shootopia
                 if (renderCamera == null) return;
             }
 
-            // Reticle = centre of screen
-            Ray ray = renderCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            // Reticle = crosshair viewport position (default: centre of screen)
+            Ray ray = renderCamera.ViewportPointToRay(new Vector3(crosshairViewportPosition.x, crosshairViewportPosition.y, 0f));
 
             if (Physics.Raycast(ray, out RaycastHit hit, aimRayDistance, aimMask, QueryTriggerInteraction.Ignore))
             {

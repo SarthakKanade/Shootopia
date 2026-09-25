@@ -157,7 +157,7 @@ namespace Shootopia
             // Retain Layer 0 (Default) so all level geometry/colliders are hit; only ignore UI and raycast-ignore layers
             int layerMask = ~LayerMask.GetMask("Ignore Raycast", "UI");
 
-            float previewDist = currentAttach.gameplayData.previewDistance > 1f ? currentAttach.gameplayData.previewDistance : 35f;
+            float previewDist = currentAttach.gameplayData.previewDistance > 1f ? currentAttach.gameplayData.previewDistance : 12f;
             int maxBounces = currentAttach.gameplayData.maxBounces > 0 ? currentAttach.gameplayData.maxBounces : 3;
 
             var points = new System.Collections.Generic.List<Vector3>();

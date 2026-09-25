@@ -22,10 +22,10 @@ MonoBehaviour:
   CanZoom: 0
   ZoomAmount: 10
   ZoomRotationSpeed: 0.3
-  MagazineSize: 12
+  MagazineSize: 8
   handedness: 0
   category: 0
-  durabilityType: 2
+  durabilityType: 0
   maxUses: 8
   weaponDuration: 15
   isPickupOnly: 0
@@ -56,7 +56,7 @@ MonoBehaviour:
   damageAtEdge: 0
   maxBounces: 4
   projectileLifetime: 3
-  previewDistance: 25
+  previewDistance: 12
   hasADS: 0
   requiresADSToFire: 0
   adsFOV: 60

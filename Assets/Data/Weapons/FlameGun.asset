@@ -22,7 +22,7 @@ MonoBehaviour:
   CanZoom: 0
   ZoomAmount: 10
   ZoomRotationSpeed: 0.3
-  MagazineSize: 12
+  MagazineSize: 60
   handedness: 0
   category: 4
   durabilityType: 0

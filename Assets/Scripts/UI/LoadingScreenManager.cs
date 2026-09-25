@@ -39,7 +39,7 @@ namespace Shootopia
         {
             "Maintain killstreaks to charge your velocity gauge and unleash weapon abilities!",
             "Loot boxes scatter high-tier weapons, smoke canisters, and deployable trip mines.",
-            "Use Dash (Shift) to rapidly reposition and dodge incoming sniper rounds.",
+            "Use Roll (Shift) to rapidly reposition and dodge incoming sniper rounds.",
             "Press [Tab] in-game to inspect the live match scoreboard and rankings.",
             "Flameguns deal persistent damage over time. Keep your distance from heavy armored foes!",
             "Coordinate with your squad in Team Deathmatch to control high-ground spawn nodes."

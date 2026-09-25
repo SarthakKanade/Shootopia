@@ -807,23 +807,52 @@ namespace Shootopia.Editor
             scoreModal.SetActive(false);
 
             // 8. Results Screen (Victory / Defeat)
-            var resultsModal = CreateModal("ResultsRoot", canvasObj.transform, SPRITE_VICTORY_CONTAINER, new Vector2(860, 660), "MATCH FINISHED");
+            var resultsModal = CreateModal("ResultsRoot", canvasObj.transform, SPRITE_SETTING_CONTAINER, new Vector2(1000, 680), "MATCH FINISHED");
             var outcomeTxt = resultsModal.transform.Find("Title").GetComponent<TextMeshProUGUI>();
-            var winnerTxt = CreateTMPText("WinnerInfo", resultsModal.transform, "WINNER: AGENT ALPHA", 22, new Color(1f, 0.85f, 0.2f), TitleFont, TextAlignmentOptions.Center);
+            outcomeTxt.fontSize = 38;
+            outcomeTxt.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 265);
+
+            var winnerTxt = CreateTMPText("WinnerInfo", resultsModal.transform, "WINNER: AGENT ALPHA", 20, new Color(1f, 0.85f, 0.2f), TitleFont, TextAlignmentOptions.Center);
             winnerTxt.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 220);
 
-            var scrollResults = CreateScrollView("ResultsScrollView", resultsModal.transform, new Vector2(780, 340));
-            scrollResults.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 0);
+            // Column Header Row
+            var headerObj = new GameObject("ScoreTableHeader", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup));
+            headerObj.transform.SetParent(resultsModal.transform, false);
+            var hRt = headerObj.GetComponent<RectTransform>();
+            hRt.anchoredPosition = new Vector2(0, 175);
+            hRt.sizeDelta = new Vector2(880, 36);
+            headerObj.GetComponent<Image>().color = new Color(0.06f, 0.08f, 0.16f, 0.96f);
+            var hHlg = headerObj.GetComponent<HorizontalLayoutGroup>();
+            hHlg.padding = new RectOffset(24, 24, 4, 4);
+            hHlg.childAlignment = TextAnchor.MiddleLeft;
+            hHlg.childControlWidth = false;
+            hHlg.childControlHeight = true;
+            hHlg.spacing = 10;
+
+            var rh = CreateTMPText("RankH", headerObj.transform, "RANK", 14, new Color(0.85f, 0.95f, 1f), TitleFont, TextAlignmentOptions.MidlineLeft);
+            rh.GetComponent<RectTransform>().sizeDelta = new Vector2(70, 28);
+            var ph = CreateTMPText("PlayerH", headerObj.transform, "PLAYER", 14, new Color(0.85f, 0.95f, 1f), TitleFont, TextAlignmentOptions.MidlineLeft);
+            ph.GetComponent<RectTransform>().sizeDelta = new Vector2(360, 28);
+            var kdh = CreateTMPText("KDH", headerObj.transform, "KILLS / DEATHS", 14, new Color(0.85f, 0.95f, 1f), TitleFont, TextAlignmentOptions.Center);
+            kdh.GetComponent<RectTransform>().sizeDelta = new Vector2(220, 28);
+            var sh = CreateTMPText("ScoreH", headerObj.transform, "SCORE", 14, new Color(0.85f, 0.95f, 1f), TitleFont, TextAlignmentOptions.MidlineRight);
+            sh.GetComponent<RectTransform>().sizeDelta = new Vector2(160, 28);
+
+            var scrollResults = CreateScrollView("ResultsScrollView", resultsModal.transform, new Vector2(880, 340));
+            scrollResults.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, -20);
             var resTableCont = scrollResults.transform.Find("Viewport/Content");
             var vlgRes = resTableCont.gameObject.AddComponent<VerticalLayoutGroup>();
             vlgRes.spacing = 8;
             vlgRes.childControlWidth = true;
             vlgRes.childControlHeight = false;
 
-            var btnRetLobby = CreateButton("BtnReturnLobby", resultsModal.transform, SPRITE_BTN_YELLOW_SPARKLE, "RETURN TO LOBBY", 20, new Vector2(260, 64));
-            btnRetLobby.GetComponent<RectTransform>().anchoredPosition = new Vector2(-150, -240);
-            var btnMainMenu = CreateButton("BtnMainMenu", resultsModal.transform, SPRITE_BTN_BLUE_MED, "MAIN MENU", 20, new Vector2(220, 64));
-            btnMainMenu.GetComponent<RectTransform>().anchoredPosition = new Vector2(170, -240);
+            var btnRetLobby = CreateButton("BtnReturnLobby", resultsModal.transform, SPRITE_BTN_YELLOW_SPARKLE, "RETURN TO LOBBY", 18, new Vector2(260, 60));
+            btnRetLobby.GetComponent<RectTransform>().anchoredPosition = new Vector2(-155, -250);
+            var retTxt = btnRetLobby.transform.Find("Text").GetComponent<TextMeshProUGUI>();
+            retTxt.color = new Color(0.12f, 0.06f, 0f, 1f);
+
+            var btnMainMenu = CreateButton("BtnMainMenu", resultsModal.transform, SPRITE_BTN_BLUE_MED, "MAIN MENU", 18, new Vector2(240, 60));
+            btnMainMenu.GetComponent<RectTransform>().anchoredPosition = new Vector2(165, -250);
             resultsModal.SetActive(false);
 
             // Wire HUDController

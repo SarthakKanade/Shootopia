@@ -31,6 +31,7 @@ namespace Shootopia
 
         public NetworkVariable<float> CurrentHp => _currentHp;
         public NetworkVariable<int> DeathCount => _deathCount;
+        public float MaxHp => maxHp;
         public ulong LastAttackerClientId { get; set; }
 
         public static event Action<bool> OnLocalPlayerHitConfirmed;

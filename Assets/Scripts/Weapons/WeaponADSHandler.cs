@@ -16,11 +16,11 @@ namespace Shootopia
         private CinemachineThirdPersonFollow _thirdPersonFollow;
         private GameObject _scopeOverlayInstance;
 
-        private float _defaultFOV = 60f;
+        private float _defaultFOV = 68f;
         private float _originalMoveSpeed = 5f;
-        private float _defaultCameraDistance = 4.5f;
-        private Vector3 _defaultShoulderOffset = new Vector3(0f, 1.5f, -1.5f);
-        private float _defaultVerticalArmLength = 0.3f;
+        private float _defaultCameraDistance = 3.2f;
+        private Vector3 _defaultShoulderOffset = new Vector3(0.48f, 1.7f, 0f);
+        private float _defaultVerticalArmLength = 0f;
         private readonly List<Renderer> _hiddenADSRenderers = new List<Renderer>();
 
         public bool IsADSActive { get; private set; }
@@ -55,12 +55,29 @@ namespace Shootopia
             }
         }
 
+        /// <summary>
+        /// Pulls the current active camera values from <see cref="ThirdPersonCameraController"/>
+        /// so that ADS exit returns to the correct walking/combat view rather than
+        /// a stale snapshot from initial camera setup.
+        /// </summary>
+        private void RefreshDefaults()
+        {
+            var tpc = ThirdPersonCameraController.Instance;
+            if (tpc != null)
+            {
+                _defaultFOV = tpc.ActiveFOV;
+                _defaultCameraDistance = tpc.ActiveDistance;
+                _defaultShoulderOffset = tpc.ActiveShoulderOffset;
+                _defaultVerticalArmLength = tpc.ActiveVerticalArm;
+            }
+        }
+
         public void UpdateADS(bool isChargingOrAiming, bool altFireHeld, WeaponAttachSO currentAttach)
         {
             if (currentAttach == null)
             {
                 if (IsADSActive) ExitADS(instant: true);
-                else HandleFOVLerp(null);
+                // Non-ADS camera is managed by ThirdPersonCameraController
                 return;
             }
 
@@ -68,13 +85,14 @@ namespace Shootopia
             if (!isSniper)
             {
                 if (IsADSActive) ExitADS();
-                HandleFOVLerp(currentAttach);
+                // Non-ADS camera is managed by ThirdPersonCameraController
                 return;
             }
 
             bool shouldScope = isChargingOrAiming || altFireHeld;
             if (shouldScope && !IsADSActive)
             {
+                RefreshDefaults();
                 EnterADS(currentAttach);
             }
             else if (!shouldScope && IsADSActive)
@@ -82,9 +100,18 @@ namespace Shootopia
                 ExitADS();
             }
 
-            HandleFOVLerp(currentAttach);
+            // Only lerp camera when ADS is active; otherwise ThirdPersonCameraController owns it
+            if (IsADSActive)
+            {
+                HandleFOVLerp(currentAttach);
+            }
         }
 
+        /// <summary>
+        /// Lerps camera FOV / distance / offset toward ADS targets.
+        /// Only called when <see cref="IsADSActive"/> is true.
+        /// Non-ADS camera management is handled by <see cref="ThirdPersonCameraController"/>.
+        /// </summary>
         public void HandleFOVLerp(WeaponAttachSO currentAttach)
         {
             if (_camera == null) return;
@@ -115,26 +142,13 @@ namespace Shootopia
 
             if (_thirdPersonFollow != null)
             {
-                float targetDist = _defaultCameraDistance;
-                Vector3 targetOffset = _defaultShoulderOffset;
-                float targetArm = _defaultVerticalArmLength;
-
-                if (IsADSActive && isSniper)
-                {
-                    targetDist = 0.02f;
-                    targetOffset = Vector3.zero;
-                    targetArm = 0f;
-                }
+                float targetDist = IsADSActive && isSniper ? 0.02f : _defaultCameraDistance;
+                Vector3 targetOffset = IsADSActive && isSniper ? Vector3.zero : _defaultShoulderOffset;
+                float targetArm = IsADSActive && isSniper ? 0f : _defaultVerticalArmLength;
 
                 _thirdPersonFollow.CameraDistance = Mathf.Lerp(_thirdPersonFollow.CameraDistance, targetDist, Time.deltaTime * 12f);
                 _thirdPersonFollow.ShoulderOffset = Vector3.Lerp(_thirdPersonFollow.ShoulderOffset, targetOffset, Time.deltaTime * 12f);
                 _thirdPersonFollow.VerticalArmLength = Mathf.Lerp(_thirdPersonFollow.VerticalArmLength, targetArm, Time.deltaTime * 12f);
-
-                if (!IsADSActive)
-                {
-                    if (Mathf.Abs(_thirdPersonFollow.CameraDistance - targetDist) < 0.05f)
-                        _thirdPersonFollow.CameraDistance = targetDist;
-                }
             }
         }
 
@@ -189,6 +203,9 @@ namespace Shootopia
                 if (r != null) r.enabled = true;
             }
             _hiddenADSRenderers.Clear();
+
+            // Refresh defaults so we return to the correct walking/combat view
+            RefreshDefaults();
 
             if (instant)
             {

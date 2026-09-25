@@ -19,8 +19,9 @@ namespace Shootopia
         public float rotationSpeed = 900f;
         public float gravity = -24f;
         public float jumpForce = 2.2f;
-        public float dashSpeed = 12f;
-        public float rollSpeed = 9.5f;
+        public float dashSpeed = 14.5f;
+        public float rollSpeed = 14.5f;
+        public float rollDuration = 0.55f;
         public float animDamp = 0.1f;
 
         public CharacterController Controller { get; private set; }
@@ -47,6 +48,7 @@ namespace Shootopia
         public float JumpForce => jumpForce;
         public float DashSpeed => dashSpeed;
         public float RollSpeed => rollSpeed;
+        public float RollDuration => rollDuration;
 
         [Header("Audio Configuration")]
         [SerializeField] private PlayerAudioSO playerAudioConfig;
@@ -57,6 +59,11 @@ namespace Shootopia
         private readonly NetworkVariable<Quaternion> _modelRotation = new NetworkVariable<Quaternion>(Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
         public PlayerAudioSO AudioConfig => playerAudioConfig;
+        
+        public void SyncModelRotation()
+        {
+            if (IsOwner) _modelRotation.Value = ModelRoot.rotation;
+        }
 
         // FSM Context
         public BaseState CurrentState { get; set; }
@@ -282,6 +289,13 @@ namespace Shootopia
                         cinemachineCam.Target.LookAtTarget = null;
                         cinemachineCam.PreviousStateIsValid = false;
                         Debug.Log("[CharacterMotor] Set CinemachineCamera follow target to CameraTarget");
+                    }
+
+                    // Ensure ThirdPersonCameraController exists on the camera
+                    if (cinemachineCam.GetComponent<ThirdPersonCameraController>() == null)
+                    {
+                        cinemachineCam.gameObject.AddComponent<ThirdPersonCameraController>();
+                        Debug.Log("[CharacterMotor] Auto-added ThirdPersonCameraController to CinemachineCamera");
                     }
                 }
 

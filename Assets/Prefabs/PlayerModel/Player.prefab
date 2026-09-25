@@ -2142,8 +2142,9 @@ MonoBehaviour:
   rotationSpeed: 900
   gravity: -24
   jumpForce: 2.2
-  dashSpeed: 12
-  rollSpeed: 9.5
+  dashSpeed: 14.5
+  rollSpeed: 14.5
+  rollDuration: 0.55
   animDamp: 0.1
   playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
   footstepInterval: 0.32

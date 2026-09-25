@@ -14,39 +14,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 7389035053850368479, guid: 80cbf3e9c3a6b466b94c95191e9ab09c, type: 3}
   weaponName: 
-  Damage: 30
-  FireRate: 0.5
+  Damage: 55
+  FireRate: 0.8
   HitVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
   audio: {fileID: 11400000, guid: 8f0df0029df754471b3b7391520dd708, type: 2}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
   ZoomRotationSpeed: 0.3
-  MagazineSize: 12
+  MagazineSize: 8
   handedness: 0
   category: 1
-  durabilityType: 2
-  maxUses: 6
+  durabilityType: 0
+  maxUses: 8
   weaponDuration: 15
   isPickupOnly: 0
   gaugeKillFill: 25
   isAutoFire: 1
   isCharged: 1
-  chargeTime: 0.8
+  chargeTime: 0.4
   isContinuous: 0
   isTrap: 0
   projectilePrefab: {fileID: 81779632608693436, guid: 40b9de7bbb29d4377b5b381089de05d7, type: 3}
-  projectileSpeed: 28
+  projectileSpeed: 32
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
   isExplosive: 1
-  splashDamage: 8
-  blastRadius: 3.5
+  splashDamage: 20
+  blastRadius: 4
   selfDamage: 0
-  freezeDuration: 1.8
-  maxSlowPercent: 0.6
-  minSlowPercent: 0.15
+  freezeDuration: 2.2
+  maxSlowPercent: 0.75
+  minSlowPercent: 0.25
   afterburnDPS: 0
   afterburnDuration: 0
   pullRadius: 0

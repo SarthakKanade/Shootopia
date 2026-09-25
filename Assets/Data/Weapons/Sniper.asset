@@ -22,11 +22,11 @@ MonoBehaviour:
   CanZoom: 0
   ZoomAmount: 10
   ZoomRotationSpeed: 0.3
-  MagazineSize: 12
+  MagazineSize: 5
   handedness: 1
   category: 0
-  durabilityType: 2
-  maxUses: 4
+  durabilityType: 0
+  maxUses: 5
   weaponDuration: 15
   isPickupOnly: 0
   gaugeKillFill: 38
