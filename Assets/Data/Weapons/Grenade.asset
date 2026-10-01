@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 0}
   weaponName: Explosive Grenade
-  Damage: 65
+  Damage: 100
   FireRate: 0.5
   HitVFXPrefab: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
   audio: {fileID: 11400000, guid: ddda3f091d3b842f3a74de10e9138719, type: 2}
@@ -41,8 +41,8 @@ MonoBehaviour:
   throwAngle: 25
   throwForce: 14
   isExplosive: 0
-  splashDamage: 20
-  blastRadius: 4
+  splashDamage: 30
+  blastRadius: 6
   selfDamage: 0
   freezeDuration: 0
   maxSlowPercent: 0

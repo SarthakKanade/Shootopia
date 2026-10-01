@@ -46,6 +46,11 @@ namespace Shootopia
                 var ffa = GetComponent<FFAMode>();
                 _activeGameMode = ffa != null ? (GameModeBase)ffa : GetComponent<TDMMode>();
             }
+
+            if (_activeGameMode != null)
+            {
+                GameModeBase.SetActiveInstance(_activeGameMode);
+            }
         }
 
         private void Start()
@@ -58,6 +63,22 @@ namespace Shootopia
             if (!IsSpawned)
             {
                 TrySpawnSelf();
+            }
+
+            // Continuous safety: if the match has started or is in progress, ensure the waiting room / warmup UI is closed
+            bool isStarted = false;
+            try
+            {
+                isStarted = MatchStarted.Value || (_activeGameMode != null && (_activeGameMode.MatchActive.Value || _activeGameMode.IsInProgress));
+            }
+            catch { }
+
+            if (isStarted && !WaitingRoomController.IsGameOverOpen)
+            {
+                if (WaitingRoomController.IsLobbyMenuOpen)
+                {
+                    CloseLobbyUI();
+                }
             }
         }
 
@@ -83,6 +104,12 @@ namespace Shootopia
 
             ActiveModeName.OnValueChanged += OnActiveModeChanged;
             MatchStarted.OnValueChanged += OnMatchStartedChanged;
+            GameModeBase.OnMatchEndedWithScoreboard += OnMatchEndedScoreboard;
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_MatchStarted", OnMatchStartedCustomMessageReceived);
+            }
 
             if (IsServer)
             {
@@ -120,12 +147,22 @@ namespace Shootopia
             else
             {
                 ApplyActiveGameMode(ActiveModeName.Value.ToString());
+                if (MatchStarted.Value || (_activeGameMode != null && _activeGameMode.MatchActive.Value))
+                {
+                    CloseLobbyUI();
+                }
             }
 
             if (MatchStarted.Value)
             {
                 CloseLobbyUI();
             }
+        }
+
+        private void OnMatchStartedCustomMessageReceived(ulong senderClientId, FastBufferReader reader)
+        {
+            Debug.Log("[NetworkedGameManager] Received Shootopia_MatchStarted direct custom message!");
+            CloseLobbyUI();
         }
 
         /// <summary>
@@ -156,9 +193,22 @@ namespace Shootopia
 
             MatchStarted.Value = true;
             CloseWaitingRoomRpc();
+            BroadcastMatchStartedDirect();
 
             // Start the official pre-match sequence and spawn players
             StartCoroutine(PreMatchSequence());
+        }
+
+        private void BroadcastMatchStartedDirect()
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                using (var writer = new FastBufferWriter(sizeof(bool), Unity.Collections.Allocator.Temp))
+                {
+                    writer.WriteValueSafe(true);
+                    NetworkManager.Singleton.CustomMessagingManager.SendNamedMessageToAll("Shootopia_MatchStarted", writer);
+                }
+            }
         }
 
         [Rpc(SendTo.Everyone)]
@@ -189,10 +239,24 @@ namespace Shootopia
             base.OnNetworkDespawn();
             ActiveModeName.OnValueChanged -= OnActiveModeChanged;
             MatchStarted.OnValueChanged -= OnMatchStartedChanged;
+            GameModeBase.OnMatchEndedWithScoreboard -= OnMatchEndedScoreboard;
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_MatchStarted");
+            }
 
             if (_activeGameMode != null)
             {
                 _activeGameMode.MatchActive.OnValueChanged -= OnMatchActiveChanged;
+            }
+        }
+
+        private void OnMatchEndedScoreboard(string winnerInfo, PlayerScoreEntry[] scores)
+        {
+            if (IsServer)
+            {
+                MatchStarted.Value = false;
             }
         }
 
@@ -264,8 +328,9 @@ namespace Shootopia
 
             if (_activeGameMode != null)
             {
+                GameModeBase.SetActiveInstance(_activeGameMode);
                 _activeGameMode.MatchActive.OnValueChanged += OnMatchActiveChanged;
-                if (_activeGameMode.MatchActive.Value || MatchStarted.Value)
+                if (_activeGameMode.MatchActive.Value || _activeGameMode.IsInProgress || MatchStarted.Value)
                 {
                     CloseLobbyUI();
                 }
@@ -396,5 +461,51 @@ namespace Shootopia
         /// Exposes the currently active game mode (useful for UI displays).
         /// </summary>
         public GameModeBase ActiveGameMode => _activeGameMode;
+
+        /// <summary>
+        /// Requests a rematch from the game over screen. Host reloads the arena for all clients.
+        /// </summary>
+        public void RequestRematch()
+        {
+            if (IsServer)
+            {
+                RestartMatchServer();
+            }
+            else
+            {
+                RequestRematchServerRpc();
+            }
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void RequestRematchServerRpc()
+        {
+            RestartMatchServer();
+        }
+
+        private void RestartMatchServer()
+        {
+            if (!IsServer) return;
+            Debug.Log("[NetworkedGameManager] Host initiating rematch!");
+
+            string currentMap = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+            {
+                NetworkManager.Singleton.SceneManager.LoadScene(currentMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            }
+            else
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene(currentMap);
+            }
+        }
+
+        public override void OnDestroy()
+        {
+            base.OnDestroy();
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
     }
 }

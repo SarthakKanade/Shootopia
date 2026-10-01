@@ -25,7 +25,8 @@ namespace Shootopia
     /// </summary>
     public abstract class GameModeBase : NetworkBehaviour
     {
-        public static GameModeBase Instance { get; protected set; }
+        public static GameModeBase Instance { get; set; }
+        public static void SetActiveInstance(GameModeBase mode) => Instance = mode;
         public static event System.Action<string, PlayerScoreEntry[]> OnMatchEndedWithScoreboard;
         public static event System.Action<string, string, string, ulong, ulong> OnKillFeedReceived;
         public static event System.Action<string> OnSystemMessageReceived;

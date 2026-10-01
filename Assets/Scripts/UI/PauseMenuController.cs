@@ -421,19 +421,7 @@ namespace Shootopia
             TogglePause(false);
             LoadingScreenManager.ShowOverlay("RETURNING TO MAIN MENU...");
 
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-            {
-                try
-                {
-                    NetworkManager.Singleton.Shutdown();
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"[PauseMenuController] Shutdown note: {ex.Message}");
-                }
-            }
-
-            if (SessionManager.Instance != null)
+            if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
             {
                 try
                 {
@@ -444,8 +432,21 @@ namespace Shootopia
                     Debug.LogWarning($"[PauseMenuController] Leave session note: {ex.Message}");
                 }
             }
-
-            SceneManager.LoadScene("MainMenu");
+            else
+            {
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+                {
+                    try
+                    {
+                        NetworkManager.Singleton.Shutdown();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[PauseMenuController] Shutdown note: {ex.Message}");
+                    }
+                }
+                SceneManager.LoadScene("MainMenu");
+            }
         }
     }
 }

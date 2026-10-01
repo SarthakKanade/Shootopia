@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 0}
   weaponName: Trip Mine
-  Damage: 75
+  Damage: 95
   FireRate: 0.5
   HitVFXPrefab: {fileID: 899829158140259175, guid: 508f7826b1eb67c4d9c2967bd7153489, type: 3}
   audio: {fileID: 11400000, guid: ddda3f091d3b842f3a74de10e9138719, type: 2}
@@ -41,8 +41,8 @@ MonoBehaviour:
   throwAngle: 0
   throwForce: 12
   isExplosive: 0
-  splashDamage: 25
-  blastRadius: 3.5
+  splashDamage: 35
+  blastRadius: 5.5
   selfDamage: 0
   freezeDuration: 0
   maxSlowPercent: 0
@@ -71,7 +71,7 @@ MonoBehaviour:
   cloudDuration: 0
   slowPercent: 0
   activationDelay: 0
-  triggerRadius: 0.8
+  triggerRadius: 1.8
   armDelay: 0.3
   selfTrigger: 0
   persistOnDeath: 0

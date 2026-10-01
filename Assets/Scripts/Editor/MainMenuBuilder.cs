@@ -25,8 +25,9 @@ namespace Shootopia.Editor
 
             var planet1Sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/exoplanet-1-512.png");
             var planet2Sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/exoplanet-4-512.png");
-            var starBlue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-blue-medium.png");
+            var starPinkShort = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-pink-short-medium.png");
             var starPink = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Other_Images/Medium/shooting-star-pink-medium.png");
+            var iconRadar = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Icons/radar-128.png");
 
             var btnYellowLarge = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png");
             var btnBlueLarge = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-blue-sparkle-large.png");
@@ -109,7 +110,7 @@ namespace Shootopia.Editor
             soFx.FindProperty("starContainer").objectReferenceValue = starContainer.GetComponent<RectTransform>();
             var starSpritesProp = soFx.FindProperty("starSprites");
             starSpritesProp.arraySize = 2;
-            starSpritesProp.GetArrayElementAtIndex(0).objectReferenceValue = starBlue;
+            starSpritesProp.GetArrayElementAtIndex(0).objectReferenceValue = starPinkShort;
             starSpritesProp.GetArrayElementAtIndex(1).objectReferenceValue = starPink;
             soFx.ApplyModifiedProperties();
 
@@ -461,7 +462,7 @@ namespace Shootopia.Editor
             var spinnerGO = CreateUIObject("SpinnerIcon", busyGO.transform);
             spinnerGO.GetComponent<RectTransform>().sizeDelta = new Vector2(72, 72);
             var spImg = spinnerGO.AddComponent<Image>();
-            spImg.sprite = starBlue;
+            spImg.sprite = iconRadar;
 
             var busyLabelGO = CreateUIObject("BusyLabel", busyGO.transform);
             var blTMP = busyLabelGO.AddComponent<TextMeshProUGUI>();

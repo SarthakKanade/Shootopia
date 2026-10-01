@@ -31,26 +31,41 @@ namespace Shootopia
             if (hasExploded) return;
             
             // Don't hit the player who fired (check root for children)
-            if (other.transform.root == _owner.transform.root) return;
+            if (_owner != null && other.transform.root == _owner.transform.root) return;
 
-            Explode();
+            Explode(other);
         }
 
-        private void Explode()
+        private void Explode(Collider directHitCollider = null)
         {
             hasExploded = true;
 
-            // Sphere overlap for splash damage
-            Collider[] hits = Physics.OverlapSphere(transform.position, _weaponData.blastRadius);
+            // Point of Contact (POC): either contact point on direct hit collider, or projectile position
+            Vector3 poc = transform.position;
+            if (directHitCollider != null)
+            {
+                poc = directHitCollider.ClosestPoint(transform.position);
+            }
+
+            float blastRadius = (_weaponData != null && _weaponData.blastRadius > 0f) ? _weaponData.blastRadius : 4.5f;
+            float maxDamage = (_weaponData != null && _weaponData.Damage > 0f) ? _weaponData.Damage : 100f;
+            float minDamage = (_weaponData != null && _weaponData.splashDamage > 0f) ? _weaponData.splashDamage : 25f;
+
+            // Sphere overlap for splash damage from POC
+            Collider[] hits = Physics.OverlapSphere(poc, blastRadius);
+            var damagedTargets = new System.Collections.Generic.HashSet<IDamageable>();
             
             foreach (Collider hit in hits)
             {
                 // Skip the shooter's own colliders unless self-damage is explicitly enabled
-                if (!_weaponData.selfDamage && _owner != null && hit.transform.root == _owner.transform.root)
+                if (_weaponData != null && !_weaponData.selfDamage && _owner != null && hit.transform.root == _owner.transform.root)
                     continue;
 
-                if (hit.TryGetComponent(out IDamageable damageable))
+                IDamageable damageable = hit.GetComponentInParent<IDamageable>() ?? hit.GetComponent<IDamageable>();
+                if (damageable != null)
                 {
+                    if (!damagedTargets.Add(damageable)) continue;
+
                     if (IsOwnerProjectile())
                     {
                         ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
@@ -60,46 +75,61 @@ namespace Shootopia
                             if (netObj != null) attackerId = netObj.OwnerClientId;
                         }
 
-                        var targetHealth = hit.GetComponentInParent<PlayerHealth>();
-                        if (targetHealth == null) targetHealth = hit.GetComponent<PlayerHealth>();
+                        var targetHealth = hit.GetComponentInParent<PlayerHealth>() ?? hit.GetComponent<PlayerHealth>();
                         if (targetHealth != null)
                         {
                             targetHealth.LastAttackerClientId = attackerId;
                         }
 
-                        float distance = Vector3.Distance(transform.position, hit.transform.position);
-                        
-                        // Linear damage falloff: Damage (at center) -> SplashDamage (at edge)
-                        float t = Mathf.Clamp01(distance / _weaponData.blastRadius);
-                        float damage = Mathf.Lerp(_weaponData.Damage, _weaponData.splashDamage, t);
-                        
-                        // Ensure it doesn't go below splash damage
-                        damage = Mathf.Clamp(damage, _weaponData.splashDamage, _weaponData.Damage);
+                        // Check if this target is the direct contact hit
+                        bool isDirectHit = directHitCollider != null && (hit == directHitCollider || hit.transform.root == directHitCollider.transform.root);
+                        float damage;
+
+                        if (isDirectHit)
+                        {
+                            // Direct contact hit guarantees full center damage (100 = 1-hit KO)
+                            damage = maxDamage;
+                        }
+                        else
+                        {
+                            // Distance from Point of Contact (POC) to closest point on target's collider
+                            Vector3 closestPt = hit.ClosestPoint(poc);
+                            float distance = Vector3.Distance(poc, closestPt);
+                            
+                            // Linear damage falloff: maxDamage at POC -> minDamage at blast edge
+                            float t = Mathf.Clamp01(distance / blastRadius);
+                            damage = Mathf.Lerp(maxDamage, minDamage, t);
+                            damage = Mathf.Clamp(damage, minDamage, maxDamage);
+                        }
 
                         damageable.TakeDamage(damage, DamageType.Explosion, _weaponData);
                     }
                 }
             }
 
-            // Visuals
-            if (_weaponData.HitVFXPrefab != null)
+            // Visuals at POC
+            if (_weaponData != null && _weaponData.HitVFXPrefab != null)
             {
                 Vector3 blastNormal = Vector3.up;
-                if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, out RaycastHit gHit, 1.5f))
+                if (Physics.Raycast(poc + Vector3.up * 0.2f, Vector3.down, out RaycastHit gHit, 1.5f))
                 {
                     blastNormal = gHit.normal;
                 }
                 Quaternion rot = Mathf.Abs(blastNormal.y) > 0.95f
                     ? Quaternion.LookRotation(blastNormal, Vector3.forward)
                     : Quaternion.LookRotation(blastNormal, Vector3.up);
-                Instantiate(_weaponData.HitVFXPrefab, transform.position, rot);
+                Instantiate(_weaponData.HitVFXPrefab, poc, rot);
             }
 
             // Camera Shake
             var impulse = GetComponent<CinemachineImpulseSource>();
             if (impulse != null)
             {
-                impulse.GenerateImpulse(0.25f);
+                impulse.GenerateImpulse(0.35f);
+            }
+            else
+            {
+                CameraShakeManager.Instance?.ShakeExplosion(poc, blastRadius, 1.2f);
             }
 
             Destroy(gameObject);

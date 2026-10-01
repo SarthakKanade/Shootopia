@@ -103,12 +103,19 @@ namespace Shootopia
 
         public void TakeDamage(float amount, DamageType type = DamageType.Projectile, WeaponSO weaponUsed = null)
         {
+            TakeDamage(amount, type, weaponUsed, ulong.MaxValue);
+        }
+
+        public void TakeDamage(float amount, DamageType type, WeaponSO weaponUsed, ulong attackerClientId)
+        {
             string weaponName = weaponUsed != null ? (!string.IsNullOrEmpty(weaponUsed.weaponName) ? weaponUsed.weaponName : weaponUsed.name)
                               : (type == DamageType.Melee ? "Melee" : "Unknown");
 
+            ulong resolvedAttacker = (attackerClientId != ulong.MaxValue) ? attackerClientId : LastAttackerClientId;
+
             if (IsSpawned)
             {
-                TakeDamageServerRpc(amount, type, weaponName, LastAttackerClientId);
+                TakeDamageServerRpc(amount, type, weaponName, resolvedAttacker);
             }
             else
             {
@@ -129,10 +136,15 @@ namespace Shootopia
 
             // Inactive match or waiting room damage gating
             if (SceneManager.GetActiveScene().name == "WaitingRoom") return;
-            if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value) return;
+            
+            var activeMode = NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.ActiveGameMode != null 
+                ? NetworkedGameManager.Instance.ActiveGameMode 
+                : GameModeBase.Instance;
+
+            if (activeMode != null && !activeMode.MatchActive.Value) return;
 
             // TDM Friendly Fire prevention
-            if (GameModeBase.Instance is TDMMode tdm)
+            if (activeMode is TDMMode tdm)
             {
                 int victimTeam = tdm.GetPlayerTeam(OwnerClientId);
                 int attackerTeam = tdm.GetPlayerTeam(attackerClientId);
@@ -434,7 +446,11 @@ namespace Shootopia
 
         private SpawnPointType GetSpawnTypeForPlayer()
         {
-            if (GameModeBase.Instance is TDMMode tdm)
+            var activeMode = NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.ActiveGameMode != null 
+                ? NetworkedGameManager.Instance.ActiveGameMode 
+                : GameModeBase.Instance;
+
+            if (activeMode is TDMMode tdm)
             {
                 int team = tdm.GetPlayerTeam(OwnerClientId);
                 if (team == 0) return SpawnPointType.TeamBlue;

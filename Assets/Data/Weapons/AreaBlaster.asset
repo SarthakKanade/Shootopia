@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: AreaBlaster
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 6906896758769685781, guid: 41024e7341d8048c6b561ef3dd42757c, type: 3}
-  weaponName: 
-  Damage: 55
+  weaponName: Area Blaster
+  Damage: 100
   FireRate: 1.2
   HitVFXPrefab: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
   audio: {fileID: 11400000, guid: 8f0df0029df754471b3b7391520dd708, type: 2}
@@ -36,13 +36,13 @@ MonoBehaviour:
   isContinuous: 0
   isTrap: 0
   projectilePrefab: {fileID: 415908930186214545, guid: 76024a630624d48c19bed69ce42f3079, type: 3}
-  projectileSpeed: 35
+  projectileSpeed: 40
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
   isExplosive: 1
-  splashDamage: 20
-  blastRadius: 4
+  splashDamage: 25
+  blastRadius: 4.5
   selfDamage: 0
   freezeDuration: 0
   maxSlowPercent: 0

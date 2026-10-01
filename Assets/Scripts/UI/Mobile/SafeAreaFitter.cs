@@ -18,7 +18,7 @@ namespace Shootopia
         private RectTransform _rectTransform;
         private Rect _lastSafeArea = Rect.zero;
         private Vector2Int _lastScreenSize = Vector2Int.zero;
-        private ScreenOrientation _lastOrientation = ScreenOrientation.Unknown;
+        private ScreenOrientation _lastOrientation = (ScreenOrientation)(-1);
 
         private void Awake()
         {

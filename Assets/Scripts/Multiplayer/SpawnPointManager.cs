@@ -95,13 +95,17 @@ namespace Shootopia
                 return transform;
             }
 
+            // Filter for clear spawn points (avoiding any points inside buildings, obstacles, or statues)
+            var validPoints = points.FindAll(IsSpawnPointClear);
+            var candidateList = validPoints.Count > 0 ? validPoints : points;
+
             int index = 0;
-            if (points.Count > 1)
+            if (candidateList.Count > 1)
             {
                 int lastIdx = _lastUsedIndex.TryGetValue(type, out int idx) ? idx : -1;
                 do
                 {
-                    index = Random.Range(0, points.Count);
+                    index = Random.Range(0, candidateList.Count);
                 } while (index == lastIdx);
             }
             else
@@ -110,9 +114,44 @@ namespace Shootopia
             }
 
             _lastUsedIndex[type] = index;
-            Transform selectedPoint = points[index];
+            Transform selectedPoint = candidateList[index];
             Debug.Log("[SpawnPointManager] Assigned spawn: " + selectedPoint.name);
             return selectedPoint;
+        }
+
+        private static bool IsSpawnPointClear(Transform sp)
+        {
+            if (sp == null) return false;
+            Vector3 pos = sp.position;
+
+            // Check if player capsule body collides with non-trigger solids (excluding terrain/floors/platforms/roads)
+            var overlaps = Physics.OverlapCapsule(pos + Vector3.up * 0.3f, pos + Vector3.up * 1.7f, 0.4f);
+            foreach (var col in overlaps)
+            {
+                if (col.isTrigger) continue;
+                string n = col.gameObject.name.ToLower();
+                if (n.Contains("ground") || n.Contains("floor") || n.Contains("terrain") ||
+                    n.Contains("road") || n.Contains("pavement") || n.Contains("platform"))
+                {
+                    continue;
+                }
+                return false;
+            }
+
+            // Check if directly underneath a closed building or statue
+            if (Physics.Raycast(pos + Vector3.up * 40f, Vector3.down, out RaycastHit roofHit, 45f))
+            {
+                if (!roofHit.collider.isTrigger)
+                {
+                    string rName = roofHit.collider.name.ToLower();
+                    if (rName.Contains("building") || rName.Contains("house") || rName.Contains("statue"))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
     }
 }

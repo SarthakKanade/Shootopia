@@ -52,6 +52,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5022473390100564692, guid: 5d8be0dd08599704ba0f8a3b9a54e9b8, type: 3}
+      propertyPath: InitialModule.startLifetime.scalar
+      value: 0.55
+      objectReference: {fileID: 0}
+    - target: {fileID: 5022473390100564692, guid: 5d8be0dd08599704ba0f8a3b9a54e9b8, type: 3}
+      propertyPath: InitialModule.startLifetime.minScalar
+      value: 0.4
+      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 8984979362765208833, guid: 5d8be0dd08599704ba0f8a3b9a54e9b8, type: 3}
     m_RemovedGameObjects: []
@@ -78,7 +86,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7c228816b4fb4e08b023d275a5ae10d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.KinematicProjectileController
-  speed: 22
+  speed: 26
   lifetime: 0.6
   hasGravity: 0
   gravityScale: 1

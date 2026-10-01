@@ -76,7 +76,14 @@ namespace Shootopia
             yield return new WaitForSeconds(delay);
             
             _armed = true;
-            if (_proximitySensor != null) _proximitySensor.enabled = true;
+            if (_proximitySensor != null)
+            {
+                if (_data != null && _data.triggerRadius > 0f)
+                {
+                    _proximitySensor.radius = _data.triggerRadius;
+                }
+                _proximitySensor.enabled = true;
+            }
             
             StartCoroutine(PulseRoutine());
         }
@@ -124,29 +131,34 @@ namespace Shootopia
             if (_exploded) return;
             _exploded = true;
 
-            float radius = _data != null ? _data.blastRadius : 3.5f;
-            float maxDmg = _data != null ? _data.Damage : 75f;
-            float minDmg = _data != null ? _data.splashDamage : 25f;
+            float radius = _data != null ? _data.blastRadius : 5.5f;
+            float maxDmg = _data != null ? _data.Damage : 95f;
+            float minDmg = _data != null ? _data.splashDamage : 35f;
+            Vector3 poc = transform.position;
 
-            Collider[] hits = Physics.OverlapSphere(transform.position, radius);
+            Collider[] hits = Physics.OverlapSphere(poc, radius);
+            var damagedTargets = new System.Collections.Generic.HashSet<IDamageable>();
+
             foreach (Collider c in hits)
             {
-                var t = c.GetComponentInParent<IDamageable>();
-                if (t == null) t = c.GetComponent<IDamageable>();
+                var t = c.GetComponentInParent<IDamageable>() ?? c.GetComponent<IDamageable>();
                 if (t != null)
                 {
+                    if (!damagedTargets.Add(t)) continue;
+
                     bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
                     if (isServerOrOffline)
                     {
-                        var targetHealth = c.GetComponentInParent<PlayerHealth>();
-                        if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                        var targetHealth = c.GetComponentInParent<PlayerHealth>() ?? c.GetComponent<PlayerHealth>();
                         if (targetHealth != null)
                         {
                             targetHealth.LastAttackerClientId = (ulong)_ownerID;
                         }
 
-                        float dist = Vector3.Distance(transform.position, c.transform.position);
-                        float dmg = Mathf.Lerp(maxDmg, minDmg, dist / radius);
+                        Vector3 closestPt = c.ClosestPoint(poc);
+                        float dist = Vector3.Distance(poc, closestPt);
+                        float tDist = Mathf.Clamp01(dist / radius);
+                        float dmg = Mathf.Lerp(maxDmg, minDmg, tDist);
                         t.TakeDamage(Mathf.Clamp(dmg, minDmg, maxDmg), DamageType.Explosion, _data);
                     }
                 }
@@ -160,10 +172,11 @@ namespace Shootopia
                 Quaternion rot = Mathf.Abs(blastNormal.y) > 0.95f
                     ? Quaternion.LookRotation(blastNormal, Vector3.forward)
                     : Quaternion.LookRotation(blastNormal, Vector3.up);
-                Instantiate(vfxToSpawn, transform.position, rot);
+                GameObject vfx = Instantiate(vfxToSpawn, poc, rot);
+                vfx.transform.localScale = Vector3.one * 1.35f;
             }
 
-            CameraShakeManager.Instance?.ShakeExplosion(transform.position, radius, 1.2f);
+            CameraShakeManager.Instance?.ShakeExplosion(poc, radius, 1.3f);
             MobileHapticsManager.TriggerExplosion();
 
             if (TripMineManager.Instance != null)

@@ -76,29 +76,47 @@ namespace Shootopia
             if (_exploded) return;
             _exploded = true;
             
-            float blastRadius = _data != null ? _data.blastRadius : 4f;
-            float maxDamage = _data != null ? _data.Damage : 65f;
-            float minDamage = _data != null ? _data.splashDamage : 20f;
+            float blastRadius = _data != null ? _data.blastRadius : 6f;
+            float maxDamage = _data != null ? _data.Damage : 100f;
+            float minDamage = _data != null ? _data.splashDamage : 30f;
+            Vector3 poc = transform.position;
 
-            Collider[] hits = Physics.OverlapSphere(transform.position, blastRadius);
+            Collider[] hits = Physics.OverlapSphere(poc, blastRadius);
+            var damagedTargets = new System.Collections.Generic.HashSet<IDamageable>();
+
             foreach (Collider c in hits)
             {
-                var t = c.GetComponentInParent<IDamageable>();
-                if (t == null) t = c.GetComponent<IDamageable>();
+                var t = c.GetComponentInParent<IDamageable>() ?? c.GetComponent<IDamageable>();
                 if (t != null)
                 {
+                    if (!damagedTargets.Add(t)) continue;
+
                     bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
                     if (isServerOrOffline)
                     {
-                        var targetHealth = c.GetComponentInParent<PlayerHealth>();
-                        if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                        var targetHealth = c.GetComponentInParent<PlayerHealth>() ?? c.GetComponent<PlayerHealth>();
                         if (targetHealth != null)
                         {
                             targetHealth.LastAttackerClientId = (ulong)_ownerID;
                         }
 
-                        float dist = Vector3.Distance(transform.position, c.transform.position);
-                        float dmg = Mathf.Lerp(maxDamage, minDamage, dist / blastRadius);
+                        // Distance from grenade POC to closest point on target collider
+                        Vector3 closestPt = c.ClosestPoint(poc);
+                        float dist = Vector3.Distance(poc, closestPt);
+
+                        // Very close blast (< 0.9m) guarantees 100 damage KO; then linear falloff to minDamage
+                        float closeThreshold = 0.9f;
+                        float dmg;
+                        if (dist <= closeThreshold)
+                        {
+                            dmg = maxDamage;
+                        }
+                        else
+                        {
+                            float tDist = Mathf.Clamp01((dist - closeThreshold) / Mathf.Max(0.01f, blastRadius - closeThreshold));
+                            dmg = Mathf.Lerp(maxDamage, minDamage, tDist);
+                        }
+
                         t.TakeDamage(Mathf.Clamp(dmg, minDamage, maxDamage), DamageType.Explosion, _data);
                     }
                 }
@@ -108,23 +126,24 @@ namespace Shootopia
             if (vfxToSpawn != null)
             {
                 Vector3 blastNormal = Vector3.up;
-                if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, out RaycastHit gHit, 1.5f))
+                if (Physics.Raycast(poc + Vector3.up * 0.2f, Vector3.down, out RaycastHit gHit, 1.5f))
                 {
                     blastNormal = gHit.normal;
                 }
                 Quaternion rot = Mathf.Abs(blastNormal.y) > 0.95f
                     ? Quaternion.LookRotation(blastNormal, Vector3.forward)
                     : Quaternion.LookRotation(blastNormal, Vector3.up);
-                Instantiate(vfxToSpawn, transform.position, rot);
+                GameObject vfx = Instantiate(vfxToSpawn, poc, rot);
+                vfx.transform.localScale = Vector3.one * 1.35f;
             }
 
             if (impulseSource != null)
             {
-                impulseSource.GenerateImpulse(0.25f);
+                impulseSource.GenerateImpulse(0.35f);
             }
             else
             {
-                CameraShakeManager.Instance?.ShakeExplosion(transform.position, blastRadius, 1.2f);
+                CameraShakeManager.Instance?.ShakeExplosion(poc, blastRadius, 1.3f);
             }
 
             MobileHapticsManager.TriggerExplosion();

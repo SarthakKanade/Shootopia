@@ -71,10 +71,10 @@ namespace Shootopia
                 canvasGroup.alpha = activeAlpha;
             }
 
-            // Read active mode from DeviceProfileManager
-            JoystickBehavior activeBehavior = (DeviceProfileManager.JoystickMode == MobileJoystickMode.Dynamic)
-                ? JoystickBehavior.Dynamic
-                : JoystickBehavior.Fixed;
+            // Read active mode from DeviceProfileManager (fallback to serialized behavior)
+            JoystickBehavior activeBehavior = (DeviceProfileManager.Instance != null)
+                ? ((DeviceProfileManager.JoystickMode == MobileJoystickMode.Dynamic) ? JoystickBehavior.Dynamic : JoystickBehavior.Fixed)
+                : behavior;
 
             // In Dynamic mode, center base at touch location (clamped inside parent)
             if (activeBehavior == JoystickBehavior.Dynamic && baseRect != null && _parentRect != null)

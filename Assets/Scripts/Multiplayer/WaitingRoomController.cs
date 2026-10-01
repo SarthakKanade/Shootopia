@@ -90,7 +90,13 @@ namespace Shootopia
         private bool _isLocalReady = false;
         private int _localTeamIndex = 0; // 0 = Alpha, 1 = Omega
         private bool _matchStarted = false;
+        public bool IsMatchStarted => _matchStarted;
         private Coroutine _copyFeedbackCoroutine;
+
+        private bool _isGameOverMode = false;
+        public static bool IsGameOverOpen => Instance != null && Instance._isGameOverMode;
+        private string _cachedGameOverWinnerInfo;
+        private PlayerScoreEntry[] _cachedGameOverScores;
 
         private void Awake()
         {
@@ -99,6 +105,35 @@ namespace Shootopia
 
         private void OnEnable()
         {
+            RegisterCustomMessaging();
+            GameModeBase.OnMatchEndedWithScoreboard += OnMatchEndedScoreboardReceived;
+
+            if (_isGameOverMode)
+            {
+                RefreshGameOverUI();
+                return;
+            }
+
+            var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+            if (activeMode == null)
+            {
+                activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
+            }
+
+            bool isAlreadyStarted = false;
+            try
+            {
+                isAlreadyStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) || 
+                                   (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+            }
+            catch { }
+
+            if (isAlreadyStarted)
+            {
+                OnMatchStarted();
+                return;
+            }
+
             SetLobbyVisible(true);
 
             RegisterCallbacks();
@@ -116,6 +151,9 @@ namespace Shootopia
 
         private void OnDisable()
         {
+            UnregisterCustomMessaging();
+            GameModeBase.OnMatchEndedWithScoreboard -= OnMatchEndedScoreboardReceived;
+
             if (IsLobbyMenuOpen)
             {
                 CursorManager.PopUnlock("WaitingRoom");
@@ -133,6 +171,28 @@ namespace Shootopia
             UnregisterCallbacks();
         }
 
+        private void RegisterCustomMessaging()
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_MatchStarted", OnMatchStartedDirectMessage);
+            }
+        }
+
+        private void UnregisterCustomMessaging()
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_MatchStarted");
+            }
+        }
+
+        private void OnMatchStartedDirectMessage(ulong senderClientId, FastBufferReader reader)
+        {
+            Debug.Log("[WaitingRoomController] Direct Shootopia_MatchStarted message received. Immediately starting match locally.");
+            OnMatchStarted();
+        }
+
         private void OnDestroy()
         {
             if (Instance == this)
@@ -144,7 +204,29 @@ namespace Shootopia
 
         private void Update()
         {
+            if (_isGameOverMode) return;
             if (_matchStarted) return;
+
+            // Check if match started on network
+            var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+            if (activeMode == null)
+            {
+                activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
+            }
+
+            bool isNetworkMatchStarted = false;
+            try
+            {
+                isNetworkMatchStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) ||
+                                         (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+            }
+            catch { }
+
+            if (isNetworkMatchStarted)
+            {
+                OnMatchStarted();
+                return;
+            }
 
             // [TAB] or [ESC] toggles between Lobby Menu and Warmup Gameplay
             if (Keyboard.current != null)
@@ -162,9 +244,26 @@ namespace Shootopia
 
         public void SetLobbyVisible(bool visible)
         {
-            if (_matchStarted)
+            if (_isGameOverMode)
             {
-                visible = false;
+                visible = true;
+            }
+            else
+            {
+                var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+                bool isNetworkMatchStarted = false;
+                try
+                {
+                    isNetworkMatchStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) ||
+                                             (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+                }
+                catch { }
+
+                if (_matchStarted || isNetworkMatchStarted)
+                {
+                    visible = false;
+                    _matchStarted = true;
+                }
             }
 
             IsLobbyMenuOpen = visible;
@@ -191,7 +290,7 @@ namespace Shootopia
                     lobbyCanvasGroup.blocksRaycasts = false;
                     lobbyCanvasGroup.interactable = false;
                 }
-                if (warmupHudBadge != null) warmupHudBadge.SetActive(!_matchStarted);
+                if (warmupHudBadge != null) warmupHudBadge.SetActive(!_matchStarted && !_isGameOverMode);
             }
         }
 
@@ -438,7 +537,17 @@ namespace Shootopia
             var texts = card.GetComponentsInChildren<TextMeshProUGUI>();
             var images = card.GetComponentsInChildren<Image>();
 
-            string displayName = player.displayName;
+            string namePrefix = "";
+            if (isHost)
+            {
+                namePrefix = "<color=#FFD555>👑 </color>";
+            }
+            else if (isReady)
+            {
+                namePrefix = "<color=#45F595>✔ </color>";
+            }
+
+            string displayName = namePrefix + player.displayName;
             if (isLocal) displayName += " <color=#FFD555>(YOU)</color>";
 
             foreach (var t in texts)
@@ -450,21 +559,9 @@ namespace Shootopia
                 }
                 else if (t.gameObject.name == "StatusText" || t.gameObject.name == "RoleBadge" || t.gameObject.name == "ReadyStatus")
                 {
-                    if (isHost)
-                    {
-                        t.text = "HOST";
-                        t.color = ColorGold;
-                    }
-                    else if (isReady)
-                    {
-                        t.text = "READY";
-                        t.color = ColorGreen;
-                    }
-                    else
-                    {
-                        t.text = "NOT READY";
-                        t.color = ColorMuted;
-                    }
+                    // No text for host/client role; ready state is shown via green tick in front of name and icons
+                    t.text = "";
+                    t.gameObject.SetActive(false);
                 }
             }
 
@@ -473,10 +570,12 @@ namespace Shootopia
                 if (img.gameObject.name.Contains("Crown") || img.gameObject.name.Contains("HostIcon"))
                 {
                     img.gameObject.SetActive(isHost);
+                    if (isHost) img.color = ColorGold;
                 }
                 if (img.gameObject.name.Contains("ReadyBadge") || img.gameObject.name.Contains("StatusIndicator"))
                 {
-                    img.color = isReady ? ColorGreen : new Color(0.85f, 0.35f, 0.35f, 0.8f);
+                    img.gameObject.SetActive(!isHost && isReady);
+                    img.color = ColorGreen;
                 }
                 if (img.gameObject.name == "CardBorder" || img.gameObject.name == "BorderGlow")
                 {
@@ -569,26 +668,358 @@ namespace Shootopia
         public void OnMatchStarted()
         {
             _matchStarted = true;
-            SetLobbyVisible(false);
+            _isGameOverMode = false;
+            IsLobbyMenuOpen = false;
+            CursorManager.PopUnlock("WaitingRoom");
+            if (lobbyModalDiv != null) lobbyModalDiv.SetActive(false);
             if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
-            gameObject.SetActive(false);
+            // Keep gameObject active so event listeners, audio, and GameOver triggers remain alive.
+        }
+
+        public static void ShowGameOver(string winnerInfo, PlayerScoreEntry[] scores)
+        {
+            if (Instance == null)
+            {
+                Instance = FindAnyObjectByType<WaitingRoomController>(FindObjectsInactive.Include);
+            }
+            if (Instance != null)
+            {
+                if (!Instance.gameObject.activeSelf)
+                {
+                    Instance.gameObject.SetActive(true);
+                }
+                Instance.DisplayGameOver(winnerInfo, scores);
+            }
+        }
+
+        private void OnMatchEndedScoreboardReceived(string winnerInfo, PlayerScoreEntry[] scores)
+        {
+            DisplayGameOver(winnerInfo, scores);
+        }
+
+        public void DisplayGameOver(string winnerInfo, PlayerScoreEntry[] scores)
+        {
+            _isGameOverMode = true;
+            _cachedGameOverWinnerInfo = winnerInfo;
+            _cachedGameOverScores = scores;
+
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
+
+            SetLobbyVisible(true);
+
+            if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
+            if (btnMinimizeToWarmup != null) btnMinimizeToWarmup.gameObject.SetActive(false);
+            if (btnOpenLobbyFromWarmup != null) btnOpenLobbyFromWarmup.gameObject.SetActive(false);
+            if (hostSettingsGroup != null) hostSettingsGroup.SetActive(false);
+
+            RefreshGameOverUI();
+        }
+
+        public void RefreshGameOverUI()
+        {
+            var session = SessionManager.Instance != null ? SessionManager.Instance.GetCurrentSession() : null;
+            bool isHost = (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer) || (session != null && session.IsHost);
+
+            var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+            if (activeMode == null)
+            {
+                activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
+            }
+
+            string mode = (activeMode is TDMMode) ? "TDM" : "FFA";
+            if (session != null && session.Properties != null && session.Properties.TryGetValue("GameMode", out var modeProp))
+            {
+                if (modeProp.Value.ToUpper().Contains("TDM") || modeProp.Value.ToUpper().Contains("TEAM"))
+                {
+                    mode = "TDM";
+                }
+            }
+            bool isTeamMode = (mode == "TDM" || activeMode is TDMMode);
+
+            // Outcome Header
+            string title = string.IsNullOrEmpty(_cachedGameOverWinnerInfo) ? "MATCH COMPLETED" : _cachedGameOverWinnerInfo.ToUpper();
+            if (roomNameLabel != null)
+            {
+                roomNameLabel.text = title;
+                roomNameLabel.color = ColorGold;
+            }
+
+            if (roomModeBadge != null)
+            {
+                roomModeBadge.text = isTeamMode ? "TEAM DEATHMATCH RESULTS" : "FREE-FOR-ALL RESULTS";
+                roomModeBadge.color = isTeamMode ? ColorGold : ColorSapphire;
+            }
+
+            string map = SessionManager.Instance != null ? SessionManager.Instance.GetSessionMapName() : "Map1";
+            if (roomMapLabel != null)
+            {
+                roomMapLabel.text = $"MAP: {MapRegistry.GetDisplayName(map)}";
+            }
+            if (roomMapThumbnail != null)
+            {
+                roomMapThumbnail.sprite = (map == "GasStationMap") ? mapGasStationSprite : mapSectorAlphaSprite;
+                roomMapThumbnail.gameObject.SetActive(roomMapThumbnail.sprite != null);
+            }
+
+            if (roomPlayerCountLabel != null)
+            {
+                roomPlayerCountLabel.text = "MATCH FINISHED";
+            }
+
+            // Header Leave button
+            if (btnLeave != null)
+            {
+                btnLeave.onClick.RemoveAllListeners();
+                btnLeave.onClick.AddListener(LeaveLobby);
+            }
+
+            // Rematch button (replaces Start Match button)
+            if (btnStartMatch != null)
+            {
+                btnStartMatch.gameObject.SetActive(true);
+                var btnTxt = btnStartMatch.GetComponentInChildren<TextMeshProUGUI>();
+                if (isHost)
+                {
+                    btnStartMatch.interactable = true;
+                    if (btnTxt != null) btnTxt.text = "REMATCH";
+                    btnStartMatch.onClick.RemoveAllListeners();
+                    btnStartMatch.onClick.AddListener(OnRematchClicked);
+                }
+                else
+                {
+                    btnStartMatch.interactable = false;
+                    if (btnTxt != null) btnTxt.text = "WAITING FOR REMATCH...";
+                }
+            }
+
+            // Bottom Leave Lobby button (replaces Ready button)
+            if (btnReady != null)
+            {
+                btnReady.gameObject.SetActive(true);
+                btnReady.interactable = true;
+                if (btnReadyLabel != null)
+                {
+                    btnReadyLabel.text = "LEAVE LOBBY";
+                }
+                btnReady.onClick.RemoveAllListeners();
+                btnReady.onClick.AddListener(LeaveLobby);
+            }
+
+            if (rosterStatusSummary != null)
+            {
+                rosterStatusSummary.text = isHost
+                    ? "<color=#45F595>MATCH FINISHED — HOST CAN START REMATCH OR LEAVE</color>"
+                    : "<color=#FFD555>MATCH FINISHED — WAITING FOR HOST REMATCH</color>";
+            }
+
+            PopulateGameOverRoster(isTeamMode, _cachedGameOverScores, activeMode);
+        }
+
+        private void PopulateGameOverRoster(bool isTeamMode, PlayerScoreEntry[] scores, GameModeBase activeMode)
+        {
+            if (scores == null) scores = Array.Empty<PlayerScoreEntry>();
+
+            if (panelFFA != null) panelFFA.SetActive(!isTeamMode);
+            if (panelTeams != null) panelTeams.SetActive(isTeamMode);
+
+            ulong localClientId = NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId : ulong.MaxValue;
+
+            if (!isTeamMode)
+            {
+                if (contentFFA != null)
+                {
+                    foreach (Transform child in contentFFA) Destroy(child.gameObject);
+
+                    var sorted = new List<PlayerScoreEntry>(scores);
+                    sorted.Sort((a, b) =>
+                    {
+                        int cmp = b.Kills.CompareTo(a.Kills);
+                        if (cmp != 0) return cmp;
+                        return a.Deaths.CompareTo(b.Deaths);
+                    });
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        var entry = sorted[i];
+                        bool isWinner = (i == 0);
+                        bool isLocal = (entry.ClientId == localClientId);
+                        CreateGameOverPlayerCard(contentFFA, i + 1, entry, isWinner, isLocal, isWinner ? ColorGold : ColorSapphire);
+                    }
+                }
+            }
+            else
+            {
+                if (btnSelectAlpha != null) btnSelectAlpha.interactable = false;
+                if (btnSelectOmega != null) btnSelectOmega.interactable = false;
+
+                if (contentAlpha != null) foreach (Transform child in contentAlpha) Destroy(child.gameObject);
+                if (contentOmega != null) foreach (Transform child in contentOmega) Destroy(child.gameObject);
+
+                var tdm = activeMode as TDMMode ?? FindAnyObjectByType<TDMMode>();
+
+                var alphaList = new List<PlayerScoreEntry>();
+                var omegaList = new List<PlayerScoreEntry>();
+
+                foreach (var entry in scores)
+                {
+                    int team = -1;
+                    if (tdm != null)
+                    {
+                        team = tdm.GetPlayerTeam(entry.ClientId);
+                    }
+                    if (team == -1 && SessionManager.Instance != null)
+                    {
+                        string pName = PlayerNameRegistry.GetName(entry.ClientId);
+                        var states = SessionManager.Instance.GetPlayerReadyStates();
+                        if (states != null)
+                        {
+                            foreach (var st in states)
+                            {
+                                if (st.displayName == pName)
+                                {
+                                    team = st.teamIndex;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (team == -1) team = 0;
+
+                    if (team == 0) alphaList.Add(entry);
+                    else omegaList.Add(entry);
+                }
+
+                alphaList.Sort((a, b) =>
+                {
+                    int cmp = b.Kills.CompareTo(a.Kills);
+                    if (cmp != 0) return cmp;
+                    return a.Deaths.CompareTo(b.Deaths);
+                });
+
+                omegaList.Sort((a, b) =>
+                {
+                    int cmp = b.Kills.CompareTo(a.Kills);
+                    if (cmp != 0) return cmp;
+                    return a.Deaths.CompareTo(b.Deaths);
+                });
+
+                int alphaKills = tdm != null ? tdm.ScoreBlue : 0;
+                int omegaKills = tdm != null ? tdm.ScoreRed : 0;
+                if (alphaKills == 0 && omegaKills == 0)
+                {
+                    foreach (var a in alphaList) alphaKills += a.Kills;
+                    foreach (var o in omegaList) omegaKills += o.Kills;
+                }
+
+                if (labelAlphaCount != null) labelAlphaCount.text = $"{alphaKills} KILLS";
+                if (labelOmegaCount != null) labelOmegaCount.text = $"{omegaKills} KILLS";
+
+                bool alphaWon = alphaKills > omegaKills;
+                bool omegaWon = omegaKills > alphaKills;
+
+                for (int i = 0; i < alphaList.Count; i++)
+                {
+                    var entry = alphaList[i];
+                    bool isLocal = (entry.ClientId == localClientId);
+                    CreateGameOverPlayerCard(contentAlpha, i + 1, entry, alphaWon && i == 0, isLocal, ColorSapphire);
+                }
+
+                for (int i = 0; i < omegaList.Count; i++)
+                {
+                    var entry = omegaList[i];
+                    bool isLocal = (entry.ClientId == localClientId);
+                    CreateGameOverPlayerCard(contentOmega, i + 1, entry, omegaWon && i == 0, isLocal, ColorRuby);
+                }
+            }
+        }
+
+        private void CreateGameOverPlayerCard(Transform parent, int rank, PlayerScoreEntry entry, bool isTop, bool isLocal, Color themeColor)
+        {
+            if (playerCardPrefab == null || parent == null) return;
+
+            var card = Instantiate(playerCardPrefab, parent);
+            var rect = card.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.sizeDelta = new Vector2(parent.GetComponent<RectTransform>() != null ? parent.GetComponent<RectTransform>().rect.width - 16 : 380, 56);
+            }
+
+            var texts = card.GetComponentsInChildren<TextMeshProUGUI>();
+            var images = card.GetComponentsInChildren<Image>();
+
+            string displayName = PlayerNameRegistry.GetName(entry.ClientId);
+            if (string.IsNullOrEmpty(displayName)) displayName = $"Player {entry.ClientId}";
+            if (isLocal) displayName += " <color=#FFD555>(YOU)</color>";
+
+            foreach (var t in texts)
+            {
+                if (t.gameObject.name == "PlayerName" || t.gameObject.name == "Name")
+                {
+                    t.text = $"#{rank}  {displayName}";
+                    t.color = isLocal ? ColorGold : themeColor;
+                }
+                else if (t.gameObject.name == "StatusText" || t.gameObject.name == "RoleBadge" || t.gameObject.name == "ReadyStatus")
+                {
+                    // State kills clearly, no score PTS
+                    t.text = isTop
+                        ? $"<color=#FFD555><b>{entry.Kills} KILLS</b></color> <color=#A0B0C0><size=11>({entry.Deaths} D)</size></color>"
+                        : $"<b>{entry.Kills} KILLS</b> <color=#A0B0C0><size=11>({entry.Deaths} D)</size></color>";
+                    t.color = isTop ? ColorGold : ColorGreen;
+                }
+            }
+
+            foreach (var img in images)
+            {
+                if (img.gameObject.name.Contains("Crown") || img.gameObject.name.Contains("HostIcon"))
+                {
+                    img.gameObject.SetActive(isTop);
+                    if (isTop) img.color = ColorGold;
+                }
+                if (img.gameObject.name.Contains("ReadyBadge") || img.gameObject.name.Contains("StatusIndicator"))
+                {
+                    img.color = isTop ? ColorGold : themeColor;
+                }
+                if (img.gameObject.name.Contains("CardBorder") || img.gameObject.name.Contains("BorderGlow"))
+                {
+                    img.color = isTop ? ColorGold : themeColor;
+                }
+            }
+        }
+
+        private void OnRematchClicked()
+        {
+            if (btnStartMatch != null) btnStartMatch.interactable = false;
+
+            if (NetworkedGameManager.Instance != null)
+            {
+                NetworkedGameManager.Instance.RequestRematch();
+            }
+            else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                string currentMap = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                NetworkManager.Singleton.SceneManager.LoadScene(currentMap, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            }
         }
 
         private async void LeaveLobby()
         {
             LoadingScreenManager.ShowOverlay("RETURNING TO MAIN MENU...");
 
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-            {
-                try { NetworkManager.Singleton.Shutdown(); } catch { }
-            }
-
-            if (SessionManager.Instance != null)
+            if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
             {
                 try { await SessionManager.Instance.LeaveSession(); } catch { }
             }
-
-            SceneManager.LoadScene("MainMenu");
+            else
+            {
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+                {
+                    try { NetworkManager.Singleton.Shutdown(); } catch { }
+                }
+                SceneManager.LoadScene("MainMenu");
+            }
         }
     }
 }

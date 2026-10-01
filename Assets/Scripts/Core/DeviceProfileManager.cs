@@ -34,18 +34,21 @@ namespace Shootopia
         private const string PrefKeyTouchMoveSens = "Shootopia_TouchMoveSens";
 
         private static DeviceProfileManager _instance;
+        private static bool _isQuitting = false;
+
         public static DeviceProfileManager Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindAnyObjectByType<DeviceProfileManager>();
-                    if (_instance == null)
+                    if (_instance == null && Application.isPlaying && !_isQuitting)
                     {
                         var go = new GameObject("DeviceProfileManager");
                         _instance = go.AddComponent<DeviceProfileManager>();
-                        if (Application.isPlaying) DontDestroyOnLoad(go);
+                        DontDestroyOnLoad(go);
                     }
                 }
                 return _instance;
@@ -72,14 +75,14 @@ namespace Shootopia
 
         public static InputControlMode ConfiguredMode
         {
-            get => Instance != null ? Instance._configuredMode : InputControlMode.Auto;
+            get => _instance != null ? _instance._configuredMode : InputControlMode.Auto;
             set
             {
                 if (Instance != null) Instance.SetConfiguredMode(value);
             }
         }
 
-        public static InputControlMode EffectiveMode => Instance != null ? Instance._effectiveMode : DetectNativeMode();
+        public static InputControlMode EffectiveMode => _instance != null ? _instance._effectiveMode : DetectNativeMode();
 
         public static bool IsTouchActive => EffectiveMode == InputControlMode.MobileTouch;
 
@@ -94,7 +97,7 @@ namespace Shootopia
 
         public static float TouchSensitivityX
         {
-            get => Instance != null ? Instance._touchSensitivityX : 1.70f;
+            get => _instance != null ? _instance._touchSensitivityX : 1.70f;
             set
             {
                 if (Instance != null) Instance.SetTouchSensitivityX(value);
@@ -103,7 +106,7 @@ namespace Shootopia
 
         public static float TouchSensitivityY
         {
-            get => Instance != null ? Instance._touchSensitivityY : 1.30f;
+            get => _instance != null ? _instance._touchSensitivityY : 1.30f;
             set
             {
                 if (Instance != null) Instance.SetTouchSensitivityY(value);
@@ -112,7 +115,7 @@ namespace Shootopia
 
         public static float TouchSensitivityADS
         {
-            get => Instance != null ? Instance._touchSensitivityADS : 0.65f;
+            get => _instance != null ? _instance._touchSensitivityADS : 0.65f;
             set
             {
                 if (Instance != null) Instance.SetTouchSensitivityADS(value);
@@ -121,7 +124,7 @@ namespace Shootopia
 
         public static MobileJoystickMode JoystickMode
         {
-            get => Instance != null ? Instance._joystickMode : MobileJoystickMode.Fixed;
+            get => _instance != null ? _instance._joystickMode : MobileJoystickMode.Fixed;
             set
             {
                 if (Instance != null) Instance.SetJoystickMode(value);
@@ -130,7 +133,7 @@ namespace Shootopia
 
         public static float TouchMoveSensitivity
         {
-            get => Instance != null ? Instance._touchMoveSensitivity : 1.4f;
+            get => _instance != null ? _instance._touchMoveSensitivity : 1.4f;
             set
             {
                 if (Instance != null) Instance.SetTouchMoveSensitivity(value);
@@ -140,11 +143,12 @@ namespace Shootopia
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
-            if (Instance == null)
+            _isQuitting = false;
+            if (_instance == null && Application.isPlaying)
             {
                 var go = new GameObject("DeviceProfileManager");
-                Instance = go.AddComponent<DeviceProfileManager>();
-                if (Application.isPlaying) DontDestroyOnLoad(go);
+                _instance = go.AddComponent<DeviceProfileManager>();
+                DontDestroyOnLoad(go);
             }
         }
 
@@ -158,11 +162,25 @@ namespace Shootopia
             }
 
             _instance = this;
+            _isQuitting = false;
             if (Application.isPlaying) DontDestroyOnLoad(gameObject);
 
             LoadPreferences();
             EvaluateEffectiveMode();
             ApplyPlatformPerformanceSettings();
+        }
+
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                _instance = null;
+            }
         }
 
         private void LoadPreferences()

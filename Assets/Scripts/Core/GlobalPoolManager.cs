@@ -12,18 +12,21 @@ namespace Shootopia
     public class GlobalPoolManager : MonoBehaviour
     {
         private static GlobalPoolManager _instance;
+        private static bool _isQuitting = false;
+
         public static GlobalPoolManager Instance
         {
             get
             {
+                if (_isQuitting) return null;
                 if (_instance == null)
                 {
                     _instance = FindAnyObjectByType<GlobalPoolManager>();
-                    if (_instance == null)
+                    if (_instance == null && Application.isPlaying && !_isQuitting)
                     {
                         var go = new GameObject("GlobalPoolManager");
                         _instance = go.AddComponent<GlobalPoolManager>();
-                        if (Application.isPlaying) DontDestroyOnLoad(go);
+                        DontDestroyOnLoad(go);
                     }
                 }
                 return _instance;
@@ -44,8 +47,22 @@ namespace Shootopia
             }
 
             _instance = this;
+            _isQuitting = false;
             if (Application.isPlaying) DontDestroyOnLoad(gameObject);
             EnsurePoolRoot();
+        }
+
+        private void OnApplicationQuit()
+        {
+            _isQuitting = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                _instance = null;
+            }
         }
 
         private void EnsurePoolRoot()

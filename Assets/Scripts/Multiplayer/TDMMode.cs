@@ -88,6 +88,12 @@ namespace Shootopia
         {
             if (!IsServer || !MatchInProgress.Value) return;
             AssignPlayerToTeam(clientId);
+
+            // Replicate all player team assignments to all clients so late joiners have full team state
+            foreach (var kvp in playerTeam)
+            {
+                SyncPlayerTeamClientRpc(kvp.Key, kvp.Value);
+            }
         }
 
         private void AssignPlayerToTeam(ulong clientId)

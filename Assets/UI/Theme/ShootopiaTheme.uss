@@ -1065,7 +1065,7 @@
 .busy-spinner-icon {
     width: 48px;
     height: 48px;
-    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/ufo-1-128.png");
+    background-image: url("project://database/Assets/Space_Exploration_GUI_Kit/Icons/radar-128.png");
     -unity-background-scale-mode: scale-to-fit;
     margin-bottom: 14px;
 }

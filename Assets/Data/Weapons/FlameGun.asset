@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 6190323765523087412, guid: a5f8ed30077a74a53b0b72d77c5455ce, type: 3}
   weaponName: Flame Gun
-  Damage: 1
+  Damage: 8
   FireRate: 0.06
   HitVFXPrefab: {fileID: 5762880852013441109, guid: 808cc5444dae25b4f8a8fa0d9230409e, type: 3}
   audio: {fileID: 11400000, guid: 8f0df0029df754471b3b7391520dd708, type: 2}
@@ -36,7 +36,7 @@ MonoBehaviour:
   isContinuous: 1
   isTrap: 0
   projectilePrefab: {fileID: 3562189247435599777, guid: 2afc0f75a655f4bb49a9301feb7f374b, type: 3}
-  projectileSpeed: 22
+  projectileSpeed: 26
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
@@ -47,8 +47,8 @@ MonoBehaviour:
   freezeDuration: 0
   maxSlowPercent: 0
   minSlowPercent: 0
-  afterburnDPS: 12
-  afterburnDuration: 2.5
+  afterburnDPS: 20
+  afterburnDuration: 3.5
   pullRadius: 0
   pullForce: 0
   voidDuration: 0
@@ -61,8 +61,8 @@ MonoBehaviour:
   requiresADSToFire: 0
   adsFOV: 60
   adsMoveSpeedMult: 1
-  damagePerSecond: 45
-  maxRange: 13.5
+  damagePerSecond: 80
+  maxRange: 15
   coneAngle: 17
   fuelDuration: 12
   tickRate: 0.1

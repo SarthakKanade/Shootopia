@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: FreezeGun
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 7389035053850368479, guid: 80cbf3e9c3a6b466b94c95191e9ab09c, type: 3}
-  weaponName: 
+  weaponName: Freeze Gun
   Damage: 55
   FireRate: 0.8
   HitVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
@@ -36,7 +36,7 @@ MonoBehaviour:
   isContinuous: 0
   isTrap: 0
   projectilePrefab: {fileID: 81779632608693436, guid: 40b9de7bbb29d4377b5b381089de05d7, type: 3}
-  projectileSpeed: 32
+  projectileSpeed: 38
   hasGravity: 0
   throwAngle: 0
   throwForce: 12

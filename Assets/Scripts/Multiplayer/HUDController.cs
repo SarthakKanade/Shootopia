@@ -41,6 +41,7 @@ namespace Shootopia
         [SerializeField] private GameObject preMatchRoot;
         [SerializeField] private CanvasGroup preMatchGroup;
         [SerializeField] private TextMeshProUGUI preMatchCountdownText;
+        [SerializeField] private TextMeshProUGUI preMatchSubText;
         [SerializeField] private AudioClip countdownBeepClip;
         [SerializeField] private AudioClip fightHornClip;
 
@@ -51,6 +52,7 @@ namespace Shootopia
         [SerializeField] private TextMeshProUGUI velocityStreakText;
 
         [Header("Weapon & Ammo Display")]
+        [SerializeField] private Image weaponIcon;
         [SerializeField] private TextMeshProUGUI weaponCategoryText;
         [SerializeField] private TextMeshProUGUI weaponNameText;
         [SerializeField] private TextMeshProUGUI ammoText;
@@ -71,7 +73,7 @@ namespace Shootopia
         [SerializeField] private Transform killFeedContainer;
         [SerializeField] private GameObject killFeedEntryPrefab;
 
-        [Header("Kill Feed Weapon Icons")]
+        [Header("Kill Feed & HUD Weapon Icons")]
         [SerializeField] private Sprite defaultWeaponSprite;
         [SerializeField] private Sprite pistolSprite;
         [SerializeField] private Sprite rifleSprite;
@@ -81,6 +83,10 @@ namespace Shootopia
         [SerializeField] private Sprite voidSprite;
         [SerializeField] private Sprite bounceSprite;
         [SerializeField] private Sprite meleeSprite;
+        [SerializeField] private Sprite blasterSprite;
+        [SerializeField] private Sprite grenadeSprite;
+        [SerializeField] private Sprite mineSprite;
+        [SerializeField] private Sprite smokeSprite;
         [SerializeField] private Sprite skullSprite;
 
         [Header("Combat Feel & Juice")]
@@ -127,10 +133,12 @@ namespace Shootopia
 
         // Countdown tracking
         private int _lastDisplayedCountdown = -999;
+        private bool _matchStartedDirectly = false;
 
         private void Awake()
         {
             Instance = this;
+            EnsurePreMatchCountdownUI();
         }
 
         private void OnEnable()
@@ -144,12 +152,18 @@ namespace Shootopia
             }
             _audioSource.spatialBlend = 0f;
 
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_MatchStarted", OnMatchStartedDirectMessage);
+            }
+
             // Subscribe to static combat events
             GameModeBase.OnKillFeedReceived += OnKillFeedEvent;
             GameModeBase.OnSystemMessageReceived += AddSystemFeedEntry;
             PlayerHealth.OnLocalPlayerHitConfirmed += OnPlayerHitConfirmed;
 
             // Hide overlay banners initially
+            EnsurePreMatchCountdownUI();
             if (preMatchRoot != null) preMatchRoot.SetActive(false);
             if (eliminationBannerRoot != null) eliminationBannerRoot.SetActive(false);
             if (deathBannerRoot != null) deathBannerRoot.SetActive(false);
@@ -166,6 +180,11 @@ namespace Shootopia
 
         private void OnDisable()
         {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_MatchStarted");
+            }
+
             DeviceProfileManager.OnControlModeChanged -= HandleControlModeChanged;
 
             if (_mobileControlsInstance != null)
@@ -187,6 +206,12 @@ namespace Shootopia
             if (_preMatchRoutine != null) { StopCoroutine(_preMatchRoutine); _preMatchRoutine = null; }
 
             if (Instance == this) Instance = null;
+        }
+
+        private void OnMatchStartedDirectMessage(ulong senderClientId, FastBufferReader reader)
+        {
+            Debug.Log("[HUDController] Received direct Shootopia_MatchStarted message.");
+            _matchStartedDirectly = true;
         }
 
         private void EnsureMobileControls()
@@ -326,6 +351,14 @@ namespace Shootopia
         private void UpdateTimerAndScore()
         {
             var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+            if (activeMode == null)
+            {
+                var ffaFallback = FindAnyObjectByType<FFAMode>();
+                var tdmFallback = FindAnyObjectByType<TDMMode>();
+                if (ffaFallback != null && ffaFallback.enabled) activeMode = ffaFallback;
+                else if (tdmFallback != null && tdmFallback.enabled) activeMode = tdmFallback;
+                else activeMode = (GameModeBase)ffaFallback ?? (GameModeBase)tdmFallback;
+            }
 
             // 1. Handle Pre-Match Countdown (3... 2... 1... FIGHT!)
             if (activeMode != null)
@@ -338,8 +371,18 @@ namespace Shootopia
                 }
             }
 
+            bool isMatchOfficiallyStarted = _matchStartedDirectly || 
+                                            (WaitingRoomController.Instance != null && WaitingRoomController.Instance.IsMatchStarted);
+            try
+            {
+                isMatchOfficiallyStarted = isMatchOfficiallyStarted || 
+                                           (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) ||
+                                           (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+            }
+            catch { }
+
             // 2. Handle Match Time Display
-            if (activeMode != null && activeMode.IsInProgress)
+            if (activeMode != null && (activeMode.IsInProgress || activeMode.MatchActive.Value))
             {
                 float timeRemaining = activeMode.TimeRemaining;
                 int minutes = Mathf.FloorToInt(timeRemaining / 60f);
@@ -372,9 +415,20 @@ namespace Shootopia
             {
                 if (timerText != null)
                 {
-                    bool isLobbyOpen = WaitingRoomController.IsLobbyMenuOpen;
-                    timerText.text = isLobbyOpen ? "WARMUP" : "05:00";
-                    timerText.color = Color.white;
+                    if (isMatchOfficiallyStarted)
+                    {
+                        float timeRemaining = activeMode != null ? activeMode.TimeRemaining : 300f;
+                        int minutes = Mathf.FloorToInt(timeRemaining / 60f);
+                        int seconds = Mathf.FloorToInt(timeRemaining % 60f);
+                        timerText.text = $"{minutes:00}:{seconds:00}";
+                        timerText.color = Color.white;
+                    }
+                    else
+                    {
+                        bool isLobbyOpen = WaitingRoomController.IsLobbyMenuOpen;
+                        timerText.text = isLobbyOpen ? "WARMUP" : "05:00";
+                        timerText.color = Color.white;
+                    }
                 }
             }
 
@@ -386,8 +440,27 @@ namespace Shootopia
         {
             if (activeMode == null)
             {
+                var ffaFallback = FindAnyObjectByType<FFAMode>();
+                var tdmFallback = FindAnyObjectByType<TDMMode>();
+                if (ffaFallback != null && ffaFallback.enabled) activeMode = ffaFallback;
+                else if (tdmFallback != null && tdmFallback.enabled) activeMode = tdmFallback;
+                else activeMode = (GameModeBase)ffaFallback ?? (GameModeBase)tdmFallback;
+            }
+
+            bool isMatchOfficiallyStarted = _matchStartedDirectly || 
+                                            (WaitingRoomController.Instance != null && WaitingRoomController.Instance.IsMatchStarted);
+            try
+            {
+                isMatchOfficiallyStarted = isMatchOfficiallyStarted || 
+                                           (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) ||
+                                           (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+            }
+            catch { }
+
+            if (activeMode == null)
+            {
                 if (matchLimitText != null) matchLimitText.text = "";
-                if (gameModeBadgeText != null) gameModeBadgeText.text = "WARMUP";
+                if (gameModeBadgeText != null) gameModeBadgeText.text = isMatchOfficiallyStarted ? "MATCH ACTIVE" : "WARMUP";
                 if (tdmScoreRoot != null) tdmScoreRoot.SetActive(false);
                 if (ffaScoreRoot != null) ffaScoreRoot.SetActive(false);
                 if (placementText != null) placementText.text = "";
@@ -456,13 +529,148 @@ namespace Shootopia
             {
                 if (tdmScoreRoot != null) tdmScoreRoot.SetActive(false);
                 if (ffaScoreRoot != null) ffaScoreRoot.SetActive(false);
-                if (gameModeBadgeText != null) gameModeBadgeText.text = "WARMUP";
+                if (gameModeBadgeText != null) gameModeBadgeText.text = isMatchOfficiallyStarted ? "MATCH ACTIVE" : "WARMUP";
                 if (matchLimitText != null) matchLimitText.text = "";
             }
         }
 
+        public void EnsurePreMatchCountdownUI()
+        {
+            if (preMatchRoot != null && preMatchCountdownText != null) return;
+
+            // Check if already in canvas hierarchy
+            var existing = transform.Find("PreMatchCountdownRoot");
+            if (existing != null)
+            {
+                preMatchRoot = existing.gameObject;
+                preMatchGroup = existing.GetComponent<CanvasGroup>();
+                preMatchCountdownText = existing.Find("CountdownNumber")?.GetComponent<TextMeshProUGUI>();
+                preMatchSubText = existing.Find("SubText")?.GetComponent<TextMeshProUGUI>();
+                if (preMatchRoot != null && preMatchCountdownText != null)
+                {
+                    preMatchRoot.SetActive(false);
+                    return;
+                }
+            }
+
+            // Create PreMatchCountdownRoot in exact center of screen
+            var rootObj = new GameObject("PreMatchCountdownRoot", typeof(RectTransform), typeof(CanvasGroup));
+            rootObj.transform.SetParent(transform, false);
+            var rt = rootObj.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0f, 35f);
+            rt.sizeDelta = new Vector2(480f, 260f);
+
+            var cg = rootObj.GetComponent<CanvasGroup>();
+            cg.alpha = 1f;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+
+            // Background Card
+            var bgObj = new GameObject("BackgroundPanel", typeof(RectTransform), typeof(Image));
+            bgObj.transform.SetParent(rootObj.transform, false);
+            var bgRt = bgObj.GetComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.pivot = new Vector2(0.5f, 0.5f);
+            bgRt.anchoredPosition = Vector2.zero;
+            bgRt.sizeDelta = Vector2.zero;
+            var bgImg = bgObj.GetComponent<Image>();
+            bgImg.color = new Color(0.04f, 0.07f, 0.15f, 0.90f);
+            bgImg.raycastTarget = false;
+
+            // Sample an existing sliced sprite if present on canvas
+            var sampleImg = GetComponentInChildren<Image>();
+            if (sampleImg != null && sampleImg.sprite != null)
+            {
+                bgImg.sprite = sampleImg.sprite;
+                bgImg.type = Image.Type.Sliced;
+            }
+
+            // Glowing Accent Top & Bottom lines
+            var topBarObj = new GameObject("TopAccent", typeof(RectTransform), typeof(Image));
+            topBarObj.transform.SetParent(bgObj.transform, false);
+            var topBarRt = topBarObj.GetComponent<RectTransform>();
+            topBarRt.anchorMin = new Vector2(0.12f, 1f);
+            topBarRt.anchorMax = new Vector2(0.88f, 1f);
+            topBarRt.pivot = new Vector2(0.5f, 1f);
+            topBarRt.anchoredPosition = new Vector2(0f, -6f);
+            topBarRt.sizeDelta = new Vector2(0f, 3f);
+            var topImg = topBarObj.GetComponent<Image>();
+            topImg.color = new Color(0.0f, 0.94f, 1.0f, 0.9f);
+            topImg.raycastTarget = false;
+
+            var botBarObj = new GameObject("BottomAccent", typeof(RectTransform), typeof(Image));
+            botBarObj.transform.SetParent(bgObj.transform, false);
+            var botBarRt = botBarObj.GetComponent<RectTransform>();
+            botBarRt.anchorMin = new Vector2(0.12f, 0f);
+            botBarRt.anchorMax = new Vector2(0.88f, 0f);
+            botBarRt.pivot = new Vector2(0.5f, 0f);
+            botBarRt.anchoredPosition = new Vector2(0f, 6f);
+            botBarRt.sizeDelta = new Vector2(0f, 3f);
+            var botImg = botBarObj.GetComponent<Image>();
+            botImg.color = new Color(0.0f, 0.94f, 1.0f, 0.9f);
+            botImg.raycastTarget = false;
+
+            // Subtitle text
+            var subObj = new GameObject("SubText", typeof(RectTransform), typeof(TextMeshProUGUI));
+            subObj.transform.SetParent(rootObj.transform, false);
+            var subRt = subObj.GetComponent<RectTransform>();
+            subRt.anchorMin = new Vector2(0f, 0.68f);
+            subRt.anchorMax = new Vector2(1f, 0.96f);
+            subRt.pivot = new Vector2(0.5f, 0.5f);
+            subRt.anchoredPosition = Vector2.zero;
+            subRt.sizeDelta = Vector2.zero;
+            var subTmp = subObj.GetComponent<TextMeshProUGUI>();
+            subTmp.text = "MATCH STARTING IN";
+            subTmp.fontSize = 22f;
+            subTmp.fontStyle = FontStyles.Bold;
+            subTmp.alignment = TextAlignmentOptions.Center;
+            subTmp.color = new Color(0.0f, 0.94f, 1.0f, 0.95f);
+            subTmp.characterSpacing = 8f;
+            subTmp.raycastTarget = false;
+
+            // Main Countdown Number / Text
+            var numObj = new GameObject("CountdownNumber", typeof(RectTransform), typeof(TextMeshProUGUI));
+            numObj.transform.SetParent(rootObj.transform, false);
+            var numRt = numObj.GetComponent<RectTransform>();
+            numRt.anchorMin = new Vector2(0f, 0.05f);
+            numRt.anchorMax = new Vector2(1f, 0.72f);
+            numRt.pivot = new Vector2(0.5f, 0.5f);
+            numRt.anchoredPosition = Vector2.zero;
+            numRt.sizeDelta = Vector2.zero;
+            var numTmp = numObj.GetComponent<TextMeshProUGUI>();
+            numTmp.text = "3";
+            numTmp.fontSize = 110f;
+            numTmp.fontStyle = FontStyles.Bold;
+            numTmp.alignment = TextAlignmentOptions.Center;
+            numTmp.color = new Color(0.0f, 0.94f, 1.0f, 1.0f);
+            numTmp.raycastTarget = false;
+
+            // Match font with timerText or scoreText if assigned
+            if (timerText != null && timerText.font != null)
+            {
+                subTmp.font = timerText.font;
+                numTmp.font = timerText.font;
+            }
+            else if (scoreText != null && scoreText.font != null)
+            {
+                subTmp.font = scoreText.font;
+                numTmp.font = scoreText.font;
+            }
+
+            preMatchRoot = rootObj;
+            preMatchGroup = cg;
+            preMatchCountdownText = numTmp;
+            preMatchSubText = subTmp;
+            rootObj.SetActive(false);
+        }
+
         private void HandleCountdownTick(int countdown)
         {
+            EnsurePreMatchCountdownUI();
             if (preMatchRoot == null || preMatchCountdownText == null) return;
 
             if (_preMatchRoutine != null) StopCoroutine(_preMatchRoutine);
@@ -474,49 +682,119 @@ namespace Shootopia
             if (countdown > 0)
             {
                 preMatchRoot.SetActive(true);
+                if (preMatchGroup != null) preMatchGroup.alpha = 1f;
+
+                if (preMatchSubText != null)
+                {
+                    preMatchSubText.text = "MATCH STARTING IN";
+                    preMatchSubText.color = new Color(0.7f, 0.9f, 1.0f, 0.95f);
+                }
+
                 preMatchCountdownText.text = countdown.ToString();
-                preMatchCountdownText.color = countdown == 1 ? new Color(1f, 0.4f, 0.4f) : new Color(0.0f, 0.94f, 1.0f);
+                preMatchCountdownText.fontSize = 110f;
+
+                Color numColor;
+                switch (countdown)
+                {
+                    case 3:
+                        numColor = new Color(0.0f, 0.94f, 1.0f); // Neon Cyan
+                        break;
+                    case 2:
+                        numColor = new Color(1.0f, 0.85f, 0.15f); // Electric Amber
+                        break;
+                    case 1:
+                        numColor = new Color(1.0f, 0.28f, 0.28f); // High-Alert Crimson
+                        break;
+                    default:
+                        numColor = new Color(0.0f, 0.94f, 1.0f);
+                        break;
+                }
+                preMatchCountdownText.color = numColor;
 
                 if (countdownBeepClip != null && _audioSource != null)
                 {
-                    _audioSource.PlayOneShot(countdownBeepClip, 0.8f);
+                    float originalPitch = _audioSource.pitch;
+                    _audioSource.pitch = countdown == 1 ? 1.25f : (countdown == 2 ? 1.12f : 1.0f);
+                    _audioSource.PlayOneShot(countdownBeepClip, 0.9f);
+                    _audioSource.pitch = originalPitch;
                 }
 
-                // Punch scale
+                // Punch scale with smooth spring bounce
                 var rt = preMatchCountdownText.GetComponent<RectTransform>();
-                if (rt != null) UIJuice.PunchScale(rt, 0.35f);
+                if (rt != null)
+                {
+                    float popDuration = 0.28f;
+                    float elapsed = 0f;
+                    while (elapsed < popDuration)
+                    {
+                        elapsed += Time.deltaTime;
+                        float t = Mathf.Clamp01(elapsed / popDuration);
+                        float scale = 1f + (1f - t) * 0.55f * Mathf.Cos(t * Mathf.PI * 1.5f);
+                        rt.localScale = Vector3.one * Mathf.Max(scale, 1f);
+                        yield return null;
+                    }
+                    rt.localScale = Vector3.one;
+                }
 
-                yield return new WaitForSeconds(0.9f);
+                yield return new WaitForSeconds(0.6f);
             }
             else if (countdown == 0)
             {
                 preMatchRoot.SetActive(true);
+                if (preMatchGroup != null) preMatchGroup.alpha = 1f;
+
+                if (preMatchSubText != null)
+                {
+                    preMatchSubText.text = "ENGAGE ALL HOSTILES";
+                    preMatchSubText.color = new Color(1.0f, 0.92f, 0.5f, 0.95f);
+                }
+
                 preMatchCountdownText.text = "FIGHT!";
-                preMatchCountdownText.color = new Color(1.0f, 0.84f, 0.0f); // Gold
+                preMatchCountdownText.fontSize = 100f;
+                preMatchCountdownText.color = new Color(1.0f, 0.88f, 0.1f); // Radiant Gold
 
                 if (fightHornClip != null && _audioSource != null)
                 {
                     _audioSource.PlayOneShot(fightHornClip, 1.0f);
                 }
 
+                // Impact punch scale for FIGHT!
                 var rt = preMatchCountdownText.GetComponent<RectTransform>();
-                if (rt != null) UIJuice.PunchScale(rt, 0.5f);
+                if (rt != null)
+                {
+                    float popDuration = 0.38f;
+                    float elapsed = 0f;
+                    while (elapsed < popDuration)
+                    {
+                        elapsed += Time.deltaTime;
+                        float t = Mathf.Clamp01(elapsed / popDuration);
+                        float scale = 1f + (1f - t) * 0.85f * Mathf.Cos(t * Mathf.PI * 1.5f);
+                        rt.localScale = Vector3.one * Mathf.Max(scale, 1f);
+                        yield return null;
+                    }
+                    rt.localScale = Vector3.one;
+                }
 
-                yield return new WaitForSeconds(1.0f);
+                yield return new WaitForSeconds(0.65f);
 
+                // Smooth fade out & subtle expansion
                 if (preMatchGroup != null)
                 {
                     float elapsed = 0f;
                     float dur = 0.4f;
+                    Vector3 startScale = preMatchRoot.transform.localScale;
                     while (elapsed < dur)
                     {
                         elapsed += Time.deltaTime;
-                        preMatchGroup.alpha = 1f - (elapsed / dur);
+                        float t = Mathf.Clamp01(elapsed / dur);
+                        preMatchGroup.alpha = 1f - t;
+                        preMatchRoot.transform.localScale = Vector3.Lerp(startScale, startScale * 1.15f, t);
                         yield return null;
                     }
                 }
 
                 preMatchRoot.SetActive(false);
+                preMatchRoot.transform.localScale = Vector3.one;
                 if (preMatchGroup != null) preMatchGroup.alpha = 1f;
             }
             else
@@ -529,6 +807,12 @@ namespace Shootopia
         {
             if (_localWeaponController == null || _localWeaponController.CurrentAttach == null)
             {
+                if (weaponIcon != null)
+                {
+                    weaponIcon.sprite = pistolSprite != null ? pistolSprite : defaultWeaponSprite;
+                    weaponIcon.color = Color.white;
+                    weaponIcon.gameObject.SetActive(true);
+                }
                 if (weaponCategoryText != null) weaponCategoryText.text = "PISTOL";
                 if (weaponNameText != null) weaponNameText.text = "SIDEARM";
                 if (ammoText != null) ammoText.text = "∞";
@@ -539,6 +823,27 @@ namespace Shootopia
             var attach = _localWeaponController.CurrentAttach;
             var weaponData = attach.gameplayData;
 
+            string rawName = "";
+            if (weaponData != null && !string.IsNullOrEmpty(weaponData.weaponName))
+            {
+                rawName = weaponData.weaponName;
+            }
+            else if (attach != null)
+            {
+                rawName = attach.name;
+            }
+
+            if (weaponIcon != null)
+            {
+                Sprite icon = GetWeaponSprite(rawName);
+                if (icon != null)
+                {
+                    weaponIcon.sprite = icon;
+                    weaponIcon.color = Color.white;
+                    weaponIcon.gameObject.SetActive(true);
+                }
+            }
+
             if (weaponCategoryText != null)
             {
                 weaponCategoryText.text = weaponData != null ? weaponData.category.ToString().ToUpper() : "WEAPON";
@@ -546,7 +851,7 @@ namespace Shootopia
 
             if (weaponNameText != null)
             {
-                weaponNameText.text = weaponData != null ? weaponData.weaponName.ToUpper() : attach.name.ToUpper();
+                weaponNameText.text = !string.IsNullOrEmpty(rawName) ? rawName.ToUpper() : "WEAPON";
             }
 
             if (ammoText != null)
@@ -776,17 +1081,21 @@ namespace Shootopia
 
         public Sprite GetWeaponSprite(string weaponName)
         {
-            if (string.IsNullOrEmpty(weaponName)) return skullSprite;
+            if (string.IsNullOrEmpty(weaponName)) return defaultWeaponSprite != null ? defaultWeaponSprite : pistolSprite;
             string lower = weaponName.ToLower();
-            if (lower.Contains("flame")) return flameSprite != null ? flameSprite : defaultWeaponSprite;
-            if (lower.Contains("freeze") || lower.Contains("cryo")) return cryoSprite != null ? cryoSprite : defaultWeaponSprite;
-            if (lower.Contains("void")) return voidSprite != null ? voidSprite : defaultWeaponSprite;
+            if (lower.Contains("flame") || lower.Contains("fire")) return flameSprite != null ? flameSprite : defaultWeaponSprite;
+            if (lower.Contains("freeze") || lower.Contains("cryo") || lower.Contains("ice")) return cryoSprite != null ? cryoSprite : defaultWeaponSprite;
+            if (lower.Contains("void") || lower.Contains("gravity") || lower.Contains("blackhole")) return voidSprite != null ? voidSprite : defaultWeaponSprite;
             if (lower.Contains("bounce") || lower.Contains("trick") || lower.Contains("laser")) return bounceSprite != null ? bounceSprite : defaultWeaponSprite;
             if (lower.Contains("sniper")) return sniperSprite != null ? sniperSprite : defaultWeaponSprite;
             if (lower.Contains("knife") || lower.Contains("sword") || lower.Contains("melee") || lower.Contains("axe")) return meleeSprite != null ? meleeSprite : defaultWeaponSprite;
+            if (lower.Contains("blaster") || lower.Contains("area") || lower.Contains("rocket") || lower.Contains("blast")) return blasterSprite != null ? blasterSprite : (rifleSprite != null ? rifleSprite : defaultWeaponSprite);
+            if (lower.Contains("grenade") || lower.Contains("explosive") || lower.Contains("bomb")) return grenadeSprite != null ? grenadeSprite : defaultWeaponSprite;
+            if (lower.Contains("mine") || lower.Contains("trip") || lower.Contains("trap")) return mineSprite != null ? mineSprite : defaultWeaponSprite;
+            if (lower.Contains("smoke") || lower.Contains("canister") || lower.Contains("gas")) return smokeSprite != null ? smokeSprite : defaultWeaponSprite;
             if (lower.Contains("pistol") || lower.Contains("sidearm")) return pistolSprite != null ? pistolSprite : defaultWeaponSprite;
-            if (lower.Contains("machine") || lower.Contains("rifle") || lower.Contains("gun")) return rifleSprite != null ? rifleSprite : defaultWeaponSprite;
-            return skullSprite != null ? skullSprite : defaultWeaponSprite;
+            if (lower.Contains("machine") || lower.Contains("rifle") || lower.Contains("gun") || lower.Contains("shooter") || lower.Contains("ar-15")) return rifleSprite != null ? rifleSprite : defaultWeaponSprite;
+            return defaultWeaponSprite != null ? defaultWeaponSprite : pistolSprite;
         }
 
         private void OnKillFeedEvent(string killerName, string victimName, string weaponName, ulong killerId, ulong victimId)
@@ -796,6 +1105,14 @@ namespace Shootopia
             bool isLocalVictim = (victimId == localClientId);
 
             var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+            if (activeMode == null)
+            {
+                var ffaFallback = FindAnyObjectByType<FFAMode>();
+                var tdmFallback = FindAnyObjectByType<TDMMode>();
+                if (ffaFallback != null && ffaFallback.enabled) activeMode = ffaFallback;
+                else if (tdmFallback != null && tdmFallback.enabled) activeMode = tdmFallback;
+                else activeMode = (GameModeBase)ffaFallback ?? (GameModeBase)tdmFallback;
+            }
             bool isKillerFriendly = false;
             bool isVictimFriendly = false;
 

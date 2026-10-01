@@ -157,7 +157,7 @@ namespace Shootopia.Editor
 
             // Crown / Ready Badges
             var crown = CreateImage("CrownIcon", root.transform, ICON_CROWN, new Vector2(32, 32));
-            var readyBadge = CreateImage("ReadyBadge", root.transform, ICON_STAR, new Vector2(28, 28));
+            var readyBadge = CreateImage("ReadyBadge", root.transform, "Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/check-64.png", new Vector2(24, 24));
 
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             GameObject.DestroyImmediate(root);
@@ -724,15 +724,22 @@ namespace Shootopia.Editor
             wpnRt.pivot = new Vector2(1f, 0f);
             wpnRt.anchoredPosition = new Vector2(-30, 30);
 
+            var wpnIcon = CreateImage("WeaponIcon", weaponCard.transform, ICON_GUN, new Vector2(48, 48));
+            wpnIcon.GetComponent<RectTransform>().anchoredPosition = new Vector2(-120, 0);
+            wpnIcon.GetComponent<Image>().preserveAspect = true;
+
             var wpnCat = CreateTMPText("WeaponCategory", weaponCard.transform, "ASSAULT RIFLE", 14, new Color(0.7f, 0.85f, 1f), BodyFont, TextAlignmentOptions.MidlineRight);
-            wpnCat.GetComponent<RectTransform>().anchoredPosition = new Vector2(-20, 22);
+            wpnCat.GetComponent<RectTransform>().anchoredPosition = new Vector2(25, 22);
+            wpnCat.GetComponent<RectTransform>().sizeDelta = new Vector2(240, 22);
             var wpnName = CreateTMPText("WeaponName", weaponCard.transform, "AR-15 AUTOMATIC", 20, Color.white, TitleFont, TextAlignmentOptions.MidlineRight);
-            wpnName.GetComponent<RectTransform>().anchoredPosition = new Vector2(-20, -2);
+            wpnName.GetComponent<RectTransform>().anchoredPosition = new Vector2(25, 0);
+            wpnName.GetComponent<RectTransform>().sizeDelta = new Vector2(240, 26);
             var ammoTxt = CreateTMPText("AmmoText", weaponCard.transform, "30 / ∞", 22, new Color(1f, 0.85f, 0.2f), TitleFont, TextAlignmentOptions.MidlineRight);
-            ammoTxt.GetComponent<RectTransform>().anchoredPosition = new Vector2(-20, -26);
+            ammoTxt.GetComponent<RectTransform>().anchoredPosition = new Vector2(25, -24);
+            ammoTxt.GetComponent<RectTransform>().sizeDelta = new Vector2(240, 22);
 
             var cdBar = CreateImage("CooldownBar", weaponCard.transform, SPRITE_BAR_BG, new Vector2(180, 8));
-            cdBar.GetComponent<RectTransform>().anchoredPosition = new Vector2(-20, -38);
+            cdBar.GetComponent<RectTransform>().anchoredPosition = new Vector2(25, -38);
             var cdFill = CreateImage("CooldownFill", cdBar.transform, SPRITE_BAR_FILL, new Vector2(176, 6));
             cdFill.type = Image.Type.Filled;
             cdFill.fillMethod = Image.FillMethod.Horizontal;
@@ -783,6 +790,58 @@ namespace Shootopia.Editor
             elimBanner.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 180);
             var elimTxt = CreateTMPText("KillTxt", elimBanner.transform, "+1 ELIMINATED", 22, new Color(1f, 0.9f, 0.3f), TitleFont, TextAlignmentOptions.Center);
             elimBanner.gameObject.SetActive(false);
+
+            // 5b. Pre-Match Center Screen Countdown UI
+            var preMatchCountdownRoot = CreateEmpty("PreMatchCountdownRoot", canvasObj.transform);
+            var pmRt = preMatchCountdownRoot.GetComponent<RectTransform>();
+            pmRt.anchorMin = new Vector2(0.5f, 0.5f);
+            pmRt.anchorMax = new Vector2(0.5f, 0.5f);
+            pmRt.pivot = new Vector2(0.5f, 0.5f);
+            pmRt.anchoredPosition = new Vector2(0f, 35f);
+            pmRt.sizeDelta = new Vector2(480f, 260f);
+
+            var pmCg = preMatchCountdownRoot.AddComponent<CanvasGroup>();
+            pmCg.alpha = 1f;
+            pmCg.blocksRaycasts = false;
+            pmCg.interactable = false;
+
+            var pmBg = CreateImage("BackgroundPanel", preMatchCountdownRoot.transform, SPRITE_CARD_CONTAINER, new Vector2(480, 260));
+            pmBg.color = new Color(0.04f, 0.07f, 0.15f, 0.90f);
+            SetStretch(pmBg.GetComponent<RectTransform>(), 0, 0, 1, 1, Vector2.zero, Vector2.zero);
+
+            var pmTopAccent = CreateImage("TopAccent", pmBg.transform, SPRITE_BAR_FILL, new Vector2(380, 3));
+            var ptaRt = pmTopAccent.GetComponent<RectTransform>();
+            ptaRt.anchorMin = new Vector2(0.5f, 1f);
+            ptaRt.anchorMax = new Vector2(0.5f, 1f);
+            ptaRt.pivot = new Vector2(0.5f, 1f);
+            ptaRt.anchoredPosition = new Vector2(0f, -6f);
+            pmTopAccent.color = new Color(0.0f, 0.94f, 1.0f, 0.9f);
+
+            var pmBotAccent = CreateImage("BottomAccent", pmBg.transform, SPRITE_BAR_FILL, new Vector2(380, 3));
+            var pbaRt = pmBotAccent.GetComponent<RectTransform>();
+            pbaRt.anchorMin = new Vector2(0.5f, 0f);
+            pbaRt.anchorMax = new Vector2(0.5f, 0f);
+            pbaRt.pivot = new Vector2(0.5f, 0f);
+            pbaRt.anchoredPosition = new Vector2(0f, 6f);
+            pmBotAccent.color = new Color(0.0f, 0.94f, 1.0f, 0.9f);
+
+            var pmSubTxt = CreateTMPText("SubText", preMatchCountdownRoot.transform, "MATCH STARTING IN", 22, new Color(0.0f, 0.94f, 1.0f, 0.95f), TitleFont, TextAlignmentOptions.Center);
+            var pstRt = pmSubTxt.GetComponent<RectTransform>();
+            pstRt.anchorMin = new Vector2(0f, 0.68f);
+            pstRt.anchorMax = new Vector2(1f, 0.96f);
+            pstRt.pivot = new Vector2(0.5f, 0.5f);
+            pstRt.anchoredPosition = Vector2.zero;
+            pstRt.sizeDelta = Vector2.zero;
+
+            var pmNumTxt = CreateTMPText("CountdownNumber", preMatchCountdownRoot.transform, "3", 110, new Color(0.0f, 0.94f, 1.0f, 1.0f), TitleFont, TextAlignmentOptions.Center);
+            var pntRt = pmNumTxt.GetComponent<RectTransform>();
+            pntRt.anchorMin = new Vector2(0f, 0.05f);
+            pntRt.anchorMax = new Vector2(1f, 0.72f);
+            pntRt.pivot = new Vector2(0.5f, 0.5f);
+            pntRt.anchoredPosition = Vector2.zero;
+            pntRt.sizeDelta = Vector2.zero;
+
+            preMatchCountdownRoot.SetActive(false);
 
             // 6. Tactical Pause Menu (ESC)
             var pauseModal = CreateModal("PauseMenuRoot", canvasObj.transform, SPRITE_PAUSE_CONTAINER, new Vector2(500, 420), "PAUSED");
@@ -859,11 +918,26 @@ namespace Shootopia.Editor
             hudSo.FindProperty("timerText").objectReferenceValue = timerTxt;
             hudSo.FindProperty("healthFill").objectReferenceValue = hpFill;
             hudSo.FindProperty("healthText").objectReferenceValue = hpTxt;
+            hudSo.FindProperty("weaponIcon").objectReferenceValue = wpnIcon.GetComponent<Image>();
             hudSo.FindProperty("weaponCategoryText").objectReferenceValue = wpnCat;
             hudSo.FindProperty("weaponNameText").objectReferenceValue = wpnName;
             hudSo.FindProperty("ammoText").objectReferenceValue = ammoTxt;
             hudSo.FindProperty("cooldownBarRoot").objectReferenceValue = cdBar.gameObject;
             hudSo.FindProperty("cooldownFill").objectReferenceValue = cdFill;
+            hudSo.FindProperty("defaultWeaponSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/gun-128.png");
+            hudSo.FindProperty("pistolSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/gun-128.png");
+            hudSo.FindProperty("rifleSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/gun-128.png");
+            hudSo.FindProperty("sniperSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/cross-128.png");
+            hudSo.FindProperty("flameSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/flame-128.png");
+            hudSo.FindProperty("cryoSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/snowflake-128.png");
+            hudSo.FindProperty("voidSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/black-hole-128.png");
+            hudSo.FindProperty("bounceSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/shuffle-arrow-128.png");
+            hudSo.FindProperty("meleeSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/sword-128.png");
+            hudSo.FindProperty("blasterSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/rocket-128.png");
+            hudSo.FindProperty("grenadeSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/commet-128.png");
+            hudSo.FindProperty("mineSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/caution-128.png");
+            hudSo.FindProperty("smokeSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/cloud-128.png");
+            hudSo.FindProperty("skullSprite").objectReferenceValue = LoadSprite("Assets/3rdParty/Space_Exploration_GUI_Kit/Picto_Icons/White/skull-128.png");
             hudSo.FindProperty("killFeedContainer").objectReferenceValue = killFeed.transform;
             hudSo.FindProperty("damageFlashGroup").objectReferenceValue = dmgCg;
             hudSo.FindProperty("hitMarkerRoot").objectReferenceValue = hitMarker;
@@ -875,6 +949,12 @@ namespace Shootopia.Editor
             ticksProp.GetArrayElementAtIndex(3).objectReferenceValue = hmR;
             hudSo.FindProperty("killConfirmationRoot").objectReferenceValue = elimBanner.gameObject;
             hudSo.FindProperty("killConfirmationText").objectReferenceValue = elimTxt;
+            hudSo.FindProperty("preMatchRoot").objectReferenceValue = preMatchCountdownRoot;
+            hudSo.FindProperty("preMatchGroup").objectReferenceValue = pmCg;
+            hudSo.FindProperty("preMatchCountdownText").objectReferenceValue = pmNumTxt;
+            hudSo.FindProperty("preMatchSubText").objectReferenceValue = pmSubTxt;
+            hudSo.FindProperty("countdownBeepClip").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/ui_click.wav");
+            hudSo.FindProperty("fightHornClip").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/match_start.wav");
             hudSo.ApplyModifiedProperties();
 
             // Wire PauseMenuController

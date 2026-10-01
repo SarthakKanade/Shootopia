@@ -232,7 +232,14 @@ namespace Shootopia
                     float normalizedDist = Mathf.Clamp01(distToPOC / blastRadius);
                     float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
 
-                    targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
+                    if (targetHealth != null)
+                    {
+                        targetHealth.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData, attackerId);
+                    }
+                    else
+                    {
+                        targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
+                    }
 
                     // Freeze status effect
                     if (IsFreezeWeapon() && targetHealth != null)
@@ -282,7 +289,14 @@ namespace Shootopia
                 }
 
                 float damage = _weaponData != null ? _weaponData.Damage : 10f;
-                damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
+                if (targetHealth != null)
+                {
+                    targetHealth.TakeDamage(damage, DamageType.Projectile, _weaponData, attackerId);
+                }
+                else
+                {
+                    damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
+                }
             }
         }
 

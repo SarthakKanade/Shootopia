@@ -85,13 +85,19 @@ namespace Shootopia
                     UnsubscribeFromSessionEvents(_currentSession);
                     await _currentSession.LeaveAsync();
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[SessionManager] Note leaving session: {ex.Message}");
+                }
                 _currentSession = null;
             }
 
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+            if (NetworkManager.Singleton != null && (NetworkManager.Singleton.IsListening || NetworkManager.Singleton.ShutdownInProgress))
             {
-                NetworkManager.Singleton.Shutdown();
+                if (!NetworkManager.Singleton.ShutdownInProgress)
+                {
+                    NetworkManager.Singleton.Shutdown();
+                }
                 while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
                 {
                     await Task.Yield();
@@ -521,6 +527,20 @@ namespace Shootopia
             else
             {
                 LoadingScreenManager.LoadScene(mapName, "DEPLOYING TO ARENA...");
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (_currentSession != null)
+            {
+                try
+                {
+                    UnsubscribeFromSessionEvents(_currentSession);
+                    _ = _currentSession.LeaveAsync();
+                }
+                catch { }
+                _currentSession = null;
             }
         }
     }

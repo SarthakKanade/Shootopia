@@ -142,27 +142,29 @@ namespace Shootopia
         {
             yield return new WaitForSecondsRealtime(0.5f);
 
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-            {
-                try
-                {
-                    NetworkManager.Singleton.Shutdown();
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"[DisconnectHandler] NetworkManager shutdown note: {ex.Message}");
-                }
-            }
-
-            if (SessionManager.Instance != null)
+            if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
             {
                 _ = SessionManager.Instance.LeaveSession();
             }
-
-            string currentScene = SceneManager.GetActiveScene().name;
-            if (currentScene != "MainMenu")
+            else
             {
-                LoadingScreenManager.LoadScene("MainMenu", "CONNECTION TERMINATED");
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+                {
+                    try
+                    {
+                        NetworkManager.Singleton.Shutdown();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[DisconnectHandler] NetworkManager shutdown note: {ex.Message}");
+                    }
+                }
+
+                string currentScene = SceneManager.GetActiveScene().name;
+                if (currentScene != "MainMenu")
+                {
+                    LoadingScreenManager.LoadScene("MainMenu", "CONNECTION TERMINATED");
+                }
             }
 
             _isHandlingHostDisconnect = false;

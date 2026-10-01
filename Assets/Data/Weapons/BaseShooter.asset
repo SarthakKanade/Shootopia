@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: BaseShooter
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 1885897743324476377, guid: 01b91c0501dc8440fba00b0762e5db3a, type: 3}
-  weaponName: 
+  weaponName: Base Shooter
   Damage: 18
   FireRate: 0.15
   HitVFXPrefab: {fileID: 7863198228031518838, guid: ad18e6c4064e9ed4191fd84f2567b5ed, type: 3}
@@ -36,7 +36,7 @@ MonoBehaviour:
   isContinuous: 0
   isTrap: 0
   projectilePrefab: {fileID: 5336521911398639362, guid: ebb18a36e486f451293348d19b2c2596, type: 3}
-  projectileSpeed: 42
+  projectileSpeed: 48
   hasGravity: 0
   throwAngle: 0
   throwForce: 12

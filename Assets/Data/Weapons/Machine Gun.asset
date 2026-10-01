@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Machine Gun
   m_EditorClassIdentifier: 
   weaponPrefab: {fileID: 8692910226276447678, guid: dc38c346b9ddecd4782f0fe69612a800, type: 3}
-  weaponName: 
+  weaponName: Machine Gun
   Damage: 1
   FireRate: 0.07
   HitVFXPrefab: {fileID: 2441387557689100275, guid: 19ac90b976612fc4391769548028212e, type: 3}

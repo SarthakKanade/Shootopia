@@ -240,29 +240,13 @@ namespace Shootopia
 
         private void ShowResults(string winnerInfo, PlayerScoreEntry[] scores)
         {
-            CursorManager.PushUnlock("ResultsScreen");
-
             if (resultsRoot != null)
             {
-                ApplyWaitingRoomStyling();
-                resultsRoot.SetActive(true);
-                UIJuice.PopIn(resultsRoot.GetComponent<RectTransform>(), resultsCanvasGroup);
+                resultsRoot.SetActive(false);
             }
 
             string localName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "";
             bool isWinner = !string.IsNullOrEmpty(localName) && winnerInfo.IndexOf(localName, System.StringComparison.OrdinalIgnoreCase) >= 0;
-
-            if (outcomeBannerText != null)
-            {
-                outcomeBannerText.text = isWinner ? "VICTORY!" : "MATCH FINISHED";
-                outcomeBannerText.color = isWinner ? ColorGold : new Color(0.95f, 0.35f, 0.35f, 1f);
-            }
-
-            if (winnerInfoText != null)
-            {
-                winnerInfoText.text = winnerInfo.ToUpper();
-                winnerInfoText.color = ColorGold;
-            }
 
             if (victoryClip != null && isWinner && AudioManager.Instance != null)
             {
@@ -273,7 +257,8 @@ namespace Shootopia
                 AudioManager.Instance.PlaySFX2D(defeatClip, 1.0f);
             }
 
-            PopulateFinalScoreboard(scores);
+            // Route directly to unified WaitingRoom GameOver Modal
+            WaitingRoomController.ShowGameOver(winnerInfo, scores);
         }
 
         private void PopulateFinalScoreboard(PlayerScoreEntry[] scores)
@@ -365,15 +350,14 @@ namespace Shootopia
             if (btnReturnToLobby != null) btnReturnToLobby.interactable = false;
             if (btnMainMenu != null) btnMainMenu.interactable = false;
 
-            LoadingScreenManager.ShowOverlay("RETURNING TO WAITING ROOM...");
-
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            if (NetworkedGameManager.Instance != null)
             {
-                NetworkManager.Singleton.SceneManager.LoadScene("WaitingRoom", LoadSceneMode.Single);
+                NetworkedGameManager.Instance.RequestRematch();
             }
-            else
+            else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
-                LoadingScreenManager.LoadScene("WaitingRoom", "RETURNING TO WAITING ROOM...");
+                string currentMap = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                NetworkManager.Singleton.SceneManager.LoadScene(currentMap, LoadSceneMode.Single);
             }
         }
 
