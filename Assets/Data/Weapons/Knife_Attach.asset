@@ -16,7 +16,7 @@ MonoBehaviour:
   gameplayData: {fileID: 11400000, guid: 14f24e591a46b47f3afb1a2012ed8f73, type: 2}
   visualPrefab: {fileID: 3758389681468904059, guid: 35d3255f3afbb1445bb195eed0a5a120, type: 3}
   equipLocalPos: {x: 0.05, y: -0.02, z: 0.05}
-  equipLocalEuler: {x: 0, y: 90, z: 90}
+  equipLocalEuler: {x: 90, y: 90, z: 0}
   muzzleChildName: Muzzle
   gripRChildName: GripR
   gripLChildName: 

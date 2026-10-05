@@ -134,13 +134,25 @@ namespace Shootopia
             _lineRenderer.SetPositions(points.ToArray());
         }
 
+        private void OnDisable()
+        {
+            HideTrajectory();
+        }
+
         /// <summary>
         /// Hides trajectory line and impact marker.
         /// </summary>
         public void HideTrajectory()
         {
-            if (_lineRenderer != null) _lineRenderer.enabled = false;
-            if (_impactMarkerInstance != null) _impactMarkerInstance.SetActive(false);
+            if (_lineRenderer != null)
+            {
+                _lineRenderer.positionCount = 0;
+                _lineRenderer.enabled = false;
+            }
+            if (_impactMarkerInstance != null)
+            {
+                _impactMarkerInstance.SetActive(false);
+            }
         }
 
         private void OnDestroy()

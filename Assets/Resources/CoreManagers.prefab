@@ -919,6 +919,14 @@ MonoBehaviour:
   poolSize: 16
   defaultSpatialMinDistance: 1
   defaultSpatialMaxDistance: 35
+  musicHeadroomScale: 0.32
+  defaultDuckLevel: 0.4
+  duckLowPassCutoff: 4500
+  duckAttackTime: 0.06
+  duckReleaseTime: 0.9
+  waitingRoomMusicClip: {fileID: 8300000, guid: 4c805beb61dd14a8682e1d04824a5b7c, type: 3}
+  gasStationMusicClip: {fileID: 8300000, guid: 9c4875c01547344ce8729ff95e848eb2, type: 3}
+  volcanoMusicClip: {fileID: 8300000, guid: 29a4d6b0d84b7497cbd6d460d9a13fcf, type: 3}
 --- !u!1 &8544847469482827657
 GameObject:
   m_ObjectHideFlags: 0

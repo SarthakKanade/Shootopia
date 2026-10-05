@@ -1846,8 +1846,8 @@ MonoBehaviour:
   chipMapSectorAlpha: {fileID: 2125972930}
   chipMapGasStation: {fileID: 2092941969}
   sliderMaxPlayers: {fileID: 511775037}
-  btnDecreasePlayers: {fileID: 0}
-  btnIncreasePlayers: {fileID: 0}
+  btnDecreasePlayers: {fileID: 432550383}
+  btnIncreasePlayers: {fileID: 2007101924}
   labelMaxPlayers: {fileID: 266512249}
   togglePublicRoom: {fileID: 1999948816}
   btnConfirmCreate: {fileID: 2049037411}

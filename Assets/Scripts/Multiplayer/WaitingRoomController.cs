@@ -79,6 +79,9 @@ namespace Shootopia
 
         [Header("Audio & SFX")]
         [SerializeField] private AudioClip startMatchClip;
+        [SerializeField] private AudioClip waitingRoomBgm;
+        [SerializeField] private AudioClip gasStationBgm;
+        [SerializeField] private AudioClip volcanoBgm;
 
         // Colors
         private static readonly Color ColorSapphire = new Color(0.18f, 0.72f, 1.0f, 1.0f); // #2EB8FF
@@ -101,6 +104,14 @@ namespace Shootopia
         private void Awake()
         {
             Instance = this;
+        }
+
+        private void Start()
+        {
+            if (!_matchStarted && !_isGameOverMode)
+            {
+                PlayWaitingRoomMusic();
+            }
         }
 
         private void OnEnable()
@@ -147,6 +158,8 @@ namespace Shootopia
                 SessionManager.Instance.OnPlayerReadyChanged.AddListener(RefreshLobbyUI);
                 SessionManager.Instance.OnSessionUpdated.AddListener(RefreshLobbyUI);
             }
+
+            PlayWaitingRoomMusic();
         }
 
         private void OnDisable()
@@ -445,10 +458,30 @@ namespace Shootopia
             PopulateRoster(session, isHost, isTeamMode);
         }
 
+        private bool AreAllPlayersReady()
+        {
+            if (SessionManager.Instance == null) return true;
+            var readyStates = SessionManager.Instance.GetPlayerReadyStates();
+            if (readyStates == null || readyStates.Count <= 1) return true;
+
+            var session = SessionManager.Instance.GetCurrentSession();
+            string hostId = session != null ? session.Host : "";
+            foreach (var p in readyStates)
+            {
+                bool isHost = (p.playerId == hostId);
+                if (!isHost && !p.isReady)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private bool CanStartMatch(string mode, int playerCount)
         {
-            // Allow the host to start as long as there is at least 1 player in the session
-            return playerCount >= 1;
+            // Allow the host to start only when there is at least 1 player and all joined players are ready
+            if (playerCount < 1) return false;
+            return AreAllPlayersReady();
         }
 
         private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
@@ -508,13 +541,19 @@ namespace Shootopia
             if (labelAlphaCount != null) labelAlphaCount.text = $"({alphaCount})";
             if (labelOmegaCount != null) labelOmegaCount.text = $"({omegaCount})";
 
+            bool allReady = (readyCount >= readyStates.Count);
+            if (btnStartMatch != null && isHost)
+            {
+                btnStartMatch.interactable = allReady;
+            }
+
             if (rosterStatusSummary != null)
             {
                 if (isHost)
                 {
-                    rosterStatusSummary.text = (readyCount >= readyStates.Count)
+                    rosterStatusSummary.text = allReady
                         ? "<color=#45F595>ALL PLAYERS READY — LAUNCH ARENA</color>"
-                        : $"<color=#FFD555>{readyCount}/{readyStates.Count} PLAYERS READY</color>";
+                        : $"<color=#FFD555>WAITING FOR PLAYERS ({readyCount}/{readyStates.Count} READY)</color>";
                 }
                 else
                 {
@@ -647,6 +686,12 @@ namespace Shootopia
 
         private void StartMatchAsHost()
         {
+            if (!AreAllPlayersReady())
+            {
+                Debug.LogWarning("[WaitingRoomController] Cannot start match: Not all players are ready!");
+                return;
+            }
+
             if (startMatchClip != null && AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlaySFX2D(startMatchClip, 1.0f);
@@ -674,7 +719,125 @@ namespace Shootopia
             if (lobbyModalDiv != null) lobbyModalDiv.SetActive(false);
             if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
             // Keep gameObject active so event listeners, audio, and GameOver triggers remain alive.
+
+            PlayMapBattleMusic();
         }
+
+        private string GetCurrentMapName()
+        {
+            if (SessionManager.Instance != null)
+            {
+                string sessionMap = SessionManager.Instance.GetSessionMapName();
+                if (!string.IsNullOrEmpty(sessionMap)) return sessionMap;
+            }
+            return SceneManager.GetActiveScene().name;
+        }
+
+        private void PlayWaitingRoomMusic()
+        {
+            if (AudioManager.Instance != null)
+            {
+                if (waitingRoomBgm != null)
+                {
+                    AudioManager.Instance.PlayMusic(waitingRoomBgm, 1.0f);
+                }
+                else
+                {
+                    AudioManager.Instance.PlayWaitingRoomMusic(1.0f);
+                }
+            }
+            else
+            {
+                StartCoroutine(DeferredPlayWaitingRoomMusic());
+            }
+        }
+
+        private IEnumerator DeferredPlayWaitingRoomMusic()
+        {
+            float elapsed = 0f;
+            while (AudioManager.Instance == null && elapsed < 5f)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            if (!_matchStarted && !_isGameOverMode && AudioManager.Instance != null)
+            {
+                if (waitingRoomBgm != null)
+                {
+                    AudioManager.Instance.PlayMusic(waitingRoomBgm, 1.0f);
+                }
+                else
+                {
+                    AudioManager.Instance.PlayWaitingRoomMusic(1.0f);
+                }
+            }
+        }
+
+        private void PlayMapBattleMusic()
+        {
+            string mapName = GetCurrentMapName();
+            AudioClip directClip = null;
+            if (string.Equals(mapName, "GasStationMap", System.StringComparison.OrdinalIgnoreCase) ||
+                mapName.IndexOf("GasStation", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                directClip = gasStationBgm;
+            }
+            else
+            {
+                directClip = volcanoBgm;
+            }
+
+            if (AudioManager.Instance != null)
+            {
+                if (directClip != null)
+                {
+                    AudioManager.Instance.PlayMusic(directClip, 1.2f);
+                }
+                else
+                {
+                    AudioManager.Instance.PlayMapMusic(mapName, 1.2f);
+                }
+            }
+            else
+            {
+                StartCoroutine(DeferredPlayMapBattleMusic(mapName, directClip));
+            }
+        }
+
+        private IEnumerator DeferredPlayMapBattleMusic(string mapName, AudioClip directClip)
+        {
+            float elapsed = 0f;
+            while (AudioManager.Instance == null && elapsed < 5f)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            if (AudioManager.Instance != null)
+            {
+                if (directClip != null)
+                {
+                    AudioManager.Instance.PlayMusic(directClip, 1.2f);
+                }
+                else
+                {
+                    AudioManager.Instance.PlayMapMusic(mapName, 1.2f);
+                }
+            }
+        }
+
+#if UNITY_EDITOR
+        public void AutoAssignMusicClips()
+        {
+            if (waitingRoomBgm == null)
+                waitingRoomBgm = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/02. Lively City.mp3");
+            if (gasStationBgm == null)
+                gasStationBgm = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/16. Battle Theme III (loop).mp3");
+            if (volcanoBgm == null)
+                volcanoBgm = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/15. Volcanic Crater.mp3");
+        }
+#endif
 
         public static void ShowGameOver(string winnerInfo, PlayerScoreEntry[] scores)
         {

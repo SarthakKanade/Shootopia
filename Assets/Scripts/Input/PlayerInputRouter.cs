@@ -56,6 +56,8 @@ namespace Shootopia
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            Intent = default;
+            LookDelta = Vector2.zero;
         }
 
         private void UpdateCursorLock()

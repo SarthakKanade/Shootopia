@@ -11240,35 +11240,35 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1271361353707003746, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1271361353707003746, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1271361353707003746, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 255
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1271361353707003746, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -21
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2328490927215805789, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2328490927215805789, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2328490927215805789, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 126.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2328490927215805789, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -12.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3110405106110733673, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_Pivot.x
@@ -11356,23 +11356,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3936967088534192075, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5599996854951758606, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5599996854951758606, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5599996854951758606, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 96
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5599996854951758606, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -21
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7267593556984871562, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_IsActive
@@ -11380,19 +11380,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9060243079927899401, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9060243079927899401, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9060243079927899401, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 393.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9060243079927899401, guid: 6fbc9ff35d0984801b0db13d7c122371, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -12.5
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -31350,6 +31350,7 @@ MonoBehaviour:
   healthText: {fileID: 669926529}
   velocityFill: {fileID: 0}
   velocityStreakText: {fileID: 0}
+  weaponIcon: {fileID: 0}
   weaponCategoryText: {fileID: 2050000011}
   weaponNameText: {fileID: 1248302135}
   ammoText: {fileID: 82721564}
@@ -31371,6 +31372,10 @@ MonoBehaviour:
   voidSprite: {fileID: 21300000, guid: 3675335aea8c98c4dac401c273f039b8, type: 3}
   bounceSprite: {fileID: 21300000, guid: 2be418c2561b8ad4689366ccd5653720, type: 3}
   meleeSprite: {fileID: 21300000, guid: 6025336166ea5ad4a93dab4adf795a10, type: 3}
+  blasterSprite: {fileID: 0}
+  grenadeSprite: {fileID: 0}
+  mineSprite: {fileID: 0}
+  smokeSprite: {fileID: 0}
   skullSprite: {fileID: 21300000, guid: 957f61d3384a86e4ab44d649213699c4, type: 3}
   damageFlashGroup: {fileID: 1669707849}
   hitMarkerRoot: {fileID: 1632117536}

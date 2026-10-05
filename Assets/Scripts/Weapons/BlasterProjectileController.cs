@@ -40,6 +40,11 @@ namespace Shootopia
         {
             hasExploded = true;
 
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.TriggerCombatDucking(0.35f, 1.2f, true);
+            }
+
             // Point of Contact (POC): either contact point on direct hit collider, or projectile position
             Vector3 poc = transform.position;
             if (directHitCollider != null)

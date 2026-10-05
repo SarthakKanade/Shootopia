@@ -195,6 +195,13 @@ namespace Shootopia
                 ApplyDirectDamage(hit);
             }
 
+            if (AudioManager.Instance != null)
+            {
+                float duckAmount = isSplashWeapon ? 0.35f : 0.42f;
+                float holdDuration = isSplashWeapon ? 1.2f : 0.8f;
+                AudioManager.Instance.TriggerCombatDucking(duckAmount, holdDuration, true);
+            }
+
             SpawnVoidZone(hit);
             SpawnExplosionVFX(hit);
 
@@ -228,9 +235,26 @@ namespace Shootopia
                     var targetHealth = col.GetComponentInParent<PlayerHealth>() ?? col.GetComponent<PlayerHealth>();
                     if (targetHealth != null) targetHealth.LastAttackerClientId = attackerId;
 
-                    float distToPOC = Vector3.Distance(poc, col.bounds.center);
-                    float normalizedDist = Mathf.Clamp01(distToPOC / blastRadius);
-                    float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+                    // Check if this target was directly struck by the projectile (head-on direct hit)
+                    bool isDirect = (directHit.collider != null && (col == directHit.collider || col.transform.root == directHit.collider.transform.root))
+                                    || (col != null && Vector3.Distance(poc, col.ClosestPoint(poc)) <= 0.05f);
+
+                    float calculatedDamage;
+                    float normalizedDist = 0f;
+
+                    if (isDirect)
+                    {
+                        // Direct contact hit guarantees full center damage (100 = 1-hit KO for Area Blaster, 60 for Freeze Gun)
+                        calculatedDamage = maxDamage;
+                    }
+                    else
+                    {
+                        Vector3 closestPoint = col.ClosestPoint(poc);
+                        float distToPOC = Vector3.Distance(poc, closestPoint);
+                        normalizedDist = Mathf.Clamp01(distToPOC / blastRadius);
+                        calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+                        calculatedDamage = Mathf.Clamp(calculatedDamage, minDamage, maxDamage);
+                    }
 
                     if (targetHealth != null)
                     {
@@ -244,7 +268,6 @@ namespace Shootopia
                     // Freeze status effect
                     if (IsFreezeWeapon() && targetHealth != null)
                     {
-                        bool isDirect = (col.gameObject == directHit.collider.gameObject || distToPOC <= 0.45f);
                         if (isDirect)
                         {
                             targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);

@@ -43,6 +43,7 @@ namespace Shootopia
         private WeaponChargeHandler _chargeHandler;
         private WeaponAimHandler _aimHandler;
         private ThrowableTrajectoryPredictor _trajectoryPredictor;
+        private PlayerHealth _playerHealth;
 
         // Animator Hashes
         private static readonly int HashStance = Animator.StringToHash("Stance");
@@ -205,6 +206,7 @@ namespace Shootopia
             _adsHandler = new WeaponADSHandler(transform, motor, playerFollowCamera, scopeOverlay);
             _chargeHandler = new WeaponChargeHandler(vfxImplosionPrefab);
             _aimHandler = new WeaponAimHandler(transform, animator, motor, aimRig);
+            _playerHealth = GetComponent<PlayerHealth>() ?? GetComponentInParent<PlayerHealth>();
         }
 
         private void LateUpdate()
@@ -297,6 +299,12 @@ namespace Shootopia
                 {
                     _chargeHandler.UpdateCharge(dt, CurrentAttach.gameplayData);
                 }
+                return;
+            }
+
+            if (_playerHealth != null && _playerHealth.IsDead)
+            {
+                OnPlayerDied();
                 return;
             }
 
@@ -408,7 +416,7 @@ namespace Shootopia
             }
 
             // 7. Standard Ranged (Automatic or Semi-Automatic)
-            bool isAuto = data.isAutomatic || data.isAutoFire;
+            bool isAuto = data.isAutomatic || data.isAutoFire || (data.weaponName != null && (data.weaponName.IndexOf("Shooter", System.StringComparison.OrdinalIgnoreCase) >= 0 || data.weaponName.IndexOf("Pistol", System.StringComparison.OrdinalIgnoreCase) >= 0));
             bool wantFire = isAuto ? fireHeld : firePressed;
 
             if (wantFire && CanFire(data) && _timeSinceLastShot >= data.FireRate)
@@ -503,6 +511,10 @@ namespace Shootopia
                 if (_chargeHandler.IsFullyCharged(data))
                 {
                     _aimHandler.TriggerCombatStance();
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.TriggerCombatDucking(0.32f, 1.3f, true);
+                    }
                     FireProjectile(data);
                     if (animator != null)
                     {
@@ -979,6 +991,8 @@ namespace Shootopia
                 float stance = attach.stanceId;
                 if (attach.stanceId == 3 || (data != null && (data.category == WeaponCategory.Melee || data.name.Contains("Knife"))))
                     stance = 3f;
+                else if (attach.stanceId == 2 || (data != null && (data.isTrap || data.category == WeaponCategory.Trap)))
+                    stance = 2f;
                 else if (data != null)
                     stance = data.handedness == WeaponHandedness.OneHanded ? 1f : 0f;
 
@@ -1114,6 +1128,24 @@ namespace Shootopia
             }
             if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
             if (_trajectoryPredictor != null) _trajectoryPredictor.HideTrajectory();
+        }
+
+        /// <summary>
+        /// Immediately cancels all active aiming, trajectory lines, charging, ADS, and previews on player death.
+        /// </summary>
+        public void OnPlayerDied()
+        {
+            CancelTrapAim();
+            if (_trajectoryPredictor != null) _trajectoryPredictor.HideTrajectory();
+            if (_isAimingBounce)
+            {
+                _isAimingBounce = false;
+                if (_aimHandler != null) _aimHandler.DisableBouncePreview();
+            }
+            if (_chargeHandler != null && _chargeHandler.IsCharging) CancelCharge();
+            if (_adsHandler != null && _adsHandler.IsADSActive) _adsHandler.ExitADS(instant: true);
+            if (_aimHandler != null && _aimHandler.IsInCombatStance) _aimHandler.ExitCombatStance();
+            _lastFire = false;
         }
 
         private IEnumerator ResetAnimationToIdleRoutine()

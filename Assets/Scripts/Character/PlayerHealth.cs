@@ -95,7 +95,7 @@ namespace Shootopia
             if (newValue < previousValue && IsOwner && AudioManager.Instance != null)
             {
                 AudioClip hitClip = playerAudioConfig != null ? playerAudioConfig.hitTakenClip : null;
-                if (hitClip != null) AudioManager.Instance.PlaySFX2D(hitClip);
+                if (hitClip != null) AudioManager.Instance.PlaySFX2D(hitClip, 1f, isCombatPriority: true);
             }
         }
 
@@ -286,7 +286,7 @@ namespace Shootopia
             if (IsOwner && AudioManager.Instance != null)
             {
                 AudioClip deathClip = (playerAudioConfig != null && playerAudioConfig.deathClip != null) ? playerAudioConfig.deathClip : deathSound;
-                if (deathClip != null) AudioManager.Instance.PlaySFX2D(deathClip);
+                if (deathClip != null) AudioManager.Instance.PlaySFX2D(deathClip, 1f, isCombatPriority: true);
             }
 
             var anim = GetComponentInChildren<Animator>(true);
@@ -297,6 +297,9 @@ namespace Shootopia
             }
 
             SetPlayerControlsEnabled(false);
+
+            var weaponCtrl = GetComponent<WeaponController>();
+            if (weaponCtrl != null) weaponCtrl.OnPlayerDied();
 
             if (_hideModelRoutine != null) StopCoroutine(_hideModelRoutine);
             _hideModelRoutine = StartCoroutine(HideModelAfterDeathRoutine());
@@ -502,6 +505,12 @@ namespace Shootopia
 
             var inputRouter = GetComponent<PlayerInputRouter>();
             if (inputRouter != null) inputRouter.enabled = enabled;
+
+            if (!enabled)
+            {
+                var weaponCtrl = GetComponent<WeaponController>();
+                if (weaponCtrl != null) weaponCtrl.OnPlayerDied();
+            }
         }
 
         private void SetPlayerVisibility(bool visible)

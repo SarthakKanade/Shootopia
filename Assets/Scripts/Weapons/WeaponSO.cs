@@ -58,6 +58,8 @@ namespace Shootopia
         public bool hasGravity = false;         // true for grenade/smoke arcs
         public float throwAngle = 0f;          // degrees above camera forward (for traps)
         public float throwForce = 12f;         // initial velocity magnitude (for traps)
+        [Tooltip("Scale multiplier applied to the trap/throwable when thrown into the world")]
+        public float throwScaleMultiplier = 1.5f;
 
         [Header("Explosion / AoE")]
         public bool isExplosive = false;

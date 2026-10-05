@@ -23,7 +23,7 @@ MonoBehaviour:
   ZoomAmount: 10
   ZoomRotationSpeed: 0.3
   MagazineSize: 12
-  handedness: 1
+  handedness: 0
   category: 5
   durabilityType: 2
   maxUses: 2
@@ -40,6 +40,7 @@ MonoBehaviour:
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
+  throwScaleMultiplier: 1.5
   isExplosive: 0
   splashDamage: 35
   blastRadius: 5.5

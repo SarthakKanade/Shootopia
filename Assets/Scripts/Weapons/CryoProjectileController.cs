@@ -66,7 +66,8 @@ namespace Shootopia
                         float normalizedDist = Mathf.Clamp01(dist / (_weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f));
                         float maxDamage = _weaponData.Damage;
                         float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
-                        float calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+                        bool isDirectHit = dist <= 0.45f;
+                        float calculatedDamage = isDirectHit ? maxDamage : Mathf.Lerp(maxDamage, minDamage, normalizedDist);
 
                         t.TakeDamage(calculatedDamage, DamageType.Projectile, _weaponData);
 
@@ -79,7 +80,6 @@ namespace Shootopia
 
                         if (targetHealth != null)
                         {
-                            bool isDirectHit = dist <= 0.45f;
                             if (isDirectHit)
                             {
                                 // Direct hit at POC: Completely freezes player for 5 seconds

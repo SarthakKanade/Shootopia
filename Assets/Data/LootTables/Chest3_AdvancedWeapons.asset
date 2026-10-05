@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Chest3_AdvancedWeapons
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.LootTableSO
   entries:
-  - displayName: Pistol
-    weaponAttach: {fileID: 11400000, guid: 45041bdad7f2d4034ab95eeb833308cb, type: 2}
+  - displayName: Base Shooter
+    weaponAttach: {fileID: 11400000, guid: e7e4fb94f27894321a762fb902ce5074, type: 2}
     customPreviewPrefab: {fileID: 0}
     dropWeight: 30
   - displayName: Area Blaster

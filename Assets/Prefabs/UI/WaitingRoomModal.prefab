@@ -1965,6 +1965,9 @@ MonoBehaviour:
   btnReadyLabel: {fileID: 2888960572430570296}
   btnStartMatch: {fileID: 8501661360381403456}
   startMatchClip: {fileID: 0}
+  waitingRoomBgm: {fileID: 8300000, guid: 4c805beb61dd14a8682e1d04824a5b7c, type: 3}
+  gasStationBgm: {fileID: 8300000, guid: 9c4875c01547344ce8729ff95e848eb2, type: 3}
+  volcanoBgm: {fileID: 8300000, guid: 29a4d6b0d84b7497cbd6d460d9a13fcf, type: 3}
 --- !u!1 &4020994511660799108
 GameObject:
   m_ObjectHideFlags: 0

@@ -41,6 +41,33 @@ namespace Shootopia
         [SerializeField] private float defaultSpatialMinDistance = 1f;
         [SerializeField] private float defaultSpatialMaxDistance = 35f;
 
+        [Header("Professional Mix Headroom & Sidechain Ducking")]
+        [Tooltip("Baseline attenuation for background music relative to full scale SFX to guarantee dynamic headroom (0.32 = ~-10dB).")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float musicHeadroomScale = 0.32f;
+
+        [Tooltip("Target volume multiplier when combat ducking is active (e.g. 0.40 = ducks to 40% volume).")]
+        [Range(0.1f, 0.9f)]
+        [SerializeField] private float defaultDuckLevel = 0.40f;
+
+        [Tooltip("Cutoff frequency for the dynamic low-pass filter during heavy combat ducking (e.g. 4500Hz).")]
+        [SerializeField] private float duckLowPassCutoff = 4500f;
+
+        [Tooltip("How fast music volume and low-pass filter ducks down during combat (seconds).")]
+        [SerializeField] private float duckAttackTime = 0.06f;
+
+        [Tooltip("How smoothly music volume and low-pass filter recovers after combat action (seconds).")]
+        [SerializeField] private float duckReleaseTime = 0.90f;
+
+        [Header("Game Soundtrack")]
+        [SerializeField] private AudioClip waitingRoomMusicClip;
+        [SerializeField] private AudioClip gasStationMusicClip;
+        [SerializeField] private AudioClip volcanoMusicClip;
+
+        public AudioClip WaitingRoomMusicClip => waitingRoomMusicClip;
+        public AudioClip GasStationMusicClip => gasStationMusicClip;
+        public AudioClip VolcanoMusicClip => volcanoMusicClip;
+
         private float _masterVolume = 1f;
         private float _musicVolume = 0.8f;
         private float _sfxVolume = 1f;
@@ -49,7 +76,17 @@ namespace Shootopia
         private int _poolIndex = 0;
 
         private AudioSource _musicSource;
+        private AudioLowPassFilter _musicLowPassFilter;
         private Coroutine _musicFadeCoroutine;
+
+        // Sidechain Ducking Envelope State
+        private float _combatDuckTimer = 0f;
+        private float _targetDuckLevel = 1f;
+        private float _currentDuckMultiplier = 1f;
+        private float _targetLowPassCutoff = 22000f;
+        private float _currentLowPassCutoff = 22000f;
+        private bool _isSustainedDucking = false;
+        private float _sustainedDuckLevel = 0.40f;
 
         private void Awake()
         {
@@ -68,10 +105,91 @@ namespace Shootopia
             Debug.Log("[AudioManager] Initialized successfully.");
         }
 
+        private void Update()
+        {
+            UpdateDynamicAudioDucking(Time.unscaledDeltaTime);
+        }
+
+        private void UpdateDynamicAudioDucking(float dt)
+        {
+            if (dt <= 0f) return;
+
+            bool duckActive = _isSustainedDucking || _combatDuckTimer > 0f;
+            if (_combatDuckTimer > 0f)
+            {
+                _combatDuckTimer -= dt;
+                if (_combatDuckTimer <= 0f)
+                {
+                    _targetDuckLevel = 1f;
+                    _targetLowPassCutoff = 22000f;
+                }
+            }
+
+            float targetDuck = 1f;
+            float targetCutoff = 22000f;
+
+            if (duckActive)
+            {
+                targetDuck = _isSustainedDucking ? _sustainedDuckLevel : _targetDuckLevel;
+                targetCutoff = duckLowPassCutoff;
+            }
+
+            // Smooth envelope interpolation: fast attack, smooth musical release
+            float duckSpeed = (targetDuck < _currentDuckMultiplier)
+                ? (1f / Mathf.Max(duckAttackTime, 0.01f))
+                : (1f / Mathf.Max(duckReleaseTime, 0.05f));
+            _currentDuckMultiplier = Mathf.MoveTowards(_currentDuckMultiplier, targetDuck, duckSpeed * dt);
+
+            float filterSpeed = (targetCutoff < _currentLowPassCutoff)
+                ? (22000f / Mathf.Max(duckAttackTime, 0.01f))
+                : (22000f / Mathf.Max(duckReleaseTime, 0.05f));
+            _currentLowPassCutoff = Mathf.MoveTowards(_currentLowPassCutoff, targetCutoff, filterSpeed * dt);
+
+            // Apply low-pass filter
+            if (_musicLowPassFilter != null)
+            {
+                _musicLowPassFilter.cutoffFrequency = _currentLowPassCutoff;
+                _musicLowPassFilter.enabled = (_currentLowPassCutoff < 21000f);
+            }
+
+            // Apply ducked music volume
+            if (_musicSource != null && _musicSource.isPlaying && _musicFadeCoroutine == null)
+            {
+                float nominalMusic = _masterVolume * (_musicVolume * musicHeadroomScale);
+                _musicSource.volume = nominalMusic * _currentDuckMultiplier;
+            }
+        }
+
+        /// <summary>
+        /// Triggers dynamic sidechain combat ducking on the background music.
+        /// Temporarily attenuates music and applies frequency carving (low-pass filter)
+        /// so projectiles, weapon fire, charge blasts, and explosions punch through cleanly.
+        /// </summary>
+        public void TriggerCombatDucking(float duckAmount = 0.40f, float holdDuration = 1.0f, bool applyLowPass = true)
+        {
+            _targetDuckLevel = Mathf.Min(_targetDuckLevel, duckAmount);
+            _combatDuckTimer = Mathf.Max(_combatDuckTimer, holdDuration);
+            _targetLowPassCutoff = applyLowPass ? duckLowPassCutoff : 22000f;
+        }
+
+        /// <summary>
+        /// Enables or disables sustained ducking for continuous combat actions (e.g. weapon charging).
+        /// </summary>
+        public void SetSustainedDucking(bool active, float duckAmount = 0.40f)
+        {
+            _isSustainedDucking = active;
+            _sustainedDuckLevel = duckAmount;
+            if (!active)
+            {
+                // Smooth hold buffer after releasing charge
+                _combatDuckTimer = Mathf.Max(_combatDuckTimer, 0.4f);
+            }
+        }
+
         private void LoadVolumeSettings()
         {
             _masterVolume = PlayerPrefs.GetFloat(KEY_MASTER, 1f);
-            _musicVolume = PlayerPrefs.GetFloat(KEY_MUSIC, 0.8f);
+            _musicVolume = PlayerPrefs.GetFloat(KEY_MUSIC, 0.65f);
             _sfxVolume = PlayerPrefs.GetFloat(KEY_SFX, 1f);
         }
 
@@ -92,6 +210,7 @@ namespace Shootopia
                 src.minDistance = defaultSpatialMinDistance;
                 src.maxDistance = defaultSpatialMaxDistance;
                 src.rolloffMode = AudioRolloffMode.Logarithmic;
+                src.priority = 32; // Elevated priority so combat SFX never get culled
 
                 _sfxPool.Add(src);
             }
@@ -107,6 +226,14 @@ namespace Shootopia
             _musicSource.playOnAwake = false;
             _musicSource.loop = true;
             _musicSource.spatialBlend = 0f; // 2D Music
+            _musicSource.priority = 128;
+
+            // Attach dynamic low-pass filter for frequency carving during intense SFX bursts
+            _musicLowPassFilter = musicGo.AddComponent<AudioLowPassFilter>();
+            _musicLowPassFilter.cutoffFrequency = 22000f;
+            _musicLowPassFilter.enabled = false;
+            _currentLowPassCutoff = 22000f;
+            _targetLowPassCutoff = 22000f;
         }
 
         private AudioSource GetNextAvailableSource()
@@ -132,7 +259,7 @@ namespace Shootopia
         /// <summary>
         /// Plays a 2D SFX (UI sound, local feedback) at global SFX volume.
         /// </summary>
-        public void PlaySFX2D(AudioClip clip, float volumeScale = 1f)
+        public void PlaySFX2D(AudioClip clip, float volumeScale = 1f, bool isCombatPriority = false)
         {
             if (clip == null) return;
 
@@ -141,15 +268,21 @@ namespace Shootopia
 
             source.transform.position = transform.position;
             source.spatialBlend = 0f;
+            source.priority = isCombatPriority ? 16 : 48;
             source.volume = Mathf.Clamp01(_masterVolume * _sfxVolume * volumeScale);
             source.clip = clip;
             source.Play();
+
+            if (isCombatPriority)
+            {
+                TriggerCombatDucking(defaultDuckLevel, 0.6f, true);
+            }
         }
 
         /// <summary>
         /// Plays a 3D spatialized SFX at a specific position in the world.
         /// </summary>
-        public void PlaySFXAtPosition(AudioClip clip, Vector3 position, float volumeScale = 1f)
+        public void PlaySFXAtPosition(AudioClip clip, Vector3 position, float volumeScale = 1f, bool isCombatPriority = true)
         {
             if (clip == null) return;
 
@@ -158,9 +291,15 @@ namespace Shootopia
 
             source.transform.position = position;
             source.spatialBlend = 1f; // Full 3D spatialization
+            source.priority = isCombatPriority ? 24 : 64;
             source.volume = Mathf.Clamp01(_masterVolume * _sfxVolume * volumeScale);
             source.clip = clip;
             source.Play();
+
+            if (isCombatPriority)
+            {
+                TriggerCombatDucking(defaultDuckLevel, 0.7f, true);
+            }
         }
 
         /// <summary>
@@ -182,6 +321,7 @@ namespace Shootopia
             source.spatialBlend = 1f;
             source.loop = true;
             source.pitch = pitch;
+            source.priority = 16;
             source.volume = Mathf.Clamp01(_masterVolume * _sfxVolume * volumeScale);
             source.clip = clip;
             source.Play();
@@ -208,6 +348,8 @@ namespace Shootopia
         public void PlayMusic(AudioClip clip, float fadeSeconds = 1.5f)
         {
             if (clip == null) return;
+            if (_musicSource == null) InitializeMusicSource();
+            if (_musicSource == null) return;
             if (_musicSource.clip == clip && _musicSource.isPlaying) return;
 
             if (_musicFadeCoroutine != null)
@@ -218,9 +360,97 @@ namespace Shootopia
             _musicFadeCoroutine = StartCoroutine(FadeMusicRoutine(clip, fadeSeconds));
         }
 
+        public void StopMusic(float fadeSeconds = 1.0f)
+        {
+            if (_musicSource == null || !_musicSource.isPlaying) return;
+
+            if (_musicFadeCoroutine != null)
+            {
+                StopCoroutine(_musicFadeCoroutine);
+            }
+
+            _musicFadeCoroutine = StartCoroutine(FadeOutMusicRoutine(fadeSeconds));
+        }
+
+        private IEnumerator FadeOutMusicRoutine(float fadeDuration)
+        {
+            if (_musicSource != null && _musicSource.isPlaying && fadeDuration > 0.05f)
+            {
+                float startVolume = _musicSource.volume;
+                float timer = 0f;
+                while (timer < fadeDuration)
+                {
+                    timer += Time.deltaTime;
+                    _musicSource.volume = Mathf.Lerp(startVolume, 0f, timer / fadeDuration);
+                    yield return null;
+                }
+                _musicSource.Stop();
+                _musicSource.clip = null;
+            }
+            else if (_musicSource != null)
+            {
+                _musicSource.Stop();
+                _musicSource.clip = null;
+            }
+
+            _musicFadeCoroutine = null;
+        }
+
+        public void PlayWaitingRoomMusic(float fadeSeconds = 1.0f)
+        {
+            EnsureSoundtrackLoaded();
+            if (waitingRoomMusicClip != null)
+            {
+                PlayMusic(waitingRoomMusicClip, fadeSeconds);
+            }
+        }
+
+        public void PlayMapMusic(string mapOrSceneName = null, float fadeSeconds = 1.0f)
+        {
+            EnsureSoundtrackLoaded();
+            if (string.IsNullOrEmpty(mapOrSceneName))
+            {
+                mapOrSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            }
+
+            AudioClip targetClip = null;
+            if (string.Equals(mapOrSceneName, "GasStationMap", System.StringComparison.OrdinalIgnoreCase) ||
+                mapOrSceneName.IndexOf("GasStation", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                targetClip = gasStationMusicClip;
+            }
+            else // Map1, Sector Alpha, GameScene, Shootopia_Sandbox, Volcano
+            {
+                targetClip = volcanoMusicClip;
+            }
+
+            if (targetClip != null)
+            {
+                PlayMusic(targetClip, fadeSeconds);
+            }
+        }
+
+        public void EnsureSoundtrackLoaded()
+        {
+#if UNITY_EDITOR
+            if (waitingRoomMusicClip == null)
+            {
+                waitingRoomMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/02. Lively City.mp3");
+            }
+            if (gasStationMusicClip == null)
+            {
+                gasStationMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/16. Battle Theme III (loop).mp3");
+            }
+            if (volcanoMusicClip == null)
+            {
+                volcanoMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/15. Volcanic Crater.mp3");
+            }
+#endif
+        }
+
         private IEnumerator FadeMusicRoutine(AudioClip newClip, float fadeDuration)
         {
-            float targetVolume = Mathf.Clamp01(_masterVolume * _musicVolume);
+            float targetVolume = Mathf.Clamp01(_masterVolume * (_musicVolume * musicHeadroomScale));
 
             if (_musicSource.isPlaying && fadeDuration > 0.05f)
             {
@@ -239,6 +469,7 @@ namespace Shootopia
             _musicSource.Stop();
             _musicSource.clip = newClip;
             _musicSource.volume = 0f;
+            _musicSource.loop = true;
 
             if (newClip != null && _musicSource != null)
             {
@@ -282,7 +513,7 @@ namespace Shootopia
                     PlayerPrefs.SetFloat(KEY_MUSIC, _musicVolume);
                     if (_musicSource != null && _musicSource.isPlaying && _musicFadeCoroutine == null)
                     {
-                        _musicSource.volume = _masterVolume * _musicVolume;
+                        _musicSource.volume = _masterVolume * (_musicVolume * musicHeadroomScale) * _currentDuckMultiplier;
                     }
                     break;
                 case AudioChannel.SFX:

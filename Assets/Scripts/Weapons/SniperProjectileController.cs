@@ -68,6 +68,11 @@ namespace Shootopia
                 Instantiate(impactVFXPrefab, transform.position, Quaternion.identity);
             }
 
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.TriggerCombatDucking(0.40f, 0.8f, true);
+            }
+
             Destroy(gameObject);
         }
     }

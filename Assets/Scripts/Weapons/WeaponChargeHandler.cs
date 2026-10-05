@@ -29,13 +29,19 @@ namespace Shootopia
 
             StartChargeVisual(muzzle, data);
 
+            // Trigger dynamic audio ducking on music so weapon charging whine cuts through cleanly
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.SetSustainedDucking(true, 0.38f);
+            }
+
             // Play looping charge SFX with pitch bend
             if (data.chargeTime > 0f && data.audio != null && AudioManager.Instance != null)
             {
                 AudioClip clip = data.audio.chargeClip != null ? data.audio.chargeClip : data.audio.drawClip;
                 if (clip != null)
                 {
-                    _activeChargeAudioSource = AudioManager.Instance.PlayLoopingSFX(clip, muzzle, 0.75f, 0.8f);
+                    _activeChargeAudioSource = AudioManager.Instance.PlayLoopingSFX(clip, muzzle, 0.85f, 0.8f);
                 }
             }
         }
@@ -79,6 +85,11 @@ namespace Shootopia
                     AudioManager.Instance.StopLoopingSFX(_activeChargeAudioSource);
                 }
                 _activeChargeAudioSource = null;
+            }
+
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.SetSustainedDucking(false);
             }
         }
 

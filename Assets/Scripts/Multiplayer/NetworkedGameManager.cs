@@ -128,10 +128,22 @@ namespace Shootopia
                 ApplyActiveGameMode(selectedMode);
 
                 // If in a multiplayer session with WaitingRoom UI present, wait for host to start match
-                if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null
-                    && WaitingRoomController.Instance != null)
+                var waitingRoom = WaitingRoomController.Instance;
+                if (waitingRoom == null)
                 {
-                    Debug.Log("[NetworkedGameManager] Multiplayer session active with WaitingRoom UI. Waiting in Warmup until host starts match.");
+                    waitingRoom = FindAnyObjectByType<WaitingRoomController>(FindObjectsInactive.Include);
+                    if (waitingRoom != null && !waitingRoom.gameObject.activeSelf)
+                    {
+                        waitingRoom.gameObject.SetActive(true);
+                    }
+                }
+
+                bool isMultiplayer = (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
+                                     || (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && NetworkManager.Singleton.ConnectedClientsList.Count > 1);
+
+                if (isMultiplayer || waitingRoom != null)
+                {
+                    Debug.Log("[NetworkedGameManager] Multiplayer session active or WaitingRoom UI present. Waiting in Warmup until host starts match.");
                     if (_activeGameMode != null)
                     {
                         _activeGameMode.MatchActive.Value = false;
@@ -140,8 +152,8 @@ namespace Shootopia
                     return;
                 }
 
-                // Start match immediately: either singleplayer/offline or no WaitingRoom UI to gate on
-                Debug.Log("[NetworkedGameManager] Starting match sequence directly (no WaitingRoom UI gate).");
+                // Start match immediately: only for purely offline/singleplayer testing with no WaitingRoom UI
+                Debug.Log("[NetworkedGameManager] Starting match sequence directly (offline/singleplayer test).");
                 StartCoroutine(PreMatchSequence());
             }
             else
@@ -181,14 +193,39 @@ namespace Shootopia
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        private void StartMatchFromLobbyServerRpc()
+        private void StartMatchFromLobbyServerRpc(RpcParams rpcParams = default)
         {
+            if (rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId)
+            {
+                Debug.LogWarning($"[NetworkedGameManager] Non-host client {rpcParams.Receive.SenderClientId} attempted to start match! Ignored.");
+                return;
+            }
             StartMatchFromLobbyServer();
         }
 
         private void StartMatchFromLobbyServer()
         {
             if (!IsServer) return;
+
+            // Enforce that all players are ready before starting match
+            if (SessionManager.Instance != null)
+            {
+                var readyStates = SessionManager.Instance.GetPlayerReadyStates();
+                if (readyStates != null && readyStates.Count > 1)
+                {
+                    var session = SessionManager.Instance.GetCurrentSession();
+                    string hostId = session != null ? session.Host : "";
+                    foreach (var p in readyStates)
+                    {
+                        if (p.playerId != hostId && !p.isReady)
+                        {
+                            Debug.LogWarning($"[NetworkedGameManager] Cannot start match: Player {p.displayName} is not ready!");
+                            return;
+                        }
+                    }
+                }
+            }
+
             Debug.Log("[NetworkedGameManager] Host officially started match from lobby!");
 
             MatchStarted.Value = true;
@@ -230,6 +267,10 @@ namespace Shootopia
                 if (wrc != null)
                 {
                     wrc.OnMatchStarted();
+                }
+                else if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlayMapMusic();
                 }
             }
         }

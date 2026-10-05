@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 7389035053850368479, guid: 80cbf3e9c3a6b466b94c95191e9ab09c, type: 3}
   weaponName: Freeze Gun
-  Damage: 55
+  Damage: 60
   FireRate: 0.8
   HitVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
   audio: {fileID: 11400000, guid: 8f0df0029df754471b3b7391520dd708, type: 2}

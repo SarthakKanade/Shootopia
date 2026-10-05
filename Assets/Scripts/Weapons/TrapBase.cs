@@ -7,12 +7,33 @@ namespace Shootopia
         protected int _ownerID;
         protected Camera _cam;
 
+        [SerializeField] private float throwScaleMultiplier = 1.5f;
+        private Vector3 _baseScale = Vector3.one;
+        private bool _hasBaseScale = false;
+
         public void Initialise(int ownerID, Camera cam, WeaponSO data, Vector3 launchVelocity = default)
         {
             _ownerID = ownerID;
             _cam = cam;
             IgnoreOwnerCollisions(ownerID);
+
+            if (!_hasBaseScale)
+            {
+                _baseScale = transform.localScale;
+                _hasBaseScale = true;
+            }
+            float mult = (data != null && data.throwScaleMultiplier > 0f) ? data.throwScaleMultiplier : throwScaleMultiplier;
+            transform.localScale = _baseScale * mult;
+
             OnInitialised(data, launchVelocity);
+        }
+
+        protected virtual void OnDisable()
+        {
+            if (_hasBaseScale)
+            {
+                transform.localScale = _baseScale;
+            }
         }
 
         private void IgnoreOwnerCollisions(int ownerID)

@@ -115,6 +115,7 @@ namespace Shootopia
         private string _quickMatchMode = "ALL";
         private string _browserModeFilter = "ALL";
         private int _selectedSkin = 0;
+        private int _createMaxPlayers = 8;
         private bool _isMuted = false;
         private bool _isBusy = false;
         private readonly Stack<GameObject> _modalStack = new Stack<GameObject>();
@@ -142,6 +143,12 @@ namespace Shootopia
 
             InitSettingsValues();
             UpdateChipVisuals();
+
+            if (sliderMaxPlayers != null)
+            {
+                _createMaxPlayers = Mathf.Clamp(Mathf.RoundToInt(sliderMaxPlayers.value), 2, 12);
+            }
+            UpdateMaxPlayersDisplay();
 
             await MultiplayerAutoInitializer.EnsureInitializedAsync();
         }
@@ -197,6 +204,16 @@ namespace Shootopia
             if (chipModeTDM != null) chipModeTDM.onClick.AddListener(() => SetCreateMode("TDM"));
             if (chipMapSectorAlpha != null) chipMapSectorAlpha.onClick.AddListener(() => SetCreateMap("Map1"));
             if (chipMapGasStation != null) chipMapGasStation.onClick.AddListener(() => SetCreateMap("GasStationMap"));
+            
+            if (btnDecreasePlayers == null && tabContentCreate != null)
+            {
+                btnDecreasePlayers = tabContentCreate.transform.Find("SliderMaxPlayers/BtnMinus")?.GetComponent<Button>();
+            }
+            if (btnIncreasePlayers == null && tabContentCreate != null)
+            {
+                btnIncreasePlayers = tabContentCreate.transform.Find("SliderMaxPlayers/BtnPlus")?.GetComponent<Button>();
+            }
+
             if (sliderMaxPlayers != null) sliderMaxPlayers.onValueChanged.AddListener(OnMaxPlayersChanged);
             if (btnDecreasePlayers != null) btnDecreasePlayers.onClick.AddListener(() => AdjustMaxPlayers(-1));
             if (btnIncreasePlayers != null) btnIncreasePlayers.onClick.AddListener(() => AdjustMaxPlayers(1));
@@ -384,16 +401,26 @@ namespace Shootopia
 
         private void AdjustMaxPlayers(int delta)
         {
-            if (sliderMaxPlayers != null)
+            _createMaxPlayers = Mathf.Clamp(_createMaxPlayers + delta, 2, 12);
+            if (sliderMaxPlayers != null && Mathf.RoundToInt(sliderMaxPlayers.value) != _createMaxPlayers)
             {
-                sliderMaxPlayers.value = Mathf.Clamp(sliderMaxPlayers.value + delta, 2, 12);
+                sliderMaxPlayers.value = _createMaxPlayers;
             }
+            UpdateMaxPlayersDisplay();
         }
 
         private void OnMaxPlayersChanged(float val)
         {
-            int count = Mathf.RoundToInt(val);
-            if (labelMaxPlayers != null) labelMaxPlayers.text = $"{count} PLAYERS";
+            _createMaxPlayers = Mathf.Clamp(Mathf.RoundToInt(val), 2, 12);
+            UpdateMaxPlayersDisplay();
+        }
+
+        private void UpdateMaxPlayersDisplay()
+        {
+            if (labelMaxPlayers != null)
+            {
+                labelMaxPlayers.text = $"{_createMaxPlayers} PLAYERS";
+            }
         }
 
         private async void ConfirmCreateRoom()
@@ -403,7 +430,7 @@ namespace Shootopia
                 ? inputCreateRoomName.text.Trim()
                 : $"{hostName}'s Arena";
 
-            int maxPlayers = sliderMaxPlayers != null ? Mathf.RoundToInt(sliderMaxPlayers.value) : 8;
+            int maxPlayers = _createMaxPlayers;
             bool isPublic = togglePublicRoom == null || togglePublicRoom.isOn;
 
             CloseTopModal();
@@ -564,7 +591,7 @@ namespace Shootopia
         private void InitSettingsValues()
         {
             float master = PlayerPrefs.GetFloat("AudioManager_MasterVolume", 1.0f);
-            float music = PlayerPrefs.GetFloat("AudioManager_MusicVolume", 0.8f);
+            float music = PlayerPrefs.GetFloat("AudioManager_MusicVolume", 0.65f);
             float sfx = PlayerPrefs.GetFloat("AudioManager_SFXVolume", 1.0f);
             float sens = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
             bool invertY = PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY;
@@ -620,7 +647,7 @@ namespace Shootopia
         private void ResetSettingsToDefaults()
         {
             if (sliderMasterVol != null) sliderMasterVol.value = 1.0f;
-            if (sliderMusicVol != null) sliderMusicVol.value = 0.8f;
+            if (sliderMusicVol != null) sliderMusicVol.value = 0.65f;
             if (sliderSFXVol != null) sliderSFXVol.value = 1.0f;
             OnMouseSensChanged(1.0f);
             if (sliderMouseSens != null) sliderMouseSens.value = 1.0f;

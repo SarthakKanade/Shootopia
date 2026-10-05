@@ -298,7 +298,11 @@ namespace Shootopia.Editor
             so.FindProperty("chipModeFFA").objectReferenceValue = chipFFA.GetComponent<Button>();
             so.FindProperty("chipModeTDM").objectReferenceValue = chipTDM.GetComponent<Button>();
             so.FindProperty("sliderMaxPlayers").objectReferenceValue = sliderPlayers.GetComponentInChildren<Slider>();
-            so.FindProperty("labelMaxPlayers").objectReferenceValue = sliderPlayers.transform.Find("ValueLabel").GetComponent<TextMeshProUGUI>();
+            so.FindProperty("labelMaxPlayers").objectReferenceValue = sliderPlayers.transform.Find("ValueLabel")?.GetComponent<TextMeshProUGUI>();
+            var btnMinus = sliderPlayers.transform.Find("BtnMinus")?.GetComponent<Button>();
+            var btnPlus = sliderPlayers.transform.Find("BtnPlus")?.GetComponent<Button>();
+            if (btnMinus != null) so.FindProperty("btnDecreasePlayers").objectReferenceValue = btnMinus;
+            if (btnPlus != null) so.FindProperty("btnIncreasePlayers").objectReferenceValue = btnPlus;
             so.FindProperty("togglePublicRoom").objectReferenceValue = togglePublic.GetComponentInChildren<Toggle>();
             so.FindProperty("btnConfirmCreate").objectReferenceValue = btnConfirmCreateGO.GetComponent<Button>();
 

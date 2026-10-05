@@ -139,30 +139,17 @@ namespace Shootopia
 
         public void PlayJumpAudio(float delay = 0.11f)
         {
-            if (delay <= 0f)
-            {
-                TriggerJumpAudio();
-            }
-            else
-            {
-                StartCoroutine(DelayedJumpAudioRoutine(delay));
-            }
+            // Jump sound removed per design request
         }
 
         private IEnumerator DelayedJumpAudioRoutine(float delay)
         {
-            yield return new WaitForSeconds(delay);
-            TriggerJumpAudio();
+            yield break;
         }
 
         private void TriggerJumpAudio()
         {
-            if (AudioManager.Instance == null) return;
-            AudioClip clip = (playerAudioConfig != null && playerAudioConfig.jumpClip != null) ? playerAudioConfig.jumpClip : null;
-            if (clip != null)
-            {
-                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.70f);
-            }
+            // Jump sound removed per design request
         }
 
         public void PlayDashAudio()
@@ -187,40 +174,7 @@ namespace Shootopia
 
         private void UpdateFootsteps(float dt)
         {
-            if (AudioManager.Instance == null) return;
-            if (Controller == null || !Controller.isGrounded) return;
-
-            Vector3 horizontalVel = new Vector3(Controller.velocity.x, 0f, Controller.velocity.z);
-            if (horizontalVel.sqrMagnitude > 0.2f)
-            {
-                _footstepTimer += dt;
-                if (_footstepTimer >= footstepInterval)
-                {
-                    _footstepTimer = 0f;
-                    AudioClip clip = null;
-                    if (playerAudioConfig != null)
-                    {
-                        if (playerAudioConfig.footstepVariations != null && playerAudioConfig.footstepVariations.Length > 0)
-                        {
-                            clip = playerAudioConfig.footstepVariations[_footstepIndex % playerAudioConfig.footstepVariations.Length];
-                            _footstepIndex++;
-                        }
-                        else
-                        {
-                            clip = playerAudioConfig.footstepClip;
-                        }
-                    }
-
-                    if (clip != null)
-                    {
-                        AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.65f);
-                    }
-                }
-            }
-            else
-            {
-                _footstepTimer = footstepInterval * 0.5f;
-            }
+            // Walk / footstep sounds removed per design request
         }
 
         public void ApplyMovementAndRotation(float dt, float speedMultiplier = 1f)
