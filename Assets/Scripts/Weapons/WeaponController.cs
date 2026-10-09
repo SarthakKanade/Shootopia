@@ -130,6 +130,8 @@ namespace Shootopia
         public int CurrentUses => _currentUses;
         public float TimeRemaining => _timeRemaining;
         public float TimeSinceLastShot => _timeSinceLastShot;
+        public Transform WeaponSocket => weaponSocket;
+        public GameObject CurrentVisual => _currentVisual;
 
         public float CurrentDurabilityValue
         {
@@ -332,9 +334,13 @@ namespace Shootopia
                 CycleWeapon();
             }
 
+            var currentData = CurrentAttach != null ? CurrentAttach.gameplayData : null;
+            bool isSniperAttach = currentData != null && (currentData.requiresADSToFire || (currentData.hasADS && CurrentAttach != null && CurrentAttach.name.Contains("Sniper")));
+            bool isSniperAutoADS = isSniperAttach && input.Intent.Fire;
+
             HandleFire(dt);
-            _adsHandler.UpdateADS(_chargeHandler.IsCharging || _isAimingTrap, input.Intent.AltFire, CurrentAttach);
-            _aimHandler.UpdateAimState(dt, input.Intent.Fire, CurrentAttach, _chargeHandler.IsCharging, _isAimingTrap, _isAimingBounce);
+            _adsHandler.UpdateADS(_chargeHandler.IsCharging || _isAimingTrap || isSniperAutoADS, input.Intent.AltFire, CurrentAttach);
+            _aimHandler.UpdateAimState(dt, input.Intent.Fire, CurrentAttach, _chargeHandler.IsCharging || isSniperAutoADS, _isAimingTrap, _isAimingBounce);
             _aimHandler.UpdateBouncePreview(IsOwner, CurrentAttach, Muzzle, Aim, _isAimingBounce);
         }
 
@@ -412,6 +418,14 @@ namespace Shootopia
             if (isBounceGun)
             {
                 HandleBounceFire(data, fireHeld, fireReleased);
+                return;
+            }
+
+            // 6b. Sniper / Precision (Hold Fire to Auto-ADS / Scope, Release to Shoot; or Click to Fire while Scoped)
+            bool isSniperWeapon = data.requiresADSToFire || (data.hasADS && CurrentAttach != null && CurrentAttach.name.Contains("Sniper"));
+            if (isSniperWeapon)
+            {
+                HandleSniperFire(data, fireHeld, firePressed, fireReleased, input.Intent.AltFire);
                 return;
             }
 
@@ -589,6 +603,57 @@ namespace Shootopia
                 _isAimingBounce = false;
                 _aimHandler.DisableBouncePreview();
                 _aimHandler.ExitCombatStance();
+            }
+        }
+
+        private void HandleSniperFire(WeaponSO data, bool fireHeld, bool firePressed, bool fireReleased, bool altFireHeld)
+        {
+            if (altFireHeld)
+            {
+                // Player is manually scoped in via AltFire (Right-Click or Mobile ADS toggle)
+                _aimHandler.TriggerCombatStance();
+                if (firePressed && CanFire(data) && _timeSinceLastShot >= data.FireRate)
+                {
+                    FireProjectile(data);
+                    if (animator != null) animator.Play("Shoot", 1, 0f);
+                }
+            }
+            else
+            {
+                // Auto-ADS behavior: Holding Fire scopes in automatically, releasing Fire fires the shot
+                if (fireHeld && CanFire(data))
+                {
+                    _aimHandler.TriggerCombatStance();
+                    if (animator != null)
+                    {
+                        animator.SetBool(HashIsFiring, true);
+                        animator.SetFloat(HashShootSpeed, 0f);
+                    }
+                }
+                else if (fireReleased)
+                {
+                    if (CanFire(data) && _timeSinceLastShot >= data.FireRate)
+                    {
+                        _aimHandler.TriggerCombatStance();
+                        FireProjectile(data);
+                        if (animator != null)
+                        {
+                            animator.SetFloat(HashShootSpeed, 1f);
+                            animator.Play("Shoot", 1, 0f);
+                        }
+                    }
+
+                    if (animator != null)
+                    {
+                        animator.SetBool(HashIsFiring, false);
+                        animator.SetFloat(HashShootSpeed, 1f);
+                    }
+                }
+                else if (!fireHeld && !_aimHandler.IsInCombatStance && animator != null)
+                {
+                    animator.SetBool(HashIsFiring, false);
+                    animator.SetFloat(HashShootSpeed, 1f);
+                }
             }
         }
 
@@ -931,11 +996,27 @@ namespace Shootopia
 
             ResetWeaponState();
 
-            // Health Box consumption
+            // Defense / Consumable item instant usage
             if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Health") || attach.name.Contains("Health")))
             {
                 var hp = GetComponent<PlayerHealth>() ?? GetComponentInParent<PlayerHealth>();
-                if (hp != null) hp.Heal(50f);
+                if (hp != null) hp.Heal(hp.GetMaxHp());
+                ExpireWeapon();
+                return;
+            }
+
+            if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Shield") || attach.name.Contains("Shield")))
+            {
+                var sh = GetComponent<PlayerShield>() ?? GetComponentInParent<PlayerShield>();
+                if (sh != null) sh.GrantShield(50f);
+                ExpireWeapon();
+                return;
+            }
+
+            if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Invis") || attach.name.Contains("Invis") || attach.name.Contains("Cloak")))
+            {
+                var invis = GetComponent<PlayerInvisibility>() ?? GetComponentInParent<PlayerInvisibility>();
+                if (invis != null) invis.ActivateInvisibility(10f);
                 ExpireWeapon();
                 return;
             }
@@ -973,6 +1054,7 @@ namespace Shootopia
                 foreach (var rb in _currentVisual.GetComponentsInChildren<Rigidbody>(true)) rb.isKinematic = true;
                 foreach (var col in _currentVisual.GetComponentsInChildren<Collider>(true)) col.enabled = false;
                 foreach (var tr in _currentVisual.GetComponentsInChildren<TrapBase>(true)) tr.enabled = false;
+                foreach (var lt in _currentVisual.GetComponentsInChildren<Light>(true)) lt.enabled = false;
 
                 Muzzle = FindChild(_currentVisual.transform, attach.muzzleChildName);
                 GripR = FindChild(_currentVisual.transform, attach.gripRChildName);

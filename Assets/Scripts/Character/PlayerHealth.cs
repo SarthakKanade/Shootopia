@@ -89,7 +89,6 @@ namespace Shootopia
             if (newValue > 0f && _isDead)
             {
                 _isDead = false;
-                SetPlayerVisibility(true);
             }
 
             if (newValue < previousValue && IsOwner && AudioManager.Instance != null)
@@ -235,11 +234,14 @@ namespace Shootopia
                 if (sp != null) spawnPos = sp.position;
             }
 
-            _currentHp.Value = maxHp;
-
-            // Server-side repositioning
+            // Server-side repositioning BEFORE updating HP
             SetCharacterPosition(spawnPos);
+            Physics.SyncTransforms();
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null) netTransform.Teleport(spawnPos, transform.rotation, transform.localScale);
             ResetMovementState();
+
+            _currentHp.Value = maxHp;
 
             // Ensure player respawns unarmed
             var weaponCtrl = GetComponent<WeaponController>();
@@ -281,7 +283,12 @@ namespace Shootopia
         [ClientRpc]
         private void DeathClientRpc(DamageType type)
         {
+            _isDead = true;
             onPlayerDied?.Raise();
+
+            // Immediately hide overhead nameplate so it never lingers on the death spot
+            var nameplate = GetComponentInChildren<PlayerNameplate>(true);
+            if (nameplate != null) nameplate.SetDeathHidden(true);
 
             if (IsOwner && AudioManager.Instance != null)
             {
@@ -321,9 +328,22 @@ namespace Shootopia
                 _hideModelRoutine = null;
             }
 
-            SetCharacterPosition(spawnPosition);
-            ResetLocomotionAnimator();
+            _isDead = false;
 
+            // 1. Teleport and sync transforms FIRST while still hidden
+            SetCharacterPosition(spawnPosition);
+            Physics.SyncTransforms();
+
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null)
+            {
+                netTransform.Teleport(spawnPosition, transform.rotation, transform.localScale);
+            }
+
+            ResetLocomotionAnimator();
+            ResetMovementState();
+
+            // 2. Re-enable controls and visibility at the new spawn location
             SetPlayerControlsEnabled(true);
             SetPlayerVisibility(true);
             RemoveBurnEffect();
@@ -393,11 +413,15 @@ namespace Shootopia
         {
             if (!IsServer) return;
             _isDead = false;
-            _currentHp.Value = maxHp;
 
             SetCharacterPosition(position);
+            Physics.SyncTransforms();
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null) netTransform.Teleport(position, transform.rotation, transform.localScale);
             ResetMovementState();
             RemoveBurnEffect();
+
+            _currentHp.Value = maxHp;
 
             // Ensure player starts match unarmed
             var weaponCtrl = GetComponent<WeaponController>();
@@ -411,6 +435,10 @@ namespace Shootopia
         {
             _isDead = false;
             SetCharacterPosition(position);
+            Physics.SyncTransforms();
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null) netTransform.Teleport(position, transform.rotation, transform.localScale);
+
             SetPlayerControlsEnabled(true);
             SetPlayerVisibility(true);
             ResetMovementState();
@@ -523,6 +551,12 @@ namespace Shootopia
 
             ToggleRenderers(visible);
             SetPlayerControlsEnabled(visible);
+
+            var nameplate = GetComponentInChildren<PlayerNameplate>(true);
+            if (nameplate != null)
+            {
+                nameplate.SetDeathHidden(!visible);
+            }
         }
 
         private void ToggleRenderers(bool visible)

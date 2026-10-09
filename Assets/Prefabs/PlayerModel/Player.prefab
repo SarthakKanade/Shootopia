@@ -2031,6 +2031,7 @@ GameObject:
   - component: {fileID: 7679714562528034799}
   - component: {fileID: 4111803751308288155}
   - component: {fileID: 1532468733608136440}
+  - component: {fileID: 1532468733608136441}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -2143,7 +2144,7 @@ MonoBehaviour:
   gravity: -24
   jumpForce: 2.2
   dashSpeed: 14.5
-  rollSpeed: 14.5
+  rollSpeed: 21.75
   rollDuration: 0.55
   animDamp: 0.1
   playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
@@ -2197,6 +2198,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: afd2bf80bfcc442388a57a00d46160f0, type: 2}
   - {fileID: 11400000, guid: 8b94421a7c7aa4bd985a2cd3a612f6db, type: 2}
   - {fileID: 11400000, guid: dc21ae42783e74ca197e0f90cb3f343b, type: 2}
+  - {fileID: 11400000, guid: 5a82fe1048b24ca18a7c2e01dfb37c68, type: 2}
   onWeaponExpired: {fileID: 0}
   onDurabilityChanged: {fileID: 0}
   onMaxDurabilityChanged: {fileID: 0}
@@ -2367,8 +2369,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerShield
   ShowTopMostFoldoutHeaderGroup: 1
-  maxShieldHp: 100
+  maxShieldHp: 50
   maxShieldDuration: 15
   shieldSpherePrefab: {fileID: 8454452663822484918, guid: 2cc3673ed7cfd4e4192f2f1d2396c673, type: 3}
   shieldActivateSound: {fileID: 0}
   shieldBreakSound: {fileID: 0}
+--- !u!114 &1532468733608136441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6245397629552963378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b71d99432f849e7a829104f6c449a21, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerInvisibility
+  ShowTopMostFoldoutHeaderGroup: 1
+  defaultDuration: 10
+  stealthTranslucentMaterial: {fileID: 2100000, guid: 3e789f28d71b4028bc451290aa38fe11, type: 2}
+  stealthActivateClip: {fileID: 0}
+  stealthDeactivateClip: {fileID: 0}

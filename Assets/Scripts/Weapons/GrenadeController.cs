@@ -18,6 +18,7 @@ namespace Shootopia
         void Awake()
         {
             if (_blinkLight == null) _blinkLight = GetComponentInChildren<Light>();
+            if (_blinkLight != null) _blinkLight.enabled = false;
             if (impulseSource == null) impulseSource = GetComponent<CinemachineImpulseSource>();
             if (impulseSource == null) impulseSource = gameObject.AddComponent<CinemachineImpulseSource>();
         }

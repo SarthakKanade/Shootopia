@@ -20,7 +20,7 @@ namespace Shootopia
         public float gravity = -24f;
         public float jumpForce = 2.2f;
         public float dashSpeed = 14.5f;
-        public float rollSpeed = 14.5f;
+        public float rollSpeed = 21.75f;
         public float rollDuration = 0.55f;
         public float animDamp = 0.1f;
 

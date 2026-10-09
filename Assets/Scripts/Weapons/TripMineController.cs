@@ -10,6 +10,7 @@ namespace Shootopia
         [SerializeField] private SphereCollider _proximitySensor;
         [SerializeField] private Renderer _armRing;
         [SerializeField] private GameObject explosionVFX;
+        [SerializeField] private Light _trapLight;
 
         private Rigidbody rb;
         private WeaponSO _data;
@@ -20,6 +21,14 @@ namespace Shootopia
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            if (_trapLight == null) _trapLight = GetComponentInChildren<Light>();
+            if (_trapLight != null) _trapLight.enabled = false;
+        }
+
+        protected override void OnDisable()
+        {
+            base.OnDisable();
+            if (_trapLight != null) _trapLight.enabled = false;
         }
 
         protected override void OnInitialised(WeaponSO data, Vector3 launchVelocity)
@@ -65,7 +74,29 @@ namespace Shootopia
             // Align to surface normal
             Vector3 n = col.contacts[0].normal;
             transform.rotation = Quaternion.FromToRotation(Vector3.up, n);
-            transform.position = col.contacts[0].point + n * 0.015f;
+
+            // Compute distance from pivot to bottom of the mesh along local -Y so the mine sits on the surface
+            float bottomOffset = 0.125f;
+            var mf = GetComponentInChildren<MeshFilter>();
+            if (mf != null && mf.sharedMesh != null)
+            {
+                float localMinY = mf.sharedMesh.bounds.min.y;
+                if (localMinY < 0f)
+                {
+                    float scaleY = mf.transform.lossyScale.y;
+                    bottomOffset = Mathf.Abs(localMinY) * scaleY;
+                }
+            }
+            else
+            {
+                var rend = GetComponentInChildren<Renderer>();
+                if (rend != null)
+                {
+                    bottomOffset = rend.bounds.extents.y;
+                }
+            }
+
+            transform.position = col.contacts[0].point + n * (bottomOffset + 0.005f);
 
             StartCoroutine(ArmRoutine());
         }
@@ -90,18 +121,81 @@ namespace Shootopia
 
         private IEnumerator PulseRoutine()
         {
-            if (_armRing == null) yield break;
+            Material mat = _armRing != null ? _armRing.material : null;
+            if (mat != null)
+            {
+                mat.EnableKeyword("_EMISSION");
+            }
 
-            Material mat = _armRing.material;
-            mat.EnableKeyword("_EMISSION");
+            if (_trapLight == null)
+            {
+                _trapLight = GetComponentInChildren<Light>();
+            }
+
+            if (_trapLight == null)
+            {
+                GameObject lightObj = new GameObject("SubtleTrapLight");
+                lightObj.transform.SetParent(transform, false);
+                lightObj.transform.localPosition = Vector3.up * 0.08f;
+                _trapLight = lightObj.AddComponent<Light>();
+                _trapLight.type = LightType.Point;
+                _trapLight.range = 1.35f;
+                _trapLight.shadows = LightShadows.None;
+            }
+
+            // Subtle colors: soft light blue for ours/teammates, soft red for opponents
+            Color subtleBlue = new Color(0.22f, 0.65f, 1.0f);
+            Color subtleRed = new Color(1.0f, 0.22f, 0.22f);
 
             while (_armed && !_exploded)
             {
-                float t = (Mathf.Sin(Time.time * Mathf.PI * 2f) + 1f) / 2f;
-                Color pulseColor = Color.red * Mathf.Lerp(0.5f, 4.0f, t);
-                mat.SetColor("_EmissionColor", pulseColor);
+                bool friendly = IsFriendlyTrap();
+                Color baseColor = friendly ? subtleBlue : subtleRed;
+
+                float t = (Mathf.Sin(Time.time * Mathf.PI * 1.5f) + 1f) * 0.5f;
+                float emissionIntensity = Mathf.Lerp(0.20f, 0.65f, t);
+                float lightIntensity = Mathf.Lerp(0.20f, 0.50f, t);
+
+                if (mat != null)
+                {
+                    mat.SetColor("_EmissionColor", baseColor * emissionIntensity);
+                }
+
+                if (_trapLight != null)
+                {
+                    _trapLight.enabled = true;
+                    _trapLight.color = baseColor;
+                    _trapLight.intensity = lightIntensity;
+                }
+
                 yield return null;
             }
+
+            if (_trapLight != null)
+            {
+                _trapLight.enabled = false;
+            }
+        }
+
+        private bool IsFriendlyTrap()
+        {
+            if (Unity.Netcode.NetworkManager.Singleton != null)
+            {
+                ulong localId = Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+                if ((ulong)_ownerID == localId) return true;
+
+                if (GameModeBase.Instance is TDMMode tdm)
+                {
+                    int localTeam = tdm.GetPlayerTeam(localId);
+                    int ownerTeam = tdm.GetPlayerTeam((ulong)_ownerID);
+                    if (localTeam != -1 && localTeam == ownerTeam)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
         }
 
         private void OnTriggerEnter(Collider col)

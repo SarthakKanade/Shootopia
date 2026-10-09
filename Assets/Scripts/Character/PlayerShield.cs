@@ -15,7 +15,7 @@ namespace Shootopia
     public class PlayerShield : NetworkBehaviour
     {
         [Header("Shield Configuration")]
-        [SerializeField] private float maxShieldHp = 100f;
+        [SerializeField] private float maxShieldHp = 50f;
         [SerializeField] private float maxShieldDuration = 15f;
         [SerializeField] private GameObject shieldSpherePrefab;
 
@@ -25,7 +25,7 @@ namespace Shootopia
 
         [Header("Networked State")]
         private readonly NetworkVariable<bool> _isShieldActive = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-        private readonly NetworkVariable<float> _currentShieldHp = new NetworkVariable<float>(100f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private readonly NetworkVariable<float> _currentShieldHp = new NetworkVariable<float>(50f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         public bool IsShieldActive => _isShieldActive.Value;
         public float CurrentShieldHp => _currentShieldHp.Value;
@@ -161,13 +161,13 @@ namespace Shootopia
             ActivateShieldInternal();
         }
 
-        public void GrantShield(float customShieldHp = 75f)
+        public void GrantShield(float customShieldHp = 50f)
         {
             GrantShieldServerRpc(customShieldHp);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        public void GrantShieldServerRpc(float customShieldHp = 75f, RpcParams rpcParams = default)
+        public void GrantShieldServerRpc(float customShieldHp = 50f, RpcParams rpcParams = default)
         {
             if (!IsServer) return;
             _currentShieldHp.Value = customShieldHp;
@@ -181,7 +181,7 @@ namespace Shootopia
             _currentShieldHp.Value = maxShieldHp;
             _shieldTimer = 0f;
             _isShieldActive.Value = true;
-            Debug.Log($"[PlayerShield] Shield activated for Player {OwnerClientId} (100 HP, 15s duration)");
+            Debug.Log($"[PlayerShield] Shield activated for Player {OwnerClientId} ({maxShieldHp} HP, {maxShieldDuration}s duration)");
         }
 
         private void DeactivateShieldInternal()
@@ -241,13 +241,13 @@ namespace Shootopia
         private float AbsorbDamageInternal(float incomingDamage)
         {
             float shieldHp = _currentShieldHp.Value;
-            float absorbed = Mathf.Min(incomingDamage, shieldHp);
-            float overflowDamage = incomingDamage - absorbed;
 
             if (IsServer)
             {
-                _currentShieldHp.Value = Mathf.Max(0f, shieldHp - absorbed);
-                Debug.Log($"[PlayerShield] Server absorbed {absorbed} damage for Player {OwnerClientId}. Remaining Shield HP: {_currentShieldHp.Value}");
+                // Shield absorbs incoming damage. Even if hit is a lethal nuke (incomingDamage > shieldHp),
+                // the shield absorbs the entire hit, shatters, and lets ZERO overflow damage through to health!
+                _currentShieldHp.Value = Mathf.Max(0f, shieldHp - incomingDamage);
+                Debug.Log($"[PlayerShield] Server absorbed {incomingDamage} damage for Player {OwnerClientId}. Remaining Shield HP: {_currentShieldHp.Value}");
 
                 if (_currentShieldHp.Value <= 0f)
                 {
@@ -255,7 +255,9 @@ namespace Shootopia
                 }
             }
 
-            return overflowDamage;
+            // Shield Gate / One-shot protection:
+            // Always returns 0 overflow damage while the shield was active so a complete hit (even a nuke) is absorbed!
+            return 0f;
         }
     }
 }

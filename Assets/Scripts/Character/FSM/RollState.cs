@@ -62,7 +62,7 @@ namespace Shootopia.FSM
 
             // Snappy dive velocity curve: launches immediately into dive, peaks through somersault,
             // and eases into run speed as feet touch down.
-            // Average speed multiplier = 1.0 (exact distance = RollSpeed * RollDuration = 7.975m).
+            // Average speed multiplier = 1.0 (exact distance = RollSpeed * RollDuration = 11.96m).
             float t = Mathf.Clamp01(_elapsedTime / Ctx.RollDuration);
             float speedMultiplier = (t < 0.70f) ? 1.04f : Mathf.Lerp(1.04f, 0.77f, (t - 0.70f) / 0.30f);
 

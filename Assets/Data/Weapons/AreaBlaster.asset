@@ -17,7 +17,7 @@ MonoBehaviour:
   Damage: 100
   FireRate: 1.2
   HitVFXPrefab: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
-  audio: {fileID: 11400000, guid: 8f0df0029df754471b3b7391520dd708, type: 2}
+  audio: {fileID: 11400000, guid: 78ab00112233445566778899aabbcc10, type: 2}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
@@ -32,7 +32,7 @@ MonoBehaviour:
   gaugeKillFill: 30
   isAutoFire: 0
   isCharged: 1
-  chargeTime: 0.4
+  chargeTime: 1
   isContinuous: 0
   isTrap: 0
   projectilePrefab: {fileID: 415908930186214545, guid: 76024a630624d48c19bed69ce42f3079, type: 3}

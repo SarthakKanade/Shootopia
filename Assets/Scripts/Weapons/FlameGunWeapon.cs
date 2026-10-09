@@ -74,7 +74,7 @@ namespace Shootopia
             // Cone: OverlapCapsule from muzzle to muzzle + forward * range
             Vector3 start = _muzzlePoint.position;
             Vector3 end = start + Camera.main.transform.forward * _so.maxRange;
-            float radius = 0.75f; // From requirements
+            float radius = 0.56f; // Reduced to 75% of current (0.75f * 0.75)
 
             Collider[] hits = Physics.OverlapCapsule(start, end, radius, _targetLayer);
             

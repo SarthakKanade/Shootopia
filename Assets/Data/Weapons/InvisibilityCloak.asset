@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
+  m_Name: InvisibilityCloak
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
+  weaponPrefab: {fileID: 0}
+  weaponName: Invisibility Cloak
+  Damage: 0
+  FireRate: 0.5
+  HitVFXPrefab: {fileID: 0}
+  audio: {fileID: 11400000, guid: 0a8db85befa3c44be8cfacf0bf0b8a53, type: 2}
+  isAutomatic: 0
+  CanZoom: 0
+  ZoomAmount: 10
+  ZoomRotationSpeed: 0.3
+  MagazineSize: 1
+  handedness: 0
+  category: 0
+  durabilityType: 2
+  maxUses: 1
+  weaponDuration: 10
+  isPickupOnly: 0
+  gaugeKillFill: 20
+  isAutoFire: 0
+  isCharged: 0
+  chargeTime: 0
+  isContinuous: 0
+  isTrap: 0
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 20
+  hasGravity: 0
+  throwAngle: 0
+  throwForce: 12
+  isExplosive: 0
+  splashDamage: 0
+  blastRadius: 0
+  selfDamage: 0
+  freezeDuration: 0
+  maxSlowPercent: 0
+  minSlowPercent: 0
+  afterburnDPS: 0
+  afterburnDuration: 0
+  pullRadius: 0
+  pullForce: 0
+  voidDuration: 0
+  damageAtCentre: 0
+  damageAtEdge: 0
+  maxBounces: 0
+  projectileLifetime: 0
+  previewDistance: 0
+  hasADS: 0
+  requiresADSToFire: 0
+  adsFOV: 60
+  adsMoveSpeedMult: 1
+  damagePerSecond: 0
+  maxRange: 0
+  coneAngle: 0
+  fuelDuration: 0
+  tickRate: 0.1
+  fuseTime: 0
+  cloudRadius: 0
+  cloudDuration: 0
+  slowPercent: 0
+  activationDelay: 0
+  triggerRadius: 0
+  armDelay: 0
+  selfTrigger: 0
+  persistOnDeath: 0
+  isRare: 0

@@ -28,6 +28,8 @@ namespace Shootopia
 
         private int _lastRelationship = -999; // -1: FFA (Opponent), 0: Teammate (Blue), 1: Opponent (Red)
         private bool _isLocalPlayer = false;
+        private bool _isInvisibleHidden = false;
+        private bool _isDeadHidden = false;
 
         private readonly Color BlueTeammateColor = new Color(0.2f, 0.65f, 1f, 1f);
         private readonly Color RedOpponentColor = new Color(1f, 0.25f, 0.25f, 1f);
@@ -64,6 +66,11 @@ namespace Shootopia
             {
                 _playerHealth.CurrentHp.OnValueChanged += OnHpChanged;
                 UpdateHealthBar(_playerHealth.CurrentHp.Value, _playerHealth.MaxHp);
+
+                if (_playerHealth.IsDead || _playerHealth.CurrentHp.Value <= 0f)
+                {
+                    SetDeathHidden(true);
+                }
             }
 
             var mainCam = Camera.main;
@@ -97,6 +104,15 @@ namespace Shootopia
         {
             float max = _playerHealth != null ? _playerHealth.MaxHp : 100f;
             UpdateHealthBar(newHp, max);
+
+            if (newHp <= 0f)
+            {
+                SetDeathHidden(true);
+            }
+            else if (_isDeadHidden && (_playerHealth == null || !_playerHealth.IsDead))
+            {
+                SetDeathHidden(false);
+            }
         }
 
         private void UpdateNameplateText(FixedString64Bytes name)
@@ -219,12 +235,25 @@ namespace Shootopia
                 return;
             }
 
+            bool isDead = (_playerHealth != null && _playerHealth.IsDead) || _isDeadHidden;
+            if (isDead || _isInvisibleHidden)
+            {
+                if (_canvas != null && _canvas.enabled) _canvas.enabled = false;
+                return;
+            }
+
+            if (_canvas != null && !_canvas.enabled)
+            {
+                _canvas.enabled = true;
+            }
+
             UpdateTeamAndColors(force: false);
         }
 
         private void UpdateTeamAndColors(bool force)
         {
-            if (_isLocalPlayer) return;
+            if (_isLocalPlayer || _isInvisibleHidden || _isDeadHidden) return;
+            if (_playerHealth != null && _playerHealth.IsDead) return;
 
             int relationship = DetermineRelationship();
             if (force || relationship != _lastRelationship)
@@ -268,7 +297,8 @@ namespace Shootopia
 
         private void LateUpdate()
         {
-            if (_isLocalPlayer) return;
+            if (_isLocalPlayer || _isInvisibleHidden || _isDeadHidden) return;
+            if (_playerHealth != null && _playerHealth.IsDead) return;
 
             if (_camTransform == null)
             {
@@ -279,7 +309,7 @@ namespace Shootopia
                 }
             }
 
-            if (_camTransform != null && _canvas != null)
+            if (_camTransform != null && _canvas != null && _canvas.enabled)
             {
                 // Billboard: face camera directly
                 _canvas.transform.LookAt(_canvas.transform.position + _camTransform.forward);
@@ -296,6 +326,36 @@ namespace Shootopia
             if (_healthFillImage != null)
             {
                 _healthFillImage.color = c;
+            }
+        }
+
+        /// <summary>
+        /// Hides or restores the overhead nameplate canvas when the target enters or leaves stealth/invisibility.
+        /// </summary>
+        public void SetInvisibilityHidden(bool hidden)
+        {
+            _isInvisibleHidden = hidden;
+            if (_isLocalPlayer) return;
+
+            if (_canvas != null)
+            {
+                bool isDead = (_playerHealth != null && _playerHealth.IsDead) || _isDeadHidden;
+                _canvas.enabled = !hidden && !isDead;
+            }
+        }
+
+        /// <summary>
+        /// Hides or restores the overhead nameplate canvas on player death and respawn.
+        /// </summary>
+        public void SetDeathHidden(bool hidden)
+        {
+            _isDeadHidden = hidden;
+            if (_isLocalPlayer) return;
+
+            if (_canvas != null)
+            {
+                bool isDead = hidden || (_playerHealth != null && _playerHealth.IsDead);
+                _canvas.enabled = !isDead && !_isInvisibleHidden;
             }
         }
     }

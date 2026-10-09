@@ -16,8 +16,12 @@ MonoBehaviour:
   - displayName: Health Pack
     weaponAttach: {fileID: 11400000, guid: 8b94421a7c7aa4bd985a2cd3a612f6db, type: 2}
     customPreviewPrefab: {fileID: 655982257868158156, guid: 10e7b8edbf12044f4aff40d89d09f01b, type: 3}
-    dropWeight: 50
+    dropWeight: 35
   - displayName: Shield Battery
     weaponAttach: {fileID: 11400000, guid: dc21ae42783e74ca197e0f90cb3f343b, type: 2}
     customPreviewPrefab: {fileID: 5003325908801421819, guid: f33e361e8f7c447b498f840714a93b22, type: 3}
-    dropWeight: 50
+    dropWeight: 35
+  - displayName: Invisibility Cloak
+    weaponAttach: {fileID: 11400000, guid: 5a82fe1048b24ca18a7c2e01dfb37c68, type: 2}
+    customPreviewPrefab: {fileID: 5003325908801421819, guid: d7a5b341f92e468ca82e1189ac35f790, type: 3}
+    dropWeight: 30

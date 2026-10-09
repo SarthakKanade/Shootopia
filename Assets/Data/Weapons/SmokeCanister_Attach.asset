@@ -15,12 +15,12 @@ MonoBehaviour:
   stanceId: 2
   gameplayData: {fileID: 11400000, guid: f9d8e885c6be241078cae2dc341e3a24, type: 2}
   visualPrefab: {fileID: 1438103596642828602, guid: 41141a6c0420a44ba879a057eae22b96, type: 3}
-  equipLocalPos: {x: 0.05, y: -0.02, z: -0.028}
+  equipLocalPos: {x: 0, y: 0, z: 0}
   equipLocalEuler: {x: 0, y: 90, z: 90}
   muzzleChildName: Muzzle
   gripRChildName: GripR
   gripLChildName: GripL
-  snapRightGripToHand: 0
+  snapRightGripToHand: 1
   rightHandWeight: 0
   leftHandWeight: 0
   leftElbowHint: {x: -0.3, y: -0.2, z: 0.2}

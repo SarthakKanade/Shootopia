@@ -29,19 +29,17 @@ namespace Shootopia
 
             StartChargeVisual(muzzle, data);
 
-            // Trigger dynamic audio ducking on music so weapon charging whine cuts through cleanly
-            if (AudioManager.Instance != null)
-            {
-                AudioManager.Instance.SetSustainedDucking(true, 0.38f);
-            }
-
-            // Play looping charge SFX with pitch bend
+            // Play single charge SFX (one-shot play, no loop or trailing sound)
             if (data.chargeTime > 0f && data.audio != null && AudioManager.Instance != null)
             {
                 AudioClip clip = data.audio.chargeClip != null ? data.audio.chargeClip : data.audio.drawClip;
                 if (clip != null)
                 {
-                    _activeChargeAudioSource = AudioManager.Instance.PlayLoopingSFX(clip, muzzle, 0.85f, 0.8f);
+                    _activeChargeAudioSource = AudioManager.Instance.PlayLoopingSFX(clip, muzzle, 0.85f, 1.0f);
+                    if (_activeChargeAudioSource != null)
+                    {
+                        _activeChargeAudioSource.loop = false;
+                    }
                 }
             }
         }
@@ -52,11 +50,6 @@ namespace Shootopia
 
             ChargeTimer += dt;
             float t = Mathf.Clamp01(ChargeTimer / Mathf.Max(data.chargeTime, 0.01f));
-
-            if (_activeChargeAudioSource != null)
-            {
-                _activeChargeAudioSource.pitch = Mathf.Lerp(0.8f, 1.6f, t);
-            }
 
             UpdateChargeVisual(data, t);
         }
@@ -216,9 +209,14 @@ namespace Shootopia
                 implosionInst.name = "ImplosionVFX";
                 implosionInst.transform.localScale = Vector3.one * 0.175f;
 
+                // Dynamically sync implosion particle simulation speed with data.chargeTime
+                float defaultDuration = 0.85f;
+                float simSpeed = defaultDuration / Mathf.Max(data.chargeTime, 0.1f);
+
                 foreach (var ps in implosionInst.GetComponentsInChildren<ParticleSystem>(true))
                 {
                     var pMain = ps.main;
+                    pMain.simulationSpeed = simSpeed;
                     Color pCol = chargeColor;
                     pCol.a = pMain.startColor.color.a > 0.01f ? pMain.startColor.color.a : 0.8f;
                     pMain.startColor = pCol;
@@ -295,7 +293,7 @@ namespace Shootopia
             Transform implosionTr = _activeChargeVFX.transform.Find("ImplosionVFX");
             if (implosionTr != null)
             {
-                implosionTr.localScale = Vector3.one * Mathf.Lerp(0.08f, 0.22f, t);
+                implosionTr.localScale = Vector3.one * Mathf.Lerp(0.08f, 0.22f, smoothT);
             }
         }
 

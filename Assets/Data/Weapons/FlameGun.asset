@@ -36,7 +36,7 @@ MonoBehaviour:
   isContinuous: 1
   isTrap: 0
   projectilePrefab: {fileID: 3562189247435599777, guid: 2afc0f75a655f4bb49a9301feb7f374b, type: 3}
-  projectileSpeed: 26
+  projectileSpeed: 25
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
@@ -55,14 +55,14 @@ MonoBehaviour:
   damageAtCentre: 0
   damageAtEdge: 0
   maxBounces: 0
-  projectileLifetime: 0.6
+  projectileLifetime: 0.45
   previewDistance: 0
   hasADS: 0
   requiresADSToFire: 0
   adsFOV: 60
   adsMoveSpeedMult: 1
   damagePerSecond: 80
-  maxRange: 15
+  maxRange: 11.25
   coneAngle: 17
   fuelDuration: 12
   tickRate: 0.1

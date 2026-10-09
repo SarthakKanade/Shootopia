@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponAttachSO
   stanceId: 3
   gameplayData: {fileID: 11400000, guid: 14f24e591a46b47f3afb1a2012ed8f73, type: 2}
-  visualPrefab: {fileID: 3758389681468904059, guid: 35d3255f3afbb1445bb195eed0a5a120, type: 3}
-  equipLocalPos: {x: 0.05, y: -0.02, z: 0.05}
-  equipLocalEuler: {x: 90, y: 90, z: 0}
+  visualPrefab: {fileID: 4172692132801791673, guid: 80011f3ad8a8d4fea90e60a20a3a1dc1, type: 3}
+  equipLocalPos: {x: 0, y: 0, z: 0}
+  equipLocalEuler: {x: 0, y: 90, z: 90}
   muzzleChildName: Muzzle
   gripRChildName: GripR
   gripLChildName: 
-  snapRightGripToHand: 0
+  snapRightGripToHand: 1
   rightHandWeight: 0
   leftHandWeight: 0
   leftElbowHint: {x: -0.3, y: -0.2, z: 0.2}

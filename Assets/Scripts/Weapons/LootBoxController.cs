@@ -268,31 +268,42 @@ namespace Shootopia
 
             if (chestType == LootChestType.Chest1_Defense)
             {
-                // Check if specific entry is configured in loot table
-                bool isShieldEntry = false;
+                var invis = playerObj.GetComponent<PlayerInvisibility>();
+                string itemName = "";
                 if (lootTable != null && activeIndex >= 0 && activeIndex < lootTable.Entries.Count)
                 {
                     var entry = lootTable.Entries[activeIndex];
-                    if (entry != null && entry.displayName != null && entry.displayName.ToLower().Contains("shield"))
+                    if (entry != null && !string.IsNullOrEmpty(entry.displayName))
                     {
-                        isShieldEntry = true;
+                        itemName = entry.displayName.ToLower();
+                    }
+                    else if (entry != null && entry.weaponAttach != null)
+                    {
+                        itemName = entry.weaponAttach.name.ToLower();
                     }
                 }
 
-                if (isShieldEntry && shield != null)
+                if (itemName.Contains("invis") || itemName.Contains("cloak"))
                 {
-                    shield.GrantShield(75f);
-                    Debug.Log($"[LootBoxController] Player granted 75 HP Shield from {chestType}!");
+                    if (invis != null)
+                    {
+                        invis.ActivateInvisibility(10f);
+                        Debug.Log($"[LootBoxController] Player granted Invisibility Cloak from {chestType}!");
+                    }
                 }
-                else if (health.GetCurrentHp() < health.GetMaxHp())
+                else if (itemName.Contains("shield"))
                 {
+                    if (shield != null)
+                    {
+                        shield.GrantShield(50f);
+                        Debug.Log($"[LootBoxController] Player granted 50 HP Shield from {chestType}!");
+                    }
+                }
+                else
+                {
+                    // Health pack: heals player completely to full HP. Never activates shield!
                     health.Heal(health.GetMaxHp());
-                    Debug.Log($"[LootBoxController] Player restored to MAX HP from {chestType}!");
-                }
-                else if (shield != null)
-                {
-                    shield.GrantShield(75f);
-                    Debug.Log($"[LootBoxController] Player at full HP granted 75 Shield from {chestType}!");
+                    Debug.Log($"[LootBoxController] Player restored completely to MAX HP from {chestType}!");
                 }
             }
             else

@@ -16,3 +16,5 @@ MonoBehaviour:
   reloadClip: {fileID: 8300000, guid: f271bdd05139f418cac1181f9cd6c9a9, type: 3}
   emptyClickClip: {fileID: 8300000, guid: 2973d24f8c17b47a3900d772533a0f67, type: 3}
   drawClip: {fileID: 8300000, guid: 7650389d81cfa44b2ba99bba46cd7384, type: 3}
+  chargeClip: {fileID: 8300000, guid: 89cf00112233445566778899aabbcc01, type: 3}
+  chargeHoldClip: {fileID: 0}

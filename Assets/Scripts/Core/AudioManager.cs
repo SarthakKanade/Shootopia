@@ -42,22 +42,22 @@ namespace Shootopia
         [SerializeField] private float defaultSpatialMaxDistance = 35f;
 
         [Header("Professional Mix Headroom & Sidechain Ducking")]
-        [Tooltip("Baseline attenuation for background music relative to full scale SFX to guarantee dynamic headroom (0.32 = ~-10dB).")]
+        [Tooltip("Baseline attenuation for background music relative to full scale SFX to guarantee dynamic headroom.")]
         [Range(0.1f, 1f)]
-        [SerializeField] private float musicHeadroomScale = 0.32f;
+        [SerializeField] private float musicHeadroomScale = 0.42f;
 
-        [Tooltip("Target volume multiplier when combat ducking is active (e.g. 0.40 = ducks to 40% volume).")]
-        [Range(0.1f, 0.9f)]
-        [SerializeField] private float defaultDuckLevel = 0.40f;
+        [Tooltip("Target volume multiplier when combat ducking is active (0.55 = ducks to ~50-60% volume during other sounds).")]
+        [Range(0.2f, 1.0f)]
+        [SerializeField] private float defaultDuckLevel = 0.55f;
 
-        [Tooltip("Cutoff frequency for the dynamic low-pass filter during heavy combat ducking (e.g. 4500Hz).")]
-        [SerializeField] private float duckLowPassCutoff = 4500f;
+        [Tooltip("Cutoff frequency for the dynamic low-pass filter during combat ducking.")]
+        [SerializeField] private float duckLowPassCutoff = 20000f;
 
-        [Tooltip("How fast music volume and low-pass filter ducks down during combat (seconds).")]
-        [SerializeField] private float duckAttackTime = 0.06f;
+        [Tooltip("How fast music volume ducks down during combat (seconds).")]
+        [SerializeField] private float duckAttackTime = 0.10f;
 
-        [Tooltip("How smoothly music volume and low-pass filter recovers after combat action (seconds).")]
-        [SerializeField] private float duckReleaseTime = 0.90f;
+        [Tooltip("How smoothly music volume recovers after combat action (seconds).")]
+        [SerializeField] private float duckReleaseTime = 0.60f;
 
         [Header("Game Soundtrack")]
         [SerializeField] private AudioClip waitingRoomMusicClip;
@@ -86,7 +86,7 @@ namespace Shootopia
         private float _targetLowPassCutoff = 22000f;
         private float _currentLowPassCutoff = 22000f;
         private bool _isSustainedDucking = false;
-        private float _sustainedDuckLevel = 0.40f;
+        private float _sustainedDuckLevel = 0.55f;
 
         private void Awake()
         {
@@ -165,24 +165,26 @@ namespace Shootopia
         /// Temporarily attenuates music and applies frequency carving (low-pass filter)
         /// so projectiles, weapon fire, charge blasts, and explosions punch through cleanly.
         /// </summary>
-        public void TriggerCombatDucking(float duckAmount = 0.40f, float holdDuration = 1.0f, bool applyLowPass = true)
+        public void TriggerCombatDucking(float duckAmount = 0.55f, float holdDuration = 0.8f, bool applyLowPass = false)
         {
-            _targetDuckLevel = Mathf.Min(_targetDuckLevel, duckAmount);
+            // Duck background music to ~50-60% of actual during other sounds
+            float clampedDuck = Mathf.Clamp(duckAmount, 0.50f, 0.60f);
+            _targetDuckLevel = Mathf.Min(_targetDuckLevel, clampedDuck);
             _combatDuckTimer = Mathf.Max(_combatDuckTimer, holdDuration);
-            _targetLowPassCutoff = applyLowPass ? duckLowPassCutoff : 22000f;
+            _targetLowPassCutoff = applyLowPass ? 17000f : 22000f;
         }
 
         /// <summary>
         /// Enables or disables sustained ducking for continuous combat actions (e.g. weapon charging).
         /// </summary>
-        public void SetSustainedDucking(bool active, float duckAmount = 0.40f)
+        public void SetSustainedDucking(bool active, float duckAmount = 0.55f)
         {
             _isSustainedDucking = active;
-            _sustainedDuckLevel = duckAmount;
+            _sustainedDuckLevel = Mathf.Clamp(duckAmount, 0.50f, 0.60f);
             if (!active)
             {
                 // Smooth hold buffer after releasing charge
-                _combatDuckTimer = Mathf.Max(_combatDuckTimer, 0.4f);
+                _combatDuckTimer = Mathf.Max(_combatDuckTimer, 0.2f);
             }
         }
 
