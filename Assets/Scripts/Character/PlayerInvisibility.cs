@@ -97,6 +97,19 @@ namespace Shootopia
 
         private void Update()
         {
+            if (!IsSpawned)
+            {
+                if (_durationTimer < _activeDuration && _activeDuration > 0f)
+                {
+                    _durationTimer += Time.deltaTime;
+                    if (_durationTimer >= _activeDuration)
+                    {
+                        ApplyInvisibilityVisuals(false);
+                    }
+                }
+                return;
+            }
+
             if (!IsServer) return;
 
             if (_isInvisible.Value)
@@ -126,7 +139,16 @@ namespace Shootopia
         public void ActivateInvisibility(float duration = 10f)
         {
             if (duration <= 0f) duration = defaultDuration;
-            ActivateInvisibilityServerRpc(duration);
+            if (IsSpawned)
+            {
+                ActivateInvisibilityServerRpc(duration);
+            }
+            else
+            {
+                _activeDuration = duration > 0f ? duration : defaultDuration;
+                _durationTimer = 0f;
+                ApplyInvisibilityVisuals(true);
+            }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]

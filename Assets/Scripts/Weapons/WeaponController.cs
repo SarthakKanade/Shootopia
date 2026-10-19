@@ -92,6 +92,28 @@ namespace Shootopia
                 animator.SetTrigger(hash);
         }
 
+        private int GetUpperBodyLayer()
+        {
+            if (animator == null || !animator.isActiveAndEnabled || animator.layerCount <= 0) return 0;
+            int idx = animator.GetLayerIndex("Upper Body");
+            if (idx >= 0 && idx < animator.layerCount) return idx;
+            return Mathf.Clamp(1, 0, animator.layerCount - 1);
+        }
+
+        private void SafeCrossFade(string stateName, float transitionDuration, int layer, float normalizedTime = 0f)
+        {
+            if (animator == null || !animator.isActiveAndEnabled || animator.runtimeAnimatorController == null) return;
+            if (animator.layerCount <= 0) return;
+
+            int validLayer = Mathf.Clamp(layer, 0, animator.layerCount - 1);
+            int stateHash = Animator.StringToHash(stateName);
+
+            if (animator.HasState(validLayer, stateHash))
+            {
+                animator.CrossFade(stateName, transitionDuration, validLayer, normalizedTime);
+            }
+        }
+
         // Network State
         private readonly NetworkVariable<Unity.Collections.FixedString64Bytes> _equippedAttachName = 
             new NetworkVariable<Unity.Collections.FixedString64Bytes>("", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -443,6 +465,14 @@ namespace Shootopia
                 FireProjectile(data);
                 if (animator != null) animator.Play("Shoot", 1, 0f);
             }
+            else if (firePressed && !CanFire(data) && _timeSinceLastShot >= 0.20f)
+            {
+                _timeSinceLastShot = 0f;
+                if (data.audio != null && data.audio.emptyClickClip != null && AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlaySFXAtPosition(data.audio.emptyClickClip, transform.position, 0.6f, isCombatPriority: false);
+                }
+            }
 
             if (isAuto && !fireHeld && !_aimHandler.IsInCombatStance && animator != null)
             {
@@ -458,6 +488,8 @@ namespace Shootopia
                 return;
             }
 
+            int upperBodyLayer = GetUpperBodyLayer();
+
             if (fireHeld && CanFire(data) && _timeSinceLastShot >= data.FireRate)
             {
                 if (!_isAimingTrap)
@@ -467,7 +499,7 @@ namespace Shootopia
                     {
                         SafeSetBool(HashIsThrowAiming, true);
                         SafeSetFloat(HashShootSpeed, 1f);
-                        animator.CrossFade("ThrowBall_Prep", 0.05f, -1, 0f);
+                        SafeCrossFade("ThrowBall_Prep", 0.05f, upperBodyLayer, 0f);
                     }
                     if (motor != null) motor.MoveSpeedMultiplier = 0.25f;
                 }
@@ -486,7 +518,7 @@ namespace Shootopia
                     SafeSetBool(HashIsThrowAiming, false);
                     SafeSetTrigger(HashThrowRelease);
                     SafeSetFloat(HashShootSpeed, 1f);
-                    animator.CrossFade("ThrowBall_Release", 0.02f, -1, 0f);
+                    SafeCrossFade("ThrowBall_Release", 0.02f, upperBodyLayer, 0f);
                 }
                 if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
                 if (_trajectoryPredictor != null) _trajectoryPredictor.HideTrajectory();
@@ -616,6 +648,14 @@ namespace Shootopia
                 {
                     FireProjectile(data);
                     if (animator != null) animator.Play("Shoot", 1, 0f);
+                }
+                else if (firePressed && !CanFire(data) && _timeSinceLastShot >= 0.20f)
+                {
+                    _timeSinceLastShot = 0f;
+                    if (data.audio != null && data.audio.emptyClickClip != null && AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlaySFXAtPosition(data.audio.emptyClickClip, transform.position, 0.6f, isCombatPriority: false);
+                    }
                 }
             }
             else
@@ -747,8 +787,10 @@ namespace Shootopia
                 var ownerCols = GetComponentsInChildren<Collider>(true);
                 foreach (var pCol in projCols)
                 {
+                    if (pCol == null || pCol is CharacterController) continue;
                     foreach (var oCol in ownerCols)
                     {
+                        if (oCol == null || oCol is CharacterController || pCol == oCol) continue;
                         Physics.IgnoreCollision(pCol, oCol, true);
                     }
                 }
@@ -811,8 +853,10 @@ namespace Shootopia
                 var ownerCols = GetComponentsInChildren<Collider>(true);
                 foreach (var pCol in projCols)
                 {
+                    if (pCol == null || pCol is CharacterController) continue;
                     foreach (var oCol in ownerCols)
                     {
+                        if (oCol == null || oCol is CharacterController || pCol == oCol) continue;
                         Physics.IgnoreCollision(pCol, oCol, true);
                     }
                 }
@@ -824,7 +868,10 @@ namespace Shootopia
             {
                 if (Physics.Raycast(origin, rotation * Vector3.forward, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
                 {
-                    GameObject hitVFX = data.HitVFXPrefab != null ? data.HitVFXPrefab : fallbackHitscanImpactVFX;
+                    bool isPlayerHit = hit.collider != null && (hit.collider.GetComponentInParent<PlayerHealth>() != null || hit.collider.CompareTag("Player"));
+                    GameObject hitVFX = (isPlayerHit && data.playerHitVFXPrefab != null)
+                        ? data.playerHitVFXPrefab
+                        : (data.HitVFXPrefab != null ? data.HitVFXPrefab : fallbackHitscanImpactVFX);
                     if (hitVFX != null)
                     {
                         var vfx = GlobalPoolManager.Instance != null
@@ -1202,11 +1249,13 @@ namespace Shootopia
         {
             if (!_isAimingTrap) return;
             _isAimingTrap = false;
+            int upperBodyLayer = GetUpperBodyLayer();
+
             if (animator != null)
             {
                 SafeSetBool(HashIsThrowAiming, false);
                 SafeSetFloat(HashShootSpeed, 1f);
-                animator.CrossFade("Empty", 0.15f, -1);
+                SafeCrossFade("Empty", 0.15f, upperBodyLayer);
             }
             if (motor != null) motor.MoveSpeedMultiplier = 1.0f;
             if (_trajectoryPredictor != null) _trajectoryPredictor.HideTrajectory();
@@ -1236,8 +1285,9 @@ namespace Shootopia
             if (animator != null)
             {
                 animator.SetFloat(HashShootSpeed, 1f);
-                animator.CrossFade("Locomotion", 0.15f, 0);
-                animator.CrossFade("Empty", 0.15f, 1);
+                int upperBodyLayer = GetUpperBodyLayer();
+                SafeCrossFade("Locomotion", 0.15f, 0);
+                SafeCrossFade("Empty", 0.15f, upperBodyLayer);
             }
         }
 

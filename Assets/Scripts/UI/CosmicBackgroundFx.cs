@@ -23,6 +23,10 @@ namespace Shootopia
         [SerializeField] private int maxConcurrentStars = 2;
         [SerializeField] private float minInterval = 2.5f;
         [SerializeField] private float maxInterval = 6.0f;
+        [Tooltip("Trajectory angle for falling stars in degrees (default -30 = gliding downward-right)")]
+        [SerializeField] private float fallAngle = -30f;
+        [Tooltip("Subtle angle variation across spawns for organic celestial motion")]
+        [SerializeField] private float fallAngleVariance = 3f;
 
         private Vector2 _planet1Origin;
         private Vector2 _planet2Origin;
@@ -75,24 +79,38 @@ namespace Shootopia
             var cg = starObj.GetComponent<CanvasGroup>();
             if (cg == null) cg = starObj.AddComponent<CanvasGroup>();
 
-            if (starSprites.Length > 0 && img != null)
+            Sprite chosenSprite = null;
+            if (starSprites != null && starSprites.Length > 0 && img != null)
             {
-                img.sprite = starSprites[Random.Range(0, starSprites.Length)];
+                chosenSprite = starSprites[Random.Range(0, starSprites.Length)];
+                img.sprite = chosenSprite;
+                if (chosenSprite != null)
+                {
+                    rect.sizeDelta = chosenSprite.rect.size;
+                }
             }
 
             // Screen bounds setup (Canvas 1920x1080)
             float startX = Random.Range(-700f, 400f);
             float startY = Random.Range(300f, 600f);
-            float angle = Random.Range(-35f, -20f); // Gliding downward right
-            float travelDistance = Random.Range(700f, 1100f);
-            float duration = Random.Range(0.7f, 1.2f);
+
+            // Compute falling trajectory angle (e.g. ~ -30 deg downward-right)
+            float currentFallAngle = fallAngle + Random.Range(-fallAngleVariance * 0.5f, fallAngleVariance * 0.5f);
+
+            // Compensate for the intrinsic angle of the sprite texture so its visual streak
+            // aligns precisely with the direction of falling movement
+            float intrinsicAngle = GetSpriteIntrinsicAngle(chosenSprite);
+            float rotationZ = currentFallAngle - intrinsicAngle;
 
             rect.anchoredPosition = new Vector2(startX, startY);
-            rect.localEulerAngles = new Vector3(0f, 0f, angle);
-            float scale = Random.Range(0.6f, 1.0f);
+            rect.localEulerAngles = new Vector3(0f, 0f, rotationZ);
+            float scale = Random.Range(0.6f, 0.95f);
             rect.localScale = new Vector3(scale, scale, 1f);
 
-            Vector2 dir = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad)).normalized;
+            float travelDistance = Random.Range(800f, 1200f);
+            float duration = Random.Range(0.75f, 1.15f);
+
+            Vector2 dir = new Vector2(Mathf.Cos(currentFallAngle * Mathf.Deg2Rad), Mathf.Sin(currentFallAngle * Mathf.Deg2Rad)).normalized;
             Vector2 endPos = new Vector2(startX, startY) + dir * travelDistance;
 
             cg.alpha = 0f;
@@ -125,6 +143,21 @@ namespace Shootopia
 
             cg.alpha = 0f;
             starObj.SetActive(false);
+        }
+
+        /// <summary>
+        /// Returns the intrinsic angle of the streak in the unrotated sprite texture (degrees from +X).
+        /// Measured via principal axis analysis of the asset pack sprites.
+        /// </summary>
+        private float GetSpriteIntrinsicAngle(Sprite sprite)
+        {
+            if (sprite == null) return -25f;
+            string sName = sprite.name.ToLower();
+            if (sName.Contains("short"))
+                return -33.05f;
+            if (sName.Contains("blue"))
+                return 32.40f;
+            return -14.70f;
         }
 
         private GameObject GetStarInstance()

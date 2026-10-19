@@ -62,7 +62,14 @@ namespace Shootopia
                             var health = client.PlayerObject.GetComponent<PlayerHealth>();
                             if (health != null)
                             {
-                                health.ResetStateForMatch(sp.position);
+                                try
+                                {
+                                    health.ResetStateForMatch(sp.position, sp.rotation);
+                                }
+                                catch (System.Exception ex)
+                                {
+                                    Debug.LogWarning($"[TDMMode] Error resetting state for client {client.ClientId}: {ex.Message}");
+                                }
                             }
                         }
                     }

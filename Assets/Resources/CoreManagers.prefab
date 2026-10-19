@@ -927,6 +927,11 @@ MonoBehaviour:
   waitingRoomMusicClip: {fileID: 8300000, guid: 4c805beb61dd14a8682e1d04824a5b7c, type: 3}
   gasStationMusicClip: {fileID: 8300000, guid: 9c4875c01547344ce8729ff95e848eb2, type: 3}
   volcanoMusicClip: {fileID: 8300000, guid: 29a4d6b0d84b7497cbd6d460d9a13fcf, type: 3}
+  menuMusicClip: {fileID: 8300000, guid: 4a75c42baff0b4e33862b3c02730c2ac, type: 3}
+  defaultClickClip: {fileID: 8300000, guid: 41741f488e5fd4f1c82af3a01c766c93, type: 3}
+  defaultHoverClip: {fileID: 8300000, guid: 570baa4631fdd4b74946003600050143, type: 3}
+  victoryClip: {fileID: 8300000, guid: 7e338f9689beb4e4ebc19ad8116ee3f0, type: 3}
+  defeatClip: {fileID: 8300000, guid: bc3444f8d19c94703956892637d9addf, type: 3}
 --- !u!1 &8544847469482827657
 GameObject:
   m_ObjectHideFlags: 0

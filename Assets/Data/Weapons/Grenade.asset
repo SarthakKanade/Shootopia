@@ -41,9 +41,9 @@ MonoBehaviour:
   throwAngle: 25
   throwForce: 14
   throwScaleMultiplier: 1.5
-  isExplosive: 0
-  splashDamage: 30
-  blastRadius: 6
+  isExplosive: 1
+  splashDamage: 25
+  blastRadius: 4.5
   selfDamage: 0
   freezeDuration: 0
   maxSlowPercent: 0

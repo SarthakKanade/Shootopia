@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e632695dd0fe44e7ab489ade77fdb8d8, type: 3}
   m_Name: PlayerAudioConfig
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerAudioSO
-  hitTakenClip: {fileID: 8300000, guid: 7438ba2da6b74d845950fa5a7e42a74c, type: 3}
+  hitTakenClip: {fileID: 8300000, guid: 9c140e7480b77435f86253abc0b2589a, type: 3}
   hitMarkerClip: {fileID: 8300000, guid: d4bcb5c56d9c70c48998d3943e83f1cf, type: 3}
   deathClip: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
   footstepClip: {fileID: 0}

@@ -17,7 +17,7 @@ MonoBehaviour:
   Damage: 8
   FireRate: 0.06
   HitVFXPrefab: {fileID: 5762880852013441109, guid: 808cc5444dae25b4f8a8fa0d9230409e, type: 3}
-  audio: {fileID: 11400000, guid: 8f0df0029df754471b3b7391520dd708, type: 2}
+  audio: {fileID: 11400000, guid: b6b384fd29ea4fb7be57640582c070cc, type: 2}
   isAutomatic: 0
   CanZoom: 0
   ZoomAmount: 10
@@ -55,14 +55,14 @@ MonoBehaviour:
   damageAtCentre: 0
   damageAtEdge: 0
   maxBounces: 0
-  projectileLifetime: 0.45
+  projectileLifetime: 0.225
   previewDistance: 0
   hasADS: 0
   requiresADSToFire: 0
   adsFOV: 60
   adsMoveSpeedMult: 1
   damagePerSecond: 80
-  maxRange: 11.25
+  maxRange: 5.625
   coneAngle: 17
   fuelDuration: 12
   tickRate: 0.1

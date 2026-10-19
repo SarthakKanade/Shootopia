@@ -77,9 +77,9 @@ namespace Shootopia
             if (_exploded) return;
             _exploded = true;
             
-            float blastRadius = _data != null ? _data.blastRadius : 6f;
+            float blastRadius = _data != null && _data.blastRadius > 0.1f ? _data.blastRadius : 4.5f;
             float maxDamage = _data != null ? _data.Damage : 100f;
-            float minDamage = _data != null ? _data.splashDamage : 30f;
+            float minDamage = _data != null && _data.splashDamage > 0f ? _data.splashDamage : 25f;
             Vector3 poc = transform.position;
 
             Collider[] hits = Physics.OverlapSphere(poc, blastRadius);
@@ -101,24 +101,31 @@ namespace Shootopia
                             targetHealth.LastAttackerClientId = (ulong)_ownerID;
                         }
 
-                        // Distance from grenade POC to closest point on target collider
+                        // Distance from grenade POC to closest point on target collider (matching Area Blaster damage model)
                         Vector3 closestPt = c.ClosestPoint(poc);
                         float dist = Vector3.Distance(poc, closestPt);
 
-                        // Very close blast (< 0.9m) guarantees 100 damage KO; then linear falloff to minDamage
-                        float closeThreshold = 0.9f;
-                        float dmg;
-                        if (dist <= closeThreshold)
+                        bool isDirect = dist <= 0.05f;
+                        float calculatedDamage;
+                        if (isDirect)
                         {
-                            dmg = maxDamage;
+                            calculatedDamage = maxDamage;
                         }
                         else
                         {
-                            float tDist = Mathf.Clamp01((dist - closeThreshold) / Mathf.Max(0.01f, blastRadius - closeThreshold));
-                            dmg = Mathf.Lerp(maxDamage, minDamage, tDist);
+                            float normalizedDist = Mathf.Clamp01(dist / blastRadius);
+                            calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+                            calculatedDamage = Mathf.Clamp(calculatedDamage, minDamage, maxDamage);
                         }
 
-                        t.TakeDamage(Mathf.Clamp(dmg, minDamage, maxDamage), DamageType.Explosion, _data);
+                        if (targetHealth != null)
+                        {
+                            targetHealth.TakeDamage(calculatedDamage, DamageType.Explosion, _data, (ulong)_ownerID);
+                        }
+                        else
+                        {
+                            t.TakeDamage(calculatedDamage, DamageType.Explosion, _data);
+                        }
                     }
                 }
             }
@@ -135,7 +142,13 @@ namespace Shootopia
                     ? Quaternion.LookRotation(blastNormal, Vector3.forward)
                     : Quaternion.LookRotation(blastNormal, Vector3.up);
                 GameObject vfx = Instantiate(vfxToSpawn, poc, rot);
-                vfx.transform.localScale = Vector3.one * 1.35f;
+                vfx.transform.localScale = Vector3.one * 3.5f;
+
+                foreach (var ps in vfx.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    var main = ps.main;
+                    main.simulationSpeed *= 0.4f;
+                }
             }
 
             if (impulseSource != null)

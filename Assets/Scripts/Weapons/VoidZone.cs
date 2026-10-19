@@ -45,10 +45,20 @@ namespace Shootopia
             float elapsed = 0f;
             float radius = (_data != null && _data.pullRadius > 0f) ? _data.pullRadius : 6f;
             float duration = (_data != null && _data.voidDuration > 0f) ? _data.voidDuration : 4f;
+            float damageTickInterval = 0.5f; // Discrete interval matching burn damage
+            float damageTickTimer = 0f;
 
             while (elapsed < duration)
             {
                 elapsed += Time.fixedDeltaTime;
+                damageTickTimer += Time.fixedDeltaTime;
+
+                bool shouldTickDamage = false;
+                if (damageTickTimer >= damageTickInterval)
+                {
+                    shouldTickDamage = true;
+                    damageTickTimer -= damageTickInterval;
+                }
 
                 // Gentle impulse every second
                 if (Mathf.FloorToInt(elapsed) > Mathf.FloorToInt(elapsed - Time.fixedDeltaTime))
@@ -65,7 +75,7 @@ namespace Shootopia
                     float dist = Vector3.Distance(transform.position, c.transform.position);
                     Vector3 dir = (transform.position - c.transform.position).normalized;
 
-                    // Pull force magnitude
+                    // Pull force magnitude (continuous smooth pull)
                     float pullMag = (_data != null ? _data.pullForce : 12f) * Time.fixedDeltaTime;
                     
                     // Check if target has active forcefield shield (immune to void black hole pull!)
@@ -95,33 +105,31 @@ namespace Shootopia
                         rb.AddForce(dir * (_data != null ? _data.pullForce : 12f), ForceMode.Acceleration);
                     }
 
-                    // Continuous damage (calculated authoritatively on server)
-                    var damageable = c.GetComponentInParent<IDamageable>();
-                    if (damageable == null) damageable = c.GetComponent<IDamageable>();
-                    if (damageable != null)
+                    // Discrete damage ticks (5 HP at a time with interval, matching burn)
+                    if (shouldTickDamage)
                     {
-                        bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
-                        if (isServerOrOffline)
+                        var damageable = c.GetComponentInParent<IDamageable>();
+                        if (damageable == null) damageable = c.GetComponent<IDamageable>();
+                        if (damageable != null)
                         {
-                            // Skip damage if match is not active (Warmup)
-                            if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
+                            bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
+                            if (isServerOrOffline)
                             {
-                                continue;
-                            }
+                                // Skip damage if match is not active (Warmup)
+                                if (GameModeBase.Instance != null && !GameModeBase.Instance.MatchActive.Value)
+                                {
+                                    continue;
+                                }
 
-                            var targetHealth = c.GetComponentInParent<PlayerHealth>();
-                            if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
-                            if (targetHealth != null)
-                            {
-                                targetHealth.LastAttackerClientId = _hasOwner ? _ownerID : Unity.Netcode.NetworkManager.ServerClientId;
-                            }
+                                var targetHealth = c.GetComponentInParent<PlayerHealth>();
+                                if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                                if (targetHealth != null)
+                                {
+                                    targetHealth.LastAttackerClientId = _hasOwner ? _ownerID : Unity.Netcode.NetworkManager.ServerClientId;
+                                }
 
-                            // Linear falloff from centre to edge
-                            float t = Mathf.Clamp01(dist / radius);
-                            float dmgCentre = _data != null ? _data.damageAtCentre : 25f;
-                            float dmgEdge = _data != null ? _data.damageAtEdge : 5f;
-                            float dmg = Mathf.Lerp(dmgCentre, dmgEdge, t) * Time.fixedDeltaTime;
-                            damageable.TakeDamage(dmg, DamageType.Environment, _data);
+                                damageable.TakeDamage(5.0f, DamageType.Environment, _data);
+                            }
                         }
                     }
                 }

@@ -51,9 +51,13 @@ namespace Shootopia
             var mr = _impactMarkerInstance.GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                Material mat = new Material(Shader.Find("Sprites/Default"));
-                mat.color = new Color(1f, 0.2f, 0.2f, 0.75f);
-                mr.material = mat;
+                Shader shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                if (shader != null)
+                {
+                    Material mat = new Material(shader);
+                    mat.color = new Color(1f, 0.2f, 0.2f, 0.75f);
+                    mr.material = mat;
+                }
             }
             _impactMarkerInstance.SetActive(false);
         }
@@ -92,6 +96,7 @@ namespace Shootopia
                         for (int h = 0; h < hits.Length; h++)
                         {
                             var hit = hits[h];
+                            if (hit.collider == null || hit.transform == null) continue;
 
                             // Ignore self/owner hierarchy (body colliders, weapons, attached shield instance)
                             if (hit.transform.root == transform.root || hit.collider.transform.IsChildOf(transform))

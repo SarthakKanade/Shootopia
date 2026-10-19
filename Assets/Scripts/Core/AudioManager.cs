@@ -63,10 +63,22 @@ namespace Shootopia
         [SerializeField] private AudioClip waitingRoomMusicClip;
         [SerializeField] private AudioClip gasStationMusicClip;
         [SerializeField] private AudioClip volcanoMusicClip;
+        [SerializeField] private AudioClip menuMusicClip;
+
+        [Header("UI & Game Outcome SFX")]
+        [SerializeField] private AudioClip defaultClickClip;
+        [SerializeField] private AudioClip defaultHoverClip;
+        [SerializeField] private AudioClip victoryClip;
+        [SerializeField] private AudioClip defeatClip;
 
         public AudioClip WaitingRoomMusicClip => waitingRoomMusicClip;
         public AudioClip GasStationMusicClip => gasStationMusicClip;
         public AudioClip VolcanoMusicClip => volcanoMusicClip;
+        public AudioClip MenuMusicClip => menuMusicClip != null ? menuMusicClip : waitingRoomMusicClip;
+        public AudioClip DefaultClickClip => defaultClickClip;
+        public AudioClip DefaultHoverClip => defaultHoverClip;
+        public AudioClip VictoryClip => victoryClip;
+        public AudioClip DefeatClip => defeatClip;
 
         private float _masterVolume = 1f;
         private float _musicVolume = 0.8f;
@@ -446,6 +458,26 @@ namespace Shootopia
             if (volcanoMusicClip == null)
             {
                 volcanoMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/15. Volcanic Crater.mp3");
+            }
+            if (menuMusicClip == null)
+            {
+                menuMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/BGM/lobby_theme.wav");
+            }
+            if (defaultClickClip == null)
+            {
+                defaultClickClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/ui_click.wav");
+            }
+            if (defaultHoverClip == null)
+            {
+                defaultHoverClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/ui_hover.wav");
+            }
+            if (victoryClip == null)
+            {
+                victoryClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/match_end.wav");
+            }
+            if (defeatClip == null)
+            {
+                defeatClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Anime SFX Vol 1 AmbroggioMusic/Low Health.mp3");
             }
 #endif
         }

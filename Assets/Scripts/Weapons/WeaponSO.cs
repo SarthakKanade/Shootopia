@@ -14,6 +14,7 @@ namespace Shootopia
         public int Damage = 1;
         public float FireRate = .5f;
         public GameObject HitVFXPrefab;
+        public GameObject playerHitVFXPrefab;
         public WeaponAudioSO audio;
         public bool isAutomatic = false;
         public bool CanZoom = false;

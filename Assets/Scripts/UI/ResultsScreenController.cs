@@ -248,13 +248,16 @@ namespace Shootopia
             string localName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "";
             bool isWinner = !string.IsNullOrEmpty(localName) && winnerInfo.IndexOf(localName, System.StringComparison.OrdinalIgnoreCase) >= 0;
 
-            if (victoryClip != null && isWinner && AudioManager.Instance != null)
+            AudioClip vClip = victoryClip != null ? victoryClip : (AudioManager.Instance != null ? AudioManager.Instance.VictoryClip : null);
+            AudioClip dClip = defeatClip != null ? defeatClip : (AudioManager.Instance != null ? AudioManager.Instance.DefeatClip : null);
+
+            if (vClip != null && isWinner && AudioManager.Instance != null)
             {
-                AudioManager.Instance.PlaySFX2D(victoryClip, 1.0f);
+                AudioManager.Instance.PlaySFX2D(vClip, 1.0f);
             }
-            else if (defeatClip != null && !isWinner && AudioManager.Instance != null)
+            else if (dClip != null && !isWinner && AudioManager.Instance != null)
             {
-                AudioManager.Instance.PlaySFX2D(defeatClip, 1.0f);
+                AudioManager.Instance.PlaySFX2D(dClip, 1.0f);
             }
 
             // Route directly to unified WaitingRoom GameOver Modal

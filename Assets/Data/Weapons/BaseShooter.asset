@@ -16,7 +16,8 @@ MonoBehaviour:
   weaponName: Base Shooter
   Damage: 18
   FireRate: 0.15
-  HitVFXPrefab: {fileID: 7863198228031518838, guid: ad18e6c4064e9ed4191fd84f2567b5ed, type: 3}
+  HitVFXPrefab: {fileID: 3710540494006657454, guid: f0d167b505cf492682033bfc9366bc35, type: 3}
+  playerHitVFXPrefab: {fileID: 3710540494006657454, guid: 97a04c7e403b4d6bb7710fd08863650b, type: 3}
   audio: {fileID: 11400000, guid: e1dc9e116a2a045848d7984e5bf8936e, type: 2}
   isAutomatic: 1
   CanZoom: 0

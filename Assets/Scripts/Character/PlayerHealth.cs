@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Shootopia
 {
@@ -19,9 +20,12 @@ namespace Shootopia
         [SerializeField] private GameEvent onPlayerDied;
 
         [Header("Combat Feel / Juice")]
+        [FormerlySerializedAs("_playerAudioConfig")]
         [SerializeField] private PlayerAudioSO playerAudioConfig;
         [SerializeField] private GameObject spawnVFXPrefab;
+        [FormerlySerializedAs("_deathSound")]
         [SerializeField] private AudioClip deathSound;
+        [FormerlySerializedAs("_spawnSound")]
         [SerializeField] private AudioClip spawnSound;
 
         // Network State
@@ -50,6 +54,11 @@ namespace Shootopia
         private void Awake()
         {
             _statusEffects = GetComponent<PlayerStatusEffects>() ?? gameObject.AddComponent<PlayerStatusEffects>();
+            if (playerAudioConfig == null)
+            {
+                var motor = GetComponent<CharacterMotor>();
+                if (motor != null && motor.AudioConfig != null) playerAudioConfig = motor.AudioConfig;
+            }
         }
 
         public override void OnNetworkSpawn()
@@ -91,10 +100,27 @@ namespace Shootopia
                 _isDead = false;
             }
 
-            if (newValue < previousValue && IsOwner && AudioManager.Instance != null)
+            if (newValue < previousValue && AudioManager.Instance != null)
             {
-                AudioClip hitClip = playerAudioConfig != null ? playerAudioConfig.hitTakenClip : null;
-                if (hitClip != null) AudioManager.Instance.PlaySFX2D(hitClip, 1f, isCombatPriority: true);
+                var cfg = playerAudioConfig;
+                if (cfg == null)
+                {
+                    var motor = GetComponent<CharacterMotor>();
+                    if (motor != null) cfg = motor.AudioConfig;
+                }
+                AudioClip hitClip = cfg != null ? cfg.hitTakenClip : null;
+                if (hitClip != null)
+                {
+                    bool isLocal = IsOwner || !IsSpawned;
+                    if (isLocal)
+                    {
+                        AudioManager.Instance.PlaySFX2D(hitClip, 1f, isCombatPriority: true);
+                    }
+                    else
+                    {
+                        AudioManager.Instance.PlaySFXAtPosition(hitClip, transform.position, 0.8f, isCombatPriority: false);
+                    }
+                }
             }
         }
 
@@ -238,7 +264,10 @@ namespace Shootopia
             SetCharacterPosition(spawnPos);
             Physics.SyncTransforms();
             var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
-            if (netTransform != null) netTransform.Teleport(spawnPos, transform.rotation, transform.localScale);
+            if (netTransform != null && netTransform.CanCommitToTransform)
+            {
+                try { netTransform.Teleport(spawnPos, transform.rotation, transform.localScale); } catch { }
+            }
             ResetMovementState();
 
             _currentHp.Value = maxHp;
@@ -335,9 +364,9 @@ namespace Shootopia
             Physics.SyncTransforms();
 
             var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
-            if (netTransform != null)
+            if (netTransform != null && netTransform.CanCommitToTransform)
             {
-                netTransform.Teleport(spawnPosition, transform.rotation, transform.localScale);
+                try { netTransform.Teleport(spawnPosition, transform.rotation, transform.localScale); } catch { }
             }
 
             ResetLocomotionAnimator();
@@ -398,6 +427,12 @@ namespace Shootopia
         {
             if (!IsServer) return;
             SetCharacterPosition(position);
+            Physics.SyncTransforms();
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null && netTransform.CanCommitToTransform)
+            {
+                try { netTransform.Teleport(position, transform.rotation, transform.localScale); } catch { }
+            }
             TeleportClientRpc(position);
         }
 
@@ -405,19 +440,29 @@ namespace Shootopia
         private void TeleportClientRpc(Vector3 position)
         {
             SetCharacterPosition(position);
+            Physics.SyncTransforms();
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null && netTransform.CanCommitToTransform)
+            {
+                try { netTransform.Teleport(position, transform.rotation, transform.localScale); } catch { }
+            }
             ResetMovementState();
             RemoveBurnEffect();
         }
 
-        public void ResetStateForMatch(Vector3 position)
+        public void ResetStateForMatch(Vector3 position, Quaternion? rotation = null)
         {
             if (!IsServer) return;
             _isDead = false;
 
             SetCharacterPosition(position);
+            if (rotation.HasValue) transform.rotation = rotation.Value;
             Physics.SyncTransforms();
             var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
-            if (netTransform != null) netTransform.Teleport(position, transform.rotation, transform.localScale);
+            if (netTransform != null && netTransform.CanCommitToTransform)
+            {
+                try { netTransform.Teleport(position, transform.rotation, transform.localScale); } catch { }
+            }
             ResetMovementState();
             RemoveBurnEffect();
 
@@ -427,17 +472,21 @@ namespace Shootopia
             var weaponCtrl = GetComponent<WeaponController>();
             if (weaponCtrl != null) weaponCtrl.UnequipAll();
 
-            ResetPlayerClientRpc(position);
+            ResetPlayerClientRpc(position, rotation.HasValue ? rotation.Value : transform.rotation);
         }
 
         [ClientRpc]
-        private void ResetPlayerClientRpc(Vector3 position)
+        private void ResetPlayerClientRpc(Vector3 position, Quaternion rotation)
         {
             _isDead = false;
             SetCharacterPosition(position);
+            transform.rotation = rotation;
             Physics.SyncTransforms();
             var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
-            if (netTransform != null) netTransform.Teleport(position, transform.rotation, transform.localScale);
+            if (netTransform != null && netTransform.CanCommitToTransform)
+            {
+                try { netTransform.Teleport(position, rotation, transform.localScale); } catch { }
+            }
 
             SetPlayerControlsEnabled(true);
             SetPlayerVisibility(true);
@@ -517,10 +566,18 @@ namespace Shootopia
             if (anim != null && anim.runtimeAnimatorController != null && anim.isActiveAndEnabled)
             {
                 anim.ResetTrigger("Die");
-                anim.CrossFade("Locomotion", 0.1f, 0);
+                int locomotionHash = Animator.StringToHash("Locomotion");
+                if (anim.layerCount > 0 && anim.HasState(0, locomotionHash))
+                {
+                    anim.CrossFade("Locomotion", 0.1f, 0);
+                }
                 if (anim.layerCount > 1)
                 {
-                    anim.CrossFade("Empty", 0.1f, 1);
+                    int emptyHash = Animator.StringToHash("Empty");
+                    if (anim.HasState(1, emptyHash))
+                    {
+                        anim.CrossFade("Empty", 0.1f, 1);
+                    }
                     anim.SetLayerWeight(1, 1f);
                 }
             }

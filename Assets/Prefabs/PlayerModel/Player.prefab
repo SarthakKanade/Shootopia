@@ -2352,10 +2352,12 @@ MonoBehaviour:
   _onHpChanged: {fileID: 0}
   _onPlayerDied: {fileID: 0}
   _playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
+  playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
   _deathVFXPrefab: {fileID: 2512073696466879513, guid: f4b33787de16f4a889514fe33c0d15c2, type: 3}
   _spawnVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
   _deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
-  _spawnSound: {fileID: 8300000, guid: ec59e51e0db22d1419b26fdedddf218d, type: 3}
+  _spawnSound: {fileID: 8300000, guid: f790d7f529634200b67ccfa75123ba3e, type: 3}
+  spawnSound: {fileID: 8300000, guid: f790d7f529634200b67ccfa75123ba3e, type: 3}
 --- !u!114 &1532468733608136440
 MonoBehaviour:
   m_ObjectHideFlags: 0

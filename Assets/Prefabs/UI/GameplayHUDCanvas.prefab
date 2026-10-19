@@ -2613,8 +2613,8 @@ MonoBehaviour:
   scoreRowPrefab: {fileID: 2228892713729593084, guid: 4dca9638e4b0b4539bbd8871580b884c, type: 3}
   btnReturnToLobby: {fileID: 563198021418517188}
   btnMainMenu: {fileID: 1700974156983624665}
-  victoryClip: {fileID: 0}
-  defeatClip: {fileID: 0}
+  victoryClip: {fileID: 8300000, guid: 7e338f9689beb4e4ebc19ad8116ee3f0, type: 3}
+  defeatClip: {fileID: 8300000, guid: bc3444f8d19c94703956892637d9addf, type: 3}
 --- !u!1 &1813909251674877892
 GameObject:
   m_ObjectHideFlags: 0

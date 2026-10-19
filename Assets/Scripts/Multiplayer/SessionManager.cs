@@ -38,6 +38,7 @@ namespace Shootopia
         public UnityEvent OnSessionUpdated;
 
         public bool IsHost => _currentSession != null && _currentSession.IsHost;
+        public ISession CurrentSession => _currentSession;
 
         private ISession _currentSession;
         private bool _isProcessingSession = false;

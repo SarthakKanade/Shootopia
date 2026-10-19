@@ -49,9 +49,13 @@ namespace Shootopia
                     var oCols = ownerNetObj.GetComponentsInChildren<Collider>(true);
                     foreach (var mc in myCols)
                     {
+                        if (mc == null || mc is CharacterController) continue;
                         foreach (var oc in oCols)
                         {
-                            Physics.IgnoreCollision(mc, oc, true);
+                            if (oc != null && mc != oc && !(oc is CharacterController))
+                            {
+                                Physics.IgnoreCollision(mc, oc, true);
+                            }
                         }
                     }
                 }

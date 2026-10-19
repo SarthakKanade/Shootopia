@@ -109,10 +109,9 @@ namespace Shootopia
             _armed = true;
             if (_proximitySensor != null)
             {
-                if (_data != null && _data.triggerRadius > 0f)
-                {
-                    _proximitySensor.radius = _data.triggerRadius;
-                }
+                float desiredWorldTriggerRadius = (_data != null && _data.triggerRadius > 0.1f) ? _data.triggerRadius : 2.2f;
+                float lossy = Mathf.Max(0.001f, transform.lossyScale.x);
+                _proximitySensor.radius = desiredWorldTriggerRadius / lossy;
                 _proximitySensor.enabled = true;
             }
             
@@ -200,13 +199,23 @@ namespace Shootopia
 
         private void OnTriggerEnter(Collider col)
         {
-            if (!_armed || _exploded) return;
+            CheckTrigger(col);
+        }
 
-            var targetHealth = col.GetComponentInParent<PlayerHealth>();
-            if (targetHealth == null) targetHealth = col.GetComponent<PlayerHealth>();
+        private void OnTriggerStay(Collider col)
+        {
+            CheckTrigger(col);
+        }
 
+        private void CheckTrigger(Collider col)
+        {
+            if (!_armed || _exploded || col == null) return;
+
+            var targetHealth = col.GetComponentInParent<PlayerHealth>() ?? col.GetComponent<PlayerHealth>();
             if (targetHealth != null)
             {
+                if (IsFriendlyTarget(targetHealth)) return;
+
                 bool isOwner = (targetHealth.OwnerClientId == (ulong)_ownerID);
                 bool allowSelfTrigger = (_data != null && _data.selfTrigger);
                 if (!isOwner || allowSelfTrigger)
@@ -220,14 +229,35 @@ namespace Shootopia
             }
         }
 
+        private bool IsFriendlyTarget(PlayerHealth targetHealth)
+        {
+            if (targetHealth == null) return false;
+            if (targetHealth.OwnerClientId == (ulong)_ownerID)
+            {
+                return !(_data != null && _data.selfTrigger);
+            }
+
+            if (GameModeBase.Instance is TDMMode tdm)
+            {
+                int targetTeam = tdm.GetPlayerTeam(targetHealth.OwnerClientId);
+                int ownerTeam = tdm.GetPlayerTeam((ulong)_ownerID);
+                if (targetTeam != -1 && ownerTeam != -1 && targetTeam == ownerTeam)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void Explode()
         {
             if (_exploded) return;
             _exploded = true;
 
-            float radius = _data != null ? _data.blastRadius : 5.5f;
-            float maxDmg = _data != null ? _data.Damage : 95f;
-            float minDmg = _data != null ? _data.splashDamage : 35f;
+            float radius = _data != null && _data.blastRadius > 0.1f ? _data.blastRadius : 4.5f;
+            float maxDmg = _data != null ? _data.Damage : 100f;
+            float minDmg = _data != null && _data.splashDamage > 0f ? _data.splashDamage : 40f;
+            float triggerRadius = _data != null && _data.triggerRadius > 0.1f ? _data.triggerRadius : 2.2f;
             Vector3 poc = transform.position;
 
             Collider[] hits = Physics.OverlapSphere(poc, radius);
@@ -235,6 +265,7 @@ namespace Shootopia
 
             foreach (Collider c in hits)
             {
+                if (c == null) continue;
                 var t = c.GetComponentInParent<IDamageable>() ?? c.GetComponent<IDamageable>();
                 if (t != null)
                 {
@@ -249,11 +280,33 @@ namespace Shootopia
                             targetHealth.LastAttackerClientId = (ulong)_ownerID;
                         }
 
-                        Vector3 closestPt = c.ClosestPoint(poc);
+                        Vector3 closestPt;
+                        try { closestPt = c.ClosestPoint(poc); }
+                        catch { closestPt = c.bounds.ClosestPoint(poc); }
+
                         float dist = Vector3.Distance(poc, closestPt);
-                        float tDist = Mathf.Clamp01(dist / radius);
-                        float dmg = Mathf.Lerp(maxDmg, minDmg, tDist);
-                        t.TakeDamage(Mathf.Clamp(dmg, minDmg, maxDmg), DamageType.Explosion, _data);
+
+                        // If target tripped the mine (within trigger radius), guarantee max 100 damage kill; smooth falloff to minDmg towards blast radius
+                        float calculatedDamage;
+                        if (dist <= triggerRadius)
+                        {
+                            calculatedDamage = maxDmg;
+                        }
+                        else
+                        {
+                            float normDist = Mathf.Clamp01((dist - triggerRadius) / Mathf.Max(0.1f, radius - triggerRadius));
+                            calculatedDamage = Mathf.Lerp(maxDmg, minDmg, normDist);
+                        }
+                        calculatedDamage = Mathf.Clamp(calculatedDamage, minDmg, maxDmg);
+
+                        if (targetHealth != null)
+                        {
+                            targetHealth.TakeDamage(calculatedDamage, DamageType.Explosion, _data, (ulong)_ownerID);
+                        }
+                        else
+                        {
+                            t.TakeDamage(calculatedDamage, DamageType.Explosion, _data);
+                        }
                     }
                 }
             }
@@ -262,12 +315,26 @@ namespace Shootopia
             if (vfxToSpawn != null)
             {
                 Vector3 blastNormal = transform.up;
-                if (blastNormal == Vector3.zero) blastNormal = Vector3.up;
+                if (Physics.Raycast(poc + Vector3.up * 0.2f, Vector3.down, out RaycastHit gHit, 1.5f))
+                {
+                    blastNormal = gHit.normal;
+                }
+                else if (blastNormal == Vector3.zero)
+                {
+                    blastNormal = Vector3.up;
+                }
+
                 Quaternion rot = Mathf.Abs(blastNormal.y) > 0.95f
                     ? Quaternion.LookRotation(blastNormal, Vector3.forward)
                     : Quaternion.LookRotation(blastNormal, Vector3.up);
                 GameObject vfx = Instantiate(vfxToSpawn, poc, rot);
-                vfx.transform.localScale = Vector3.one * 1.35f;
+                vfx.transform.localScale = Vector3.one * 3.5f;
+
+                foreach (var ps in vfx.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    var main = ps.main;
+                    main.simulationSpeed *= 0.4f;
+                }
             }
 
             CameraShakeManager.Instance?.ShakeExplosion(poc, radius, 1.3f);

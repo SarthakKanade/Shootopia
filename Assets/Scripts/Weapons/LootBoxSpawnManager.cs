@@ -17,6 +17,16 @@ namespace Shootopia
         [SerializeField] private GameObject chest2TrapsPrefab;
         [SerializeField] private GameObject chest3AdvancedPrefab;
 
+        [Header("Player Ratio Scaling")]
+        [Tooltip("Target number of chests per player ratio (e.g. 1.25 means 5 chests for 4 players).")]
+        [SerializeField] private float chestsPerPlayerRatio = 1.25f;
+
+        [Tooltip("Minimum number of chests to spawn regardless of player count (guarantees at least 1 of each type).")]
+        [SerializeField] private int minChests = 3;
+
+        [Tooltip("Maximum chests to spawn on map.")]
+        [SerializeField] private int maxChests = 12;
+
         [Header("Spawn Locations")]
         [SerializeField] private List<Transform> spawnPoints = new List<Transform>();
 
@@ -35,6 +45,30 @@ namespace Shootopia
             GatherSceneSpawnPoints();
         }
 
+        private void OnEnable()
+        {
+            if (NetworkManager.Singleton != null)
+            {
+                NetworkManager.Singleton.OnClientConnectedCallback += HandleClientConnected;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (NetworkManager.Singleton != null)
+            {
+                NetworkManager.Singleton.OnClientConnectedCallback -= HandleClientConnected;
+            }
+        }
+
+        private void HandleClientConnected(ulong clientId)
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                CheckAndAdjustChestsForPlayerCount();
+            }
+        }
+
         private void Start()
         {
             // In multiplayer, clients should not run local random spawning
@@ -43,15 +77,133 @@ namespace Shootopia
                 return;
             }
 
+            int playerCount = GetCurrentPlayerCount();
+            int targetChests = CalculateTargetChestCount(playerCount, spawnPoints.Count > 0 ? spawnPoints.Count : 10);
+
             // Check if chests are already pre-placed in the scene hierarchy
             var existingChests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
-            if (existingChests.Length >= 3)
+            if (existingChests.Length >= targetChests && _activeChests.Count == 0)
             {
                 Debug.Log($"[LootBoxSpawnManager] Found {existingChests.Length} pre-placed LootBoxControllers in scene. Skipping dynamic spawn.");
                 return;
             }
 
             SpawnAllChests();
+        }
+
+        public int GetCurrentPlayerCount()
+        {
+            int count = 1;
+
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+            {
+                count = Mathf.Max(count, NetworkManager.Singleton.ConnectedClientsIds.Count);
+            }
+
+            if (SessionManager.Instance != null)
+            {
+                var session = SessionManager.Instance.GetCurrentSession();
+                if (session != null && session.Players != null && session.Players.Count > 0)
+                {
+                    count = Mathf.Max(count, session.Players.Count);
+                }
+            }
+
+            var playerObjs = FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None);
+            if (playerObjs != null && playerObjs.Length > 0)
+            {
+                count = Mathf.Max(count, playerObjs.Length);
+            }
+
+            return count;
+        }
+
+        public int CalculateTargetChestCount(int playerCount, int availableSpawnPointsCount)
+        {
+            int target = Mathf.RoundToInt(playerCount * chestsPerPlayerRatio);
+            target = Mathf.Max(target, minChests);
+            target = Mathf.Min(target, maxChests);
+            if (availableSpawnPointsCount > 0)
+            {
+                target = Mathf.Min(target, availableSpawnPointsCount);
+            }
+            return target;
+        }
+
+        public void CheckAndAdjustChestsForPlayerCount()
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.IsServer)
+            {
+                return;
+            }
+
+            _activeChests.RemoveAll(c => c == null);
+            if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
+
+            int playerCount = GetCurrentPlayerCount();
+            int targetCount = CalculateTargetChestCount(playerCount, spawnPoints.Count);
+
+            if (_activeChests.Count < targetCount)
+            {
+                SpawnAdditionalChests(targetCount - _activeChests.Count);
+            }
+        }
+
+        public void SpawnAdditionalChests(int countToSpawn)
+        {
+            if (countToSpawn <= 0) return;
+
+            if (chest1DefensePrefab == null || chest2TrapsPrefab == null || chest3AdvancedPrefab == null)
+            {
+                LoadDefaultPrefabs();
+            }
+
+            if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
+
+            var occupiedPositions = new List<Vector3>();
+            var allChests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
+            foreach (var c in allChests)
+            {
+                if (c != null) occupiedPositions.Add(c.transform.position);
+            }
+
+            var availablePoints = new List<Transform>();
+            foreach (var pt in spawnPoints)
+            {
+                if (pt == null) continue;
+                bool isOccupied = false;
+                foreach (var occPos in occupiedPositions)
+                {
+                    if (Vector3.Distance(pt.position, occPos) < 3f)
+                    {
+                        isOccupied = true;
+                        break;
+                    }
+                }
+                if (!isOccupied) availablePoints.Add(pt);
+            }
+
+            for (int i = 0; i < availablePoints.Count; i++)
+            {
+                int r = Random.Range(i, availablePoints.Count);
+                var temp = availablePoints[i];
+                availablePoints[i] = availablePoints[r];
+                availablePoints[r] = temp;
+            }
+
+            GameObject[] prefabs = new GameObject[] { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
+            string[] names = new string[] { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
+
+            int spawned = 0;
+            int cycle = _activeChests.Count;
+            for (int i = 0; i < availablePoints.Count && spawned < countToSpawn; i++)
+            {
+                int idx = cycle % 3;
+                var pt = availablePoints[i];
+                SpawnChestInstance(prefabs[idx], pt.position, names[idx]);
+                cycle++;
+                spawned++;
+            }
         }
 
         private void LoadDefaultPrefabs()
@@ -102,7 +254,19 @@ namespace Shootopia
             // Destroy any existing runtime instantiated chests managed by this spawner
             foreach (var c in _activeChests)
             {
-                if (c != null) Destroy(c);
+                if (c != null)
+                {
+                    if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && NetworkManager.Singleton.IsServer)
+                    {
+                        var netObj = c.GetComponent<NetworkObject>();
+                        if (netObj != null && netObj.IsSpawned)
+                        {
+                            netObj.Despawn(true);
+                            continue;
+                        }
+                    }
+                    Destroy(c);
+                }
             }
             _activeChests.Clear();
 
@@ -113,61 +277,54 @@ namespace Shootopia
 
             if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
 
-            // Find any pre-placed or existing chests in scene
-            var existingChests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
-            var occupiedPositions = new List<Vector3>();
-            foreach (var c in existingChests)
+            var availablePoints = new List<Transform>(spawnPoints);
+            for (int i = 0; i < availablePoints.Count; i++)
             {
-                if (c != null && !_activeChests.Contains(c.gameObject))
-                {
-                    occupiedPositions.Add(c.transform.position);
-                }
+                int r = Random.Range(i, availablePoints.Count);
+                var temp = availablePoints[i];
+                availablePoints[i] = availablePoints[r];
+                availablePoints[r] = temp;
             }
 
-            var availablePoints = new List<Transform>();
-            foreach (var pt in spawnPoints)
+            int playerCount = GetCurrentPlayerCount();
+            int targetCount = CalculateTargetChestCount(playerCount, availablePoints.Count);
+
+            var toSpawn = new List<(GameObject prefab, string name)>();
+            GameObject[] prefabs = new GameObject[] { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
+            string[] names = new string[] { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
+
+            // Ensure at least 1 of each type is always represented
+            for (int i = 0; i < 3 && i < targetCount; i++)
             {
+                if (prefabs[i] != null) toSpawn.Add((prefabs[i], names[i]));
+            }
+
+            // Fill remaining chests cycling evenly through all 3 types
+            int cycle = 0;
+            while (toSpawn.Count < targetCount)
+            {
+                int idx = cycle % 3;
+                if (prefabs[idx] != null) toSpawn.Add((prefabs[idx], names[idx]));
+                cycle++;
+            }
+
+            // Shuffle types order across spawn positions
+            for (int i = 0; i < toSpawn.Count; i++)
+            {
+                int r = Random.Range(i, toSpawn.Count);
+                var temp = toSpawn[i];
+                toSpawn[i] = toSpawn[r];
+                toSpawn[r] = temp;
+            }
+
+            for (int i = 0; i < toSpawn.Count && i < availablePoints.Count; i++)
+            {
+                var pt = availablePoints[i];
                 if (pt == null) continue;
-                bool isOccupied = false;
-                foreach (var occPos in occupiedPositions)
-                {
-                    if (Vector3.Distance(pt.position, occPos) < 3f)
-                    {
-                        isOccupied = true;
-                        break;
-                    }
-                }
-                if (!isOccupied) availablePoints.Add(pt);
+                SpawnChestInstance(toSpawn[i].prefab, pt.position, toSpawn[i].name);
             }
 
-            if (availablePoints.Count < 3) availablePoints = new List<Transform>(spawnPoints);
-
-            // Spawn Chest 1 (Defense)
-            if (chest1DefensePrefab != null && availablePoints.Count > 0)
-            {
-                int r = Random.Range(0, availablePoints.Count);
-                var pt = availablePoints[r];
-                availablePoints.RemoveAt(r);
-                SpawnChestInstance(chest1DefensePrefab, pt.position, "SM_LootBox_01_Defense");
-            }
-
-            // Spawn Chest 2 (Traps & Starters)
-            if (chest2TrapsPrefab != null && availablePoints.Count > 0)
-            {
-                int r = Random.Range(0, availablePoints.Count);
-                var pt = availablePoints[r];
-                availablePoints.RemoveAt(r);
-                SpawnChestInstance(chest2TrapsPrefab, pt.position, "SM_LootBox_02_TrapsStarters");
-            }
-
-            // Spawn Chest 3 (Advanced Weapons)
-            if (chest3AdvancedPrefab != null && availablePoints.Count > 0)
-            {
-                int r = Random.Range(0, availablePoints.Count);
-                var pt = availablePoints[r];
-                availablePoints.RemoveAt(r);
-                SpawnChestInstance(chest3AdvancedPrefab, pt.position, "SM_LootBox_03_AdvancedWeapons");
-            }
+            Debug.Log($"[LootBoxSpawnManager] Spawned {toSpawn.Count} chests for {playerCount} players (Ratio: {chestsPerPlayerRatio:F2})");
         }
 
         private void SpawnChestInstance(GameObject prefab, Vector3 position, string name)
@@ -175,6 +332,7 @@ namespace Shootopia
             if (prefab == null) return;
 
             var inst = Instantiate(prefab, position, Quaternion.identity);
+            inst.transform.localScale = new Vector3(0.75f, 0.75f, 0.75f);
             inst.name = name;
             _activeChests.Add(inst);
 
@@ -193,7 +351,7 @@ namespace Shootopia
                 }
             }
 
-            Debug.Log($"[LootBoxSpawnManager] Spawned {name} at {position}");
+            Debug.Log($"[LootBoxSpawnManager] Spawned {name} (75% scale) at {position}");
         }
 
         public Vector3 GetRandomUnoccupiedSpawnPosition(Vector3 currentPos, LootBoxController requestingChest = null)

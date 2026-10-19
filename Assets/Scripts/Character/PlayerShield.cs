@@ -90,20 +90,14 @@ namespace Shootopia
                 {
                     shieldCol.isTrigger = false; // Rigid solid physical forcefield sphere!
 
-                    // Ignore collision with owner player so owner moves freely inside
+                    // Ignore collision with owner player's standard colliders so owner moves freely inside
                     var playerCols = GetComponentsInChildren<Collider>(true);
                     foreach (var pCol in playerCols)
                     {
-                        if (pCol != shieldCol)
+                        if (pCol != null && pCol != shieldCol && !(pCol is CharacterController))
                         {
                             Physics.IgnoreCollision(pCol, shieldCol, true);
                         }
-                    }
-
-                    var cc = GetComponent<CharacterController>();
-                    if (cc != null)
-                    {
-                        Physics.IgnoreCollision(cc, shieldCol, true);
                     }
                 }
 

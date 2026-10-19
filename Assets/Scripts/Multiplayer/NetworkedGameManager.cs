@@ -69,7 +69,8 @@ namespace Shootopia
             bool isStarted = false;
             try
             {
-                isStarted = MatchStarted.Value || (_activeGameMode != null && (_activeGameMode.MatchActive.Value || _activeGameMode.IsInProgress));
+                isStarted = (_activeGameMode != null && (_activeGameMode.MatchActive.Value || _activeGameMode.IsInProgress)) ||
+                            (MatchStarted.Value && _activeGameMode != null && _activeGameMode.PreMatchCountdown.Value >= 0);
             }
             catch { }
 
@@ -382,7 +383,15 @@ namespace Shootopia
 
         private System.Collections.IEnumerator PreMatchSequence()
         {
-            if (_activeGameMode == null) yield break;
+            if (_activeGameMode == null)
+            {
+                ApplyActiveGameMode(ActiveModeName.Value.ToString());
+            }
+            if (_activeGameMode == null)
+            {
+                Debug.LogError("[NetworkedGameManager] PreMatchSequence cannot start: _activeGameMode is null!");
+                yield break;
+            }
 
             MatchStarted.Value = true;
             CloseWaitingRoomRpc();
@@ -398,21 +407,28 @@ namespace Shootopia
             if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
             {
                 var session = SessionManager.Instance.GetCurrentSession();
-                if (session.Players != null)
+                if (session.Players != null && session.Players.Count > 0)
                 {
                     expectedPlayers = session.Players.Count;
                 }
+            }
+            else if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClientsList != null)
+            {
+                expectedPlayers = Mathf.Max(1, NetworkManager.Singleton.ConnectedClientsList.Count);
             }
             Debug.Log($"[NetworkedGameManager] Pre-match: Waiting for {expectedPlayers} players to spawn...");
 
             while (waitTimer < maxWaitTime)
             {
                 int spawnedCount = 0;
-                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClientsList != null)
                 {
-                    if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
+                    foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                     {
-                        spawnedCount++;
+                        if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
+                        {
+                            spawnedCount++;
+                        }
                     }
                 }
 
@@ -432,28 +448,57 @@ namespace Shootopia
             }
 
             // Guarantee all players are positioned at their match spawn points
-            if (NetworkBootstrapper.Instance != null)
+            try
             {
-                NetworkBootstrapper.Instance.SpawnAllConnectedPlayers();
+                if (NetworkBootstrapper.Instance != null)
+                {
+                    NetworkBootstrapper.Instance.SpawnAllConnectedPlayers();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[NetworkedGameManager] Exception in SpawnAllConnectedPlayers during PreMatchSequence: {ex}");
+            }
+
+            // Adjust chests to match exact player count ratio on match start
+            try
+            {
+                if (LootBoxSpawnManager.Instance != null)
+                {
+                    LootBoxSpawnManager.Instance.CheckAndAdjustChestsForPlayerCount();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[NetworkedGameManager] Exception in CheckAndAdjustChestsForPlayerCount during PreMatchSequence: {ex}");
             }
 
             // 2. 3-second countdown
             int countdown = 3;
             while (countdown > 0)
             {
-                _activeGameMode.PreMatchCountdown.Value = countdown;
+                if (_activeGameMode != null)
+                {
+                    _activeGameMode.PreMatchCountdown.Value = countdown;
+                }
                 Debug.Log($"[NetworkedGameManager] Countdown: {countdown}...");
                 yield return new WaitForSeconds(1.0f);
                 countdown--;
             }
 
-            _activeGameMode.PreMatchCountdown.Value = 0;
-            _activeGameMode.MatchActive.Value = true;
+            if (_activeGameMode != null)
+            {
+                _activeGameMode.PreMatchCountdown.Value = 0;
+                _activeGameMode.MatchActive.Value = true;
+            }
             CloseWaitingRoomRpc();
             Debug.Log("[NetworkedGameManager] Match started - players released");
 
             // 3. Start match game mode logic
-            _activeGameMode.OnMatchStart();
+            if (_activeGameMode != null)
+            {
+                _activeGameMode.OnMatchStart();
+            }
         }
 
         /// <summary>

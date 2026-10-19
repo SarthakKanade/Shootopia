@@ -54,11 +54,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5022473390100564692, guid: 5d8be0dd08599704ba0f8a3b9a54e9b8, type: 3}
       propertyPath: InitialModule.startLifetime.scalar
-      value: 0.4125
+      value: 0.20625
       objectReference: {fileID: 0}
     - target: {fileID: 5022473390100564692, guid: 5d8be0dd08599704ba0f8a3b9a54e9b8, type: 3}
       propertyPath: InitialModule.startLifetime.minScalar
-      value: 0.3
+      value: 0.15
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 8984979362765208833, guid: 5d8be0dd08599704ba0f8a3b9a54e9b8, type: 3}
@@ -87,7 +87,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.KinematicProjectileController
   speed: 25
-  lifetime: 0.45
+  lifetime: 0.225
   hasGravity: 0
   gravityScale: 1
   canBounce: 0

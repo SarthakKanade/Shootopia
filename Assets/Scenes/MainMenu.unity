@@ -1048,6 +1048,8 @@ MonoBehaviour:
   maxConcurrentStars: 2
   minInterval: 2.5
   maxInterval: 6
+  fallAngle: -30
+  fallAngleVariance: 3
 --- !u!114 &105659484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1740,6 +1742,8 @@ MonoBehaviour:
   maxConcurrentStars: 2
   minInterval: 2.5
   maxInterval: 6
+  fallAngle: -30
+  fallAngleVariance: 3
 --- !u!114 &176885044
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1812,7 +1816,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.MainMenuController
   buttonClickClip: {fileID: 0}
   errorClip: {fileID: 0}
-  menuMusicClip: {fileID: 0}
+  menuMusicClip: {fileID: 8300000, guid: 4a75c42baff0b4e33862b3c02730c2ac, type: 3}
   playerNameLabel: {fileID: 1921364082}
   btnEditProfile: {fileID: 371405475}
   btnToggleSound: {fileID: 218679431}

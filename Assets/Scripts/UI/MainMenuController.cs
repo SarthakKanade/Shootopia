@@ -136,6 +136,10 @@ namespace Shootopia
 
         private async void Start()
         {
+            if (menuMusicClip == null && AudioManager.Instance != null)
+            {
+                menuMusicClip = AudioManager.Instance.MenuMusicClip;
+            }
             if (menuMusicClip != null && AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlayMusic(menuMusicClip, 0.8f);

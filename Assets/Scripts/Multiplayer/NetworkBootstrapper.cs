@@ -188,7 +188,18 @@ namespace Shootopia
             string activeSceneName = SceneManager.GetActiveScene().name;
             if (IsValidSpawnScene(activeSceneName))
             {
-                SpawnPlayerForClient(clientId);
+                // Only spawn if player object has not already been created (e.g. by scene load event)
+                if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
+                {
+                    if (client.PlayerObject == null || !client.PlayerObject.IsSpawned)
+                    {
+                        SpawnPlayerForClient(clientId);
+                    }
+                }
+                else
+                {
+                    SpawnPlayerForClient(clientId);
+                }
             }
         }
 
@@ -215,7 +226,14 @@ namespace Shootopia
 
             foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
             {
-                SpawnPlayerForClient(client.ClientId, cleanRespawn);
+                try
+                {
+                    SpawnPlayerForClient(client.ClientId, cleanRespawn);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[NetworkBootstrapper] Error in SpawnPlayerForClient({client.ClientId}): {ex.Message}");
+                }
             }
         }
 
@@ -284,7 +302,14 @@ namespace Shootopia
                         var health = client.PlayerObject.GetComponent<PlayerHealth>();
                         if (health != null)
                         {
-                            health.ResetStateForMatch(spawnPos);
+                            try
+                            {
+                                health.ResetStateForMatch(spawnPos, spawnRot);
+                            }
+                            catch (System.Exception ex)
+                            {
+                                Debug.LogWarning($"[NetworkBootstrapper] Error in ResetStateForMatch for client {clientId}: {ex.Message}");
+                            }
                         }
                         else
                         {

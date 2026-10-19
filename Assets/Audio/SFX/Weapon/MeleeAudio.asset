@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1947ffcba2034f70abd5ceca7848b22, type: 3}
   m_Name: MeleeAudio
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponAudioSO
-  fireClip: {fileID: 8300000, guid: 327abfd8802775d418b743912fa6fa57, type: 3}
+  fireClip: {fileID: 8300000, guid: 63908275516574de7bce1a6792fb445e, type: 3}
   reloadClip: {fileID: 8300000, guid: f271bdd05139f418cac1181f9cd6c9a9, type: 3}
   emptyClickClip: {fileID: 8300000, guid: 2973d24f8c17b47a3900d772533a0f67, type: 3}
   drawClip: {fileID: 8300000, guid: 7650389d81cfa44b2ba99bba46cd7384, type: 3}

@@ -16,6 +16,8 @@ namespace Shootopia
         private HashSet<IDamageable> _currentlyInStream = new HashSet<IDamageable>();
         private LayerMask _targetLayer;
 
+        private AudioSource _flameAudioSource;
+
         public void Initialize(WeaponSO so, Transform muzzle, LayerMask targetLayer)
         {
             _so = so;
@@ -42,9 +44,30 @@ namespace Shootopia
                 _flameLight.intensity = _isFiring ? _originalLightIntensity : 0f;
             }
 
-            if (!_isFiring)
+            if (_isFiring)
             {
+                if (_flameAudioSource == null && _so != null && _so.audio != null && _so.audio.fireClip != null && AudioManager.Instance != null)
+                {
+                    _flameAudioSource = AudioManager.Instance.PlayLoopingSFX(_so.audio.fireClip, transform, 0.85f, 1.0f);
+                }
+            }
+            else
+            {
+                if (_flameAudioSource != null && AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.StopLoopingSFX(_flameAudioSource);
+                    _flameAudioSource = null;
+                }
                 ApplyAfterburnToRemaining();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (_flameAudioSource != null && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.StopLoopingSFX(_flameAudioSource);
+                _flameAudioSource = null;
             }
         }
 

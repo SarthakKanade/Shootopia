@@ -1964,7 +1964,7 @@ MonoBehaviour:
   btnReady: {fileID: 49243504547587953}
   btnReadyLabel: {fileID: 2888960572430570296}
   btnStartMatch: {fileID: 8501661360381403456}
-  startMatchClip: {fileID: 0}
+  startMatchClip: {fileID: 8300000, guid: 85d01d7f37d214c2fa548d63d97d9d80, type: 3}
   waitingRoomBgm: {fileID: 8300000, guid: 4c805beb61dd14a8682e1d04824a5b7c, type: 3}
   gasStationBgm: {fileID: 8300000, guid: 9c4875c01547344ce8729ff95e848eb2, type: 3}
   volcanoBgm: {fileID: 8300000, guid: 29a4d6b0d84b7497cbd6d460d9a13fcf, type: 3}

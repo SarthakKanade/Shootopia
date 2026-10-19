@@ -19,7 +19,7 @@ namespace Shootopia
         [SerializeField] private float bobHeight = 0.07f;
 
         [Tooltip("Target visual scale dimension relative to the loot box.")]
-        [SerializeField] private float targetWorldSize = 0.85f;
+        [SerializeField] private float targetWorldSize = 0.64f;
 
         [Tooltip("Vertical offset from the pivot anchor.")]
         [SerializeField] private Vector3 heightOffset = new Vector3(0f, 0.2f, 0f);
@@ -40,9 +40,9 @@ namespace Shootopia
 
         private void InitializeBasePosition()
         {
-            if (_baseLocalPos == Vector3.zero || _baseLocalPos.y < 1.8f)
+            if (_baseLocalPos == Vector3.zero || _baseLocalPos.y < 1.35f)
             {
-                float targetY = transform.localPosition.y < 1.8f ? 2.25f : transform.localPosition.y;
+                float targetY = transform.localPosition.y < 1.35f ? 1.7f : transform.localPosition.y;
                 _baseLocalPos = new Vector3(transform.localPosition.x, targetY, transform.localPosition.z);
             }
         }

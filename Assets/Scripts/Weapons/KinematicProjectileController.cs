@@ -29,6 +29,10 @@ namespace Shootopia
         [Header("Void Settings (Void Gun)")]
         [SerializeField] private GameObject voidZonePrefab;
 
+        [Header("Hit VFX Overrides")]
+        [SerializeField] private GameObject playerHitVFXPrefab;
+        [SerializeField] private GameObject environmentHitVFXPrefab;
+
         [Header("Visual Overrides (Scale & Customization)")]
         [SerializeField] private float projectileScale = 1f;
         [SerializeField] private float explosionScale = 1f;
@@ -160,9 +164,12 @@ namespace Shootopia
                             _velocity = Vector3.Reflect(_velocity, hit.normal);
                             transform.rotation = Quaternion.LookRotation(_velocity);
 
-                            if (_weaponData != null && _weaponData.HitVFXPrefab != null)
+                            GameObject bounceVfx = (_weaponData != null && _weaponData.HitVFXPrefab != null)
+                                ? _weaponData.HitVFXPrefab
+                                : environmentHitVFXPrefab;
+                            if (bounceVfx != null)
                             {
-                                Instantiate(_weaponData.HitVFXPrefab, hit.point, Quaternion.LookRotation(hit.normal));
+                                Instantiate(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
                             }
 
                             transform.position = hit.point + hit.normal * 0.02f;
@@ -344,9 +351,27 @@ namespace Shootopia
                 ? (Mathf.Abs(hit.normal.y) > 0.95f ? Quaternion.LookRotation(hit.normal, Vector3.forward) : Quaternion.LookRotation(hit.normal, Vector3.up))
                 : Quaternion.LookRotation(Vector3.up, Vector3.forward);
 
-            if (_weaponData != null && _weaponData.HitVFXPrefab != null)
+            bool isPlayerHit = hit.collider != null && (
+                hit.collider.GetComponentInParent<PlayerHealth>() != null ||
+                hit.collider.GetComponent<PlayerHealth>() != null ||
+                hit.collider.CompareTag("Player"));
+
+            GameObject vfxToSpawn = null;
+            if (isPlayerHit)
             {
-                var spawned = Instantiate(_weaponData.HitVFXPrefab, hit.point, hitRotation);
+                if (playerHitVFXPrefab != null) vfxToSpawn = playerHitVFXPrefab;
+                else if (_weaponData != null && _weaponData.playerHitVFXPrefab != null) vfxToSpawn = _weaponData.playerHitVFXPrefab;
+                else if (_weaponData != null && _weaponData.HitVFXPrefab != null) vfxToSpawn = _weaponData.HitVFXPrefab;
+            }
+            else
+            {
+                if (environmentHitVFXPrefab != null) vfxToSpawn = environmentHitVFXPrefab;
+                else if (_weaponData != null && _weaponData.HitVFXPrefab != null) vfxToSpawn = _weaponData.HitVFXPrefab;
+            }
+
+            if (vfxToSpawn != null)
+            {
+                var spawned = Instantiate(vfxToSpawn, hit.point, hitRotation);
                 ApplyExplosionModifiers(spawned);
             }
 

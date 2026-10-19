@@ -618,7 +618,7 @@ Transform:
   m_GameObject: {fileID: 37659733}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 115.3, y: 18.5, z: 17.3}
+  m_LocalPosition: {x: 118, y: 15.35, z: 12}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -15245,7 +15245,7 @@ Transform:
   m_GameObject: {fileID: 969719961}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 132.93, y: 18.5, z: -4.74}
+  m_LocalPosition: {x: 126, y: 15.35, z: -2.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -16193,7 +16193,7 @@ Transform:
   m_GameObject: {fileID: 1059101990}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 131.35, y: 18.5, z: 39.98}
+  m_LocalPosition: {x: 126.5, y: 15.35, z: 28}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23325,7 +23325,7 @@ Transform:
   m_GameObject: {fileID: 1474757673}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 139.23, y: 20.5, z: 17.37}
+  m_LocalPosition: {x: 133, y: 15.35, z: 16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -27337,7 +27337,7 @@ Transform:
   m_GameObject: {fileID: 1830237074}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 158.83, y: 18.5, z: 5.14}
+  m_LocalPosition: {x: 152, y: 17.95, z: 7.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -29925,7 +29925,7 @@ Transform:
   m_GameObject: {fileID: 1991308114}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 157.42, y: 18.5, z: 32.2}
+  m_LocalPosition: {x: 152, y: 17.95, z: 26}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -31294,8 +31294,8 @@ MonoBehaviour:
   scoreRowPrefab: {fileID: 2228892713729593084, guid: 4dca9638e4b0b4539bbd8871580b884c, type: 3}
   btnReturnToLobby: {fileID: 0}
   btnMainMenu: {fileID: 0}
-  victoryClip: {fileID: 0}
-  defeatClip: {fileID: 0}
+  victoryClip: {fileID: 8300000, guid: 7e338f9689beb4e4ebc19ad8116ee3f0, type: 3}
+  defeatClip: {fileID: 8300000, guid: bc3444f8d19c94703956892637d9addf, type: 3}
 --- !u!114 &2064779310
 MonoBehaviour:
   m_ObjectHideFlags: 0

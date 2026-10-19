@@ -88,3 +88,5 @@ MonoBehaviour:
   homingTurnSpeed: 15
   homingRange: 25
   voidZonePrefab: {fileID: 0}
+  playerHitVFXPrefab: {fileID: 3710540494006657454, guid: 97a04c7e403b4d6bb7710fd08863650b, type: 3}
+  environmentHitVFXPrefab: {fileID: 3710540494006657454, guid: f0d167b505cf492682033bfc9366bc35, type: 3}

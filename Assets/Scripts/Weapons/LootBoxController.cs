@@ -46,6 +46,8 @@ namespace Shootopia
 
         private void Awake()
         {
+            transform.localScale = new Vector3(0.75f, 0.75f, 0.75f);
+
             var rootRenderer = GetComponent<MeshRenderer>();
             if (rootRenderer != null) rootRenderer.enabled = false;
 
@@ -268,7 +270,7 @@ namespace Shootopia
 
             if (chestType == LootChestType.Chest1_Defense)
             {
-                var invis = playerObj.GetComponent<PlayerInvisibility>();
+                var invis = playerObj.GetComponent<PlayerInvisibility>() ?? playerObj.GetComponentInParent<PlayerInvisibility>() ?? playerObj.GetComponentInChildren<PlayerInvisibility>();
                 string itemName = "";
                 if (lootTable != null && activeIndex >= 0 && activeIndex < lootTable.Entries.Count)
                 {

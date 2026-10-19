@@ -6,6 +6,7 @@ namespace Shootopia
 {
     public class BounceProjectileController : BaseProjectile
     {
+        [SerializeField] private GameObject playerHitVFXPrefab;
         [SerializeField] private GameObject bounceSparkVFX;
         
         private Rigidbody rb;
@@ -60,6 +61,16 @@ namespace Shootopia
 
                     damageable.TakeDamage(_damage, DamageType.Bullet, _weaponData);
                 }
+
+                bool isPlayer = col.gameObject.GetComponentInParent<PlayerHealth>() != null || col.gameObject.CompareTag("Player");
+                GameObject hitVfx = isPlayer ? (playerHitVFXPrefab != null ? playerHitVFXPrefab : (_weaponData != null ? _weaponData.playerHitVFXPrefab : null)) : null;
+                if (hitVfx != null)
+                {
+                    Vector3 norm = col.contacts.Length > 0 ? col.contacts[0].normal : Vector3.up;
+                    Vector3 pt = col.contacts.Length > 0 ? col.contacts[0].point : transform.position;
+                    Instantiate(hitVfx, pt, Quaternion.LookRotation(norm));
+                }
+
                 CancelInvoke();
                 Destroy(gameObject);
                 return;

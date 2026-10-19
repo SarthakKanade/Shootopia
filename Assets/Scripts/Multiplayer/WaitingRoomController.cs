@@ -267,15 +267,14 @@ namespace Shootopia
                 bool isNetworkMatchStarted = false;
                 try
                 {
-                    isNetworkMatchStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) ||
-                                             (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+                    isNetworkMatchStarted = (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress)) ||
+                                             (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value && activeMode != null && activeMode.PreMatchCountdown.Value >= 0);
                 }
                 catch { }
 
-                if (_matchStarted || isNetworkMatchStarted)
+                if (_matchStarted && isNetworkMatchStarted)
                 {
                     visible = false;
-                    _matchStarted = true;
                 }
             }
 
@@ -579,11 +578,11 @@ namespace Shootopia
             string namePrefix = "";
             if (isHost)
             {
-                namePrefix = "<color=#FFD555>👑 </color>";
+                namePrefix = "<color=#FFD555>[HOST] </color>";
             }
             else if (isReady)
             {
-                namePrefix = "<color=#45F595>✔ </color>";
+                namePrefix = "<color=#45F595>[READY] </color>";
             }
 
             string displayName = namePrefix + player.displayName;
@@ -1175,7 +1174,9 @@ namespace Shootopia
             {
                 try { await SessionManager.Instance.LeaveSession(); } catch { }
             }
-            else
+
+            // Ensure we return to MainMenu even if UGS leave threw an exception or session was null
+            if (SceneManager.GetActiveScene().name != "MainMenu")
             {
                 if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
                 {

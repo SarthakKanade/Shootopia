@@ -239,17 +239,25 @@ namespace Shootopia
 
         public static void PlayClickSound(AudioClip overrideClip = null)
         {
-            if (AudioManager.Instance != null && overrideClip != null)
+            if (AudioManager.Instance != null)
             {
-                AudioManager.Instance.PlaySFX2D(overrideClip, 0.8f);
+                AudioClip clip = overrideClip != null ? overrideClip : AudioManager.Instance.DefaultClickClip;
+                if (clip != null)
+                {
+                    AudioManager.Instance.PlaySFX2D(clip, 0.8f);
+                }
             }
         }
 
         public static void PlayHoverSound(AudioClip overrideClip = null)
         {
-            if (AudioManager.Instance != null && overrideClip != null)
+            if (AudioManager.Instance != null)
             {
-                AudioManager.Instance.PlaySFX2D(overrideClip, 0.4f);
+                AudioClip clip = overrideClip != null ? overrideClip : AudioManager.Instance.DefaultHoverClip;
+                if (clip != null)
+                {
+                    AudioManager.Instance.PlaySFX2D(clip, 0.4f);
+                }
             }
         }
     }
