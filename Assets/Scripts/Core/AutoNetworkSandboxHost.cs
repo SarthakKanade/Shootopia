@@ -11,6 +11,8 @@ namespace Shootopia
     [DefaultExecutionOrder(-1000)]
     public class AutoNetworkSandboxHost : MonoBehaviour
     {
+        [SerializeField] private GameObject playerPrefab;
+
         private void Awake()
         {
             EnsureNetworkManager();
@@ -48,16 +50,14 @@ namespace Shootopia
                     EnableSceneManagement = true
                 };
 
-#if UNITY_EDITOR
-                var playerPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player/Player.prefab");
-                if (playerPrefab != null)
+                var prefab = playerPrefab != null ? playerPrefab : Resources.Load<GameObject>("Player");
+                if (prefab != null)
                 {
-                    var networkPrefab = new NetworkPrefab { Prefab = playerPrefab };
+                    var networkPrefab = new NetworkPrefab { Prefab = prefab };
                     config.Prefabs.Add(networkPrefab);
-                    config.PlayerPrefab = playerPrefab;
+                    config.PlayerPrefab = prefab;
                     Debug.Log("[AutoNetworkSandboxHost] Registered PlayerPrefab for Sandbox host testing.");
                 }
-#endif
 
                 netManager.NetworkConfig = config;
                 Debug.Log("[AutoNetworkSandboxHost] Created NetworkManager for Sandbox testing.");

@@ -267,66 +267,70 @@ namespace Shootopia
             if (health == null) return;
 
             int activeIndex = GetCurrentActiveIndex();
+            if (lootTable == null || lootTable.Entries.Count == 0) return;
+            if (activeIndex < 0 || activeIndex >= lootTable.Entries.Count) activeIndex = 0;
+            var entry = lootTable.Entries[activeIndex];
+            if (entry == null) return;
 
             if (chestType == LootChestType.Chest1_Defense)
             {
                 var invis = playerObj.GetComponent<PlayerInvisibility>() ?? playerObj.GetComponentInParent<PlayerInvisibility>() ?? playerObj.GetComponentInChildren<PlayerInvisibility>();
-                string itemName = "";
-                if (lootTable != null && activeIndex >= 0 && activeIndex < lootTable.Entries.Count)
+
+                // Check itemType enum directly (with backwards-compatible name check fallback)
+                LootItemType resolvedType = entry.itemType;
+                if (resolvedType == LootItemType.Weapon)
                 {
-                    var entry = lootTable.Entries[activeIndex];
-                    if (entry != null && !string.IsNullOrEmpty(entry.displayName))
-                    {
-                        itemName = entry.displayName.ToLower();
-                    }
-                    else if (entry != null && entry.weaponAttach != null)
-                    {
-                        itemName = entry.weaponAttach.name.ToLower();
-                    }
+                    string itemName = (entry.displayName ?? entry.weaponAttach?.name ?? "").ToLower();
+                    if (itemName.Contains("invis") || itemName.Contains("cloak")) resolvedType = LootItemType.Invisibility;
+                    else if (itemName.Contains("shield")) resolvedType = LootItemType.Shield;
+                    else resolvedType = LootItemType.FullHeal;
                 }
 
-                if (itemName.Contains("invis") || itemName.Contains("cloak"))
+                switch (resolvedType)
                 {
-                    if (invis != null)
-                    {
-                        invis.ActivateInvisibility(10f);
-                        Debug.Log($"[LootBoxController] Player granted Invisibility Cloak from {chestType}!");
-                    }
-                }
-                else if (itemName.Contains("shield"))
-                {
-                    if (shield != null)
-                    {
-                        shield.GrantShield(50f);
-                        Debug.Log($"[LootBoxController] Player granted 50 HP Shield from {chestType}!");
-                    }
-                }
-                else
-                {
-                    // Health pack: heals player completely to full HP. Never activates shield!
-                    health.Heal(health.GetMaxHp());
-                    Debug.Log($"[LootBoxController] Player restored completely to MAX HP from {chestType}!");
+                    case LootItemType.Invisibility:
+                        if (invis != null)
+                        {
+                            invis.ActivateInvisibility(10f);
+                            Debug.Log($"[LootBoxController] Player granted Invisibility Cloak from {chestType}!");
+                        }
+                        break;
+                    case LootItemType.Shield:
+                        if (shield != null)
+                        {
+                            shield.GrantShield(50f);
+                            Debug.Log($"[LootBoxController] Player granted 50 HP Shield from {chestType}!");
+                        }
+                        break;
+                    default:
+                        // Health pack: heals player completely to full HP. Never activates shield!
+                        health.Heal(health.GetMaxHp());
+                        Debug.Log($"[LootBoxController] Player restored completely to MAX HP from {chestType}!");
+                        break;
                 }
             }
             else
             {
-                if (lootTable != null && lootTable.Entries.Count > 0 && weaponCtrl != null)
+                if (weaponCtrl != null && entry.weaponAttach != null)
                 {
-                    if (activeIndex < 0 || activeIndex >= lootTable.Entries.Count) activeIndex = 0;
-
-                    var entry = lootTable.Entries[activeIndex];
-                    if (entry != null && entry.weaponAttach != null)
-                    {
-                        weaponCtrl.ReplaceCurrentWeapon(entry.weaponAttach);
-                        Debug.Log($"[LootBoxController] Player acquired {entry.displayName ?? entry.weaponAttach.name} from {chestType}!");
-                    }
+                    weaponCtrl.ReplaceCurrentWeapon(entry.weaponAttach);
+                    Debug.Log($"[LootBoxController] Player acquired {entry.displayName ?? entry.weaponAttach.name} from {chestType}!");
                 }
             }
         }
 
+        public float GetCurrentCooldown()
+        {
+            if (LootBoxSpawnManager.Instance != null)
+            {
+                return LootBoxSpawnManager.Instance.GetChestCooldown();
+            }
+            return cooldownSeconds;
+        }
+
         private IEnumerator CooldownRoutine()
         {
-            yield return new WaitForSeconds(cooldownSeconds);
+            yield return new WaitForSeconds(GetCurrentCooldown());
 
             if (IsServer)
             {
@@ -336,9 +340,31 @@ namespace Shootopia
             }
         }
 
+        public void ResetChestForMatchStart()
+        {
+            StopAllCoroutines();
+            _isOpening = false;
+            ResetLidBones();
+
+            if (IsServer)
+            {
+                RollNewItemServer();
+                _isAvailable.Value = false;
+                _isAvailable.Value = true;
+            }
+            else if (!IsSpawned)
+            {
+                if (lootTable != null && lootTable.Entries.Count > 0)
+                {
+                    _localOfflineIndex = lootTable.GetRandomEntryIndex();
+                }
+                UpdateVisualState();
+            }
+        }
+
         private IEnumerator OfflineCooldownRoutine()
         {
-            yield return new WaitForSeconds(cooldownSeconds);
+            yield return new WaitForSeconds(GetCurrentCooldown());
 
             if (lootTable != null && lootTable.Entries.Count > 0)
             {

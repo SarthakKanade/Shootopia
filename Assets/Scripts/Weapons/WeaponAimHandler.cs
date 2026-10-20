@@ -14,6 +14,7 @@ namespace Shootopia
         private readonly PlayerAimRig _aimRig;
 
         private LineRenderer _bounceLineInstance;
+        private float _bounceLineOffset = 0f;
         private float _combatStanceTimer = 0f;
         private const float COMBAT_STANCE_DURATION = 1.5f;
 
@@ -111,13 +112,13 @@ namespace Shootopia
                 return;
             }
 
-            if (currentAttach.stanceId == 3 || (currentAttach.gameplayData != null && currentAttach.gameplayData.name.Contains("Knife")))
+            if (currentAttach.stanceId == 3 || (currentAttach.gameplayData != null && (currentAttach.gameplayData.category == WeaponCategory.Melee || currentAttach.gameplayData.name.Contains("Knife"))))
             {
                 _animator.SetFloat(HashStance, 3f);
                 return;
             }
 
-            if (currentAttach.name.Contains("Sniper"))
+            if (currentAttach.name.Contains("Sniper") || (currentAttach.gameplayData != null && (currentAttach.gameplayData.CanZoom || currentAttach.gameplayData.category == WeaponCategory.Precision)))
             {
                 bool isFiring = isCharging || (_animator != null && (_animator.GetBool(HashIsFiring) || _animator.GetCurrentAnimatorStateInfo(1).IsName("Shoot")));
                 float targetStance = isFiring ? 1f : 0f;
@@ -202,6 +203,17 @@ namespace Shootopia
 
             _bounceLineInstance.positionCount = points.Count;
             _bounceLineInstance.SetPositions(points.ToArray());
+
+            // Animate scrolling dashes along the trajectory line
+            _bounceLineOffset -= Time.deltaTime * 3.5f;
+            if (_bounceLineInstance.material != null)
+            {
+                var offset = new Vector2(_bounceLineOffset, 0f);
+                if (_bounceLineInstance.material.HasProperty("_BaseMap"))
+                    _bounceLineInstance.material.SetTextureOffset("_BaseMap", offset);
+                if (_bounceLineInstance.material.HasProperty("_MainTex"))
+                    _bounceLineInstance.material.SetTextureOffset("_MainTex", offset);
+            }
         }
 
         public void DisableBouncePreview()
@@ -220,22 +232,46 @@ namespace Shootopia
             lineObj.transform.SetParent(_ownerTransform, false);
             _bounceLineInstance = lineObj.AddComponent<LineRenderer>();
             _bounceLineInstance.useWorldSpace = true;
-            _bounceLineInstance.startWidth = 0.08f;
-            _bounceLineInstance.endWidth = 0.04f;
+            _bounceLineInstance.startWidth = 0.05f;
+            _bounceLineInstance.endWidth = 0.05f;
+            _bounceLineInstance.textureMode = LineTextureMode.Tile;
 
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") 
-                         ?? Shader.Find("Sprites/Default");
-
-            if (shader != null)
+            // Load pre-configured DashedLineMat from Resources or Assets
+            Material dashedMat = Resources.Load<Material>("DashedLineMat");
+            if (dashedMat != null)
             {
-                Material mat = new Material(shader) { name = "BounceLaser_Mat" };
-                Color laserColor = new Color(0.15f, 1.0f, 0.45f, 1.0f);
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", laserColor);
-                if (mat.HasProperty("_Color")) mat.SetColor("_Color", laserColor);
-                mat.renderQueue = 3000;
-                _bounceLineInstance.material = mat;
-                _bounceLineInstance.startColor = laserColor;
-                _bounceLineInstance.endColor = laserColor;
+                _bounceLineInstance.material = Object.Instantiate(dashedMat);
+            }
+            else
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Unlit") 
+                             ?? Shader.Find("Sprites/Default");
+
+                if (shader != null)
+                {
+                    Material mat = new Material(shader) { name = "BounceLaser_Mat" };
+                    Texture2D dashTex = new Texture2D(32, 2, TextureFormat.RGBA32, false);
+                    dashTex.wrapMode = TextureWrapMode.Repeat;
+                    dashTex.filterMode = FilterMode.Point;
+                    Color[] pixels = new Color[32 * 2];
+                    for (int y = 0; y < 2; y++)
+                    {
+                        for (int x = 0; x < 32; x++)
+                        {
+                            pixels[y * 32 + x] = (x < 18) ? Color.white : Color.clear;
+                        }
+                    }
+                    dashTex.SetPixels(pixels);
+                    dashTex.Apply();
+
+                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", dashTex);
+                    if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", dashTex);
+                    Color laserColor = new Color(0.15f, 1.0f, 0.45f, 1.0f);
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", laserColor);
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", laserColor);
+                    mat.renderQueue = 3000;
+                    _bounceLineInstance.material = mat;
+                }
             }
         }
 

@@ -2,13 +2,27 @@ using UnityEngine;
 
 namespace Shootopia
 {
-    public enum WeaponCategory { Default, Control, Burst, Precision, Chaos, Trap, Melee }
+    public enum WeaponCategory { Default, Control, Burst, Precision, Chaos, Trap, Melee, Consumable }
     public enum DurabilityType { Ammo, TimeBased, Uses }
     public enum WeaponHandedness { OneHanded, TwoHanded }
+    public enum ConsumableType { None, Health, Shield, Invisibility }
 
     [CreateAssetMenu(fileName = "WeaponSO", menuName = "Scriptable Objects/WeaponSO")]
     public class WeaponSO : ScriptableObject
     {
+        [Header("Visual & HUD Identity")]
+        [Tooltip("Icon displayed in the HUD and Kill Feed for this weapon.")]
+        public Sprite icon;
+
+        [Tooltip("Signature theme color used for charging VFX, UI accents, and energy cores.")]
+        public Color themeColor = new Color(0.3f, 0.7f, 1.0f, 0.9f);
+
+        [Tooltip("Optional custom charge VFX prefab instantiated at muzzle during weapon charge. If unassigned, defaults to clean procedural theme flare.")]
+        public GameObject chargeVFXPrefab;
+
+        [Tooltip("If this item is a consumable pickup, specifies its behavior on equip.")]
+        public ConsumableType consumableType = ConsumableType.None;
+
         public GameObject weaponPrefab;
         public string weaponName;
         public int Damage = 1;

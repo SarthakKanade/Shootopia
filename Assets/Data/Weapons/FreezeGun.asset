@@ -12,11 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
   m_Name: FreezeGun
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
+  icon: {fileID: 0}
+  themeColor: {r: 0.2, g: 0.85, b: 1, a: 1}
+  chargeVFXPrefab: {fileID: 0}
+  consumableType: 0
   weaponPrefab: {fileID: 7389035053850368479, guid: 80cbf3e9c3a6b466b94c95191e9ab09c, type: 3}
   weaponName: Freeze Gun
   Damage: 60
   FireRate: 0.8
   HitVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
+  playerHitVFXPrefab: {fileID: 0}
   audio: {fileID: 11400000, guid: 78ab00112233445566778899aabbcc20, type: 2}
   isAutomatic: 0
   CanZoom: 0
@@ -40,6 +45,7 @@ MonoBehaviour:
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
+  throwScaleMultiplier: 1.5
   isExplosive: 1
   splashDamage: 20
   blastRadius: 4

@@ -18,14 +18,28 @@ namespace Shootopia
         [SerializeField] private GameObject chest3AdvancedPrefab;
 
         [Header("Player Ratio Scaling")]
-        [Tooltip("Target number of chests per player ratio (e.g. 1.25 means 5 chests for 4 players).")]
-        [SerializeField] private float chestsPerPlayerRatio = 1.25f;
+        [Tooltip("Target number of chests per player ratio (e.g. 1.5 means 6 chests for 4 players).")]
+        [SerializeField] private float chestsPerPlayerRatio = 1.5f;
 
         [Tooltip("Minimum number of chests to spawn regardless of player count (guarantees at least 1 of each type).")]
-        [SerializeField] private int minChests = 3;
+        [SerializeField] private int minChests = 4;
 
         [Tooltip("Maximum chests to spawn on map.")]
         [SerializeField] private int maxChests = 12;
+
+        [Header("Chest Interval Scaling")]
+        [Tooltip("Base cooldown in seconds when 1 player is connected.")]
+        [SerializeField] private float baseCooldownSeconds = 25f;
+
+        [Tooltip("Minimum cooldown seconds regardless of player count.")]
+        [SerializeField] private float minCooldownSeconds = 12f;
+
+        public float GetChestCooldown()
+        {
+            int players = GetCurrentPlayerCount();
+            float cd = baseCooldownSeconds - ((players - 1) * 3f);
+            return Mathf.Max(cd, minCooldownSeconds);
+        }
 
         [Header("Spawn Locations")]
         [SerializeField] private List<Transform> spawnPoints = new List<Transform>();
@@ -149,6 +163,18 @@ namespace Shootopia
             }
         }
 
+        public void ResetAllChestsForMatch()
+        {
+            var chests = FindObjectsByType<LootBoxController>(FindObjectsSortMode.None);
+            foreach (var chest in chests)
+            {
+                if (chest != null)
+                {
+                    chest.ResetChestForMatchStart();
+                }
+            }
+        }
+
         public void SpawnAdditionalChests(int countToSpawn)
         {
             if (countToSpawn <= 0) return;
@@ -170,7 +196,7 @@ namespace Shootopia
             var availablePoints = new List<Transform>();
             foreach (var pt in spawnPoints)
             {
-                if (pt == null) continue;
+                if (pt == null || IsPositionObstructed(pt.position)) continue;
                 bool isOccupied = false;
                 foreach (var occPos in occupiedPositions)
                 {
@@ -216,15 +242,7 @@ namespace Shootopia
             if (chest3AdvancedPrefab == null)
                 chest3AdvancedPrefab = Resources.Load<GameObject>("LootBox_Chest3_Weapons");
 
-#if UNITY_EDITOR
-            // Editor-only fallback from Prefabs folder
-            if (chest1DefensePrefab == null)
-                chest1DefensePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/LootBox_Chest1_Defense.prefab");
-            if (chest2TrapsPrefab == null)
-                chest2TrapsPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/LootBox_Chest2_Traps.prefab");
-            if (chest3AdvancedPrefab == null)
-                chest3AdvancedPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/LootBox_Chest3_Weapons.prefab");
-#endif
+
         }
 
         public void GatherSceneSpawnPoints()
@@ -277,7 +295,16 @@ namespace Shootopia
 
             if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
 
-            var availablePoints = new List<Transform>(spawnPoints);
+            var availablePoints = new List<Transform>();
+            foreach (var pt in spawnPoints)
+            {
+                if (pt != null && !IsPositionObstructed(pt.position))
+                {
+                    availablePoints.Add(pt);
+                }
+            }
+            if (availablePoints.Count == 0) availablePoints = new List<Transform>(spawnPoints);
+
             for (int i = 0; i < availablePoints.Count; i++)
             {
                 int r = Random.Range(i, availablePoints.Count);
@@ -354,6 +381,22 @@ namespace Shootopia
             Debug.Log($"[LootBoxSpawnManager] Spawned {name} (75% scale) at {position}");
         }
 
+        public bool IsPositionObstructed(Vector3 position)
+        {
+            var colliders = Physics.OverlapSphere(position + Vector3.up * 0.5f, 0.5f);
+            foreach (var col in colliders)
+            {
+                if (col.isTrigger) continue;
+                string name = col.gameObject.name.ToLower();
+                if (name.Contains("platform") || name.Contains("floor") || name.Contains("ground") || name.Contains("coal") || name.Contains("pedestal") || name.Contains("stairs") || name.Contains("bridge"))
+                {
+                    continue;
+                }
+                return true;
+            }
+            return false;
+        }
+
         public Vector3 GetRandomUnoccupiedSpawnPosition(Vector3 currentPos, LootBoxController requestingChest = null)
         {
             if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
@@ -377,7 +420,7 @@ namespace Shootopia
             var candidatePoints = new List<Transform>();
             foreach (var pt in spawnPoints)
             {
-                if (pt == null) continue;
+                if (pt == null || IsPositionObstructed(pt.position)) continue;
 
                 // Skip spawn point if it is the chest's current (old) location
                 if (Vector3.Distance(pt.position, currentPos) < 3f) continue;
@@ -404,7 +447,7 @@ namespace Shootopia
             {
                 foreach (var pt in spawnPoints)
                 {
-                    if (pt == null) continue;
+                    if (pt == null || IsPositionObstructed(pt.position)) continue;
                     bool isOccupied = false;
                     foreach (var occPos in occupiedPositions)
                     {

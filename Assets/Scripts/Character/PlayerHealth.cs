@@ -43,11 +43,13 @@ namespace Shootopia
 
         private bool _isDead = false;
         private bool _isInvincible = false;
+        private Coroutine _invincibilityRoutine;
         private Coroutine _invincibilityFlashRoutine;
         private Coroutine _hideModelRoutine;
         private PlayerStatusEffects _statusEffects;
 
         public bool IsDead => _isDead;
+        public bool IsInvincible => _isInvincible;
         public bool IsFrozen => _statusEffects != null && _statusEffects.IsFrozen;
         public bool IsBurning => _statusEffects != null && _statusEffects.IsBurning;
 
@@ -133,6 +135,8 @@ namespace Shootopia
 
         public void TakeDamage(float amount, DamageType type, WeaponSO weaponUsed, ulong attackerClientId)
         {
+            if (_isDead || _isInvincible) return;
+
             string weaponName = weaponUsed != null ? (!string.IsNullOrEmpty(weaponUsed.weaponName) ? weaponUsed.weaponName : weaponUsed.name)
                               : (type == DamageType.Melee ? "Melee" : "Unknown");
 
@@ -242,17 +246,6 @@ namespace Shootopia
                 NetworkedGameManager.ReportKill(killerClientId, OwnerClientId, weaponName);
             }
 
-            DeathClientRpc(type);
-            StartCoroutine(RespawnSequence());
-        }
-
-        private IEnumerator RespawnSequence()
-        {
-            yield return new WaitForSeconds(3f);
-
-            _isDead = false;
-            StartCoroutine(InvincibilityRoutine());
-
             Vector3 spawnPos = new Vector3(120f, 16f, 2.5f);
             if (SpawnPointManager.Instance != null)
             {
@@ -260,7 +253,25 @@ namespace Shootopia
                 if (sp != null) spawnPos = sp.position;
             }
 
-            // Server-side repositioning BEFORE updating HP
+            DeathClientRpc(type, spawnPos);
+            StartCoroutine(RespawnSequence(spawnPos));
+        }
+
+        private IEnumerator RespawnSequence(Vector3 spawnPos)
+        {
+            // Wait 1.0 second while death animation plays
+            yield return new WaitForSeconds(1.0f);
+
+            // Move server representation to spawn point while invisible
+            SetCharacterPosition(spawnPos);
+            Physics.SyncTransforms();
+
+            // Wait remaining 2.0 seconds (total 3.0s delay) while client transform & buffers settle at spawnPos
+            yield return new WaitForSeconds(2.0f);
+
+            if (_invincibilityRoutine != null) StopCoroutine(_invincibilityRoutine);
+            _invincibilityRoutine = StartCoroutine(InvincibilityRoutine());
+
             SetCharacterPosition(spawnPos);
             Physics.SyncTransforms();
             var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
@@ -271,6 +282,7 @@ namespace Shootopia
             ResetMovementState();
 
             _currentHp.Value = maxHp;
+            _isDead = false;
 
             // Ensure player respawns unarmed
             var weaponCtrl = GetComponent<WeaponController>();
@@ -310,7 +322,7 @@ namespace Shootopia
         }
 
         [ClientRpc]
-        private void DeathClientRpc(DamageType type)
+        private void DeathClientRpc(DamageType type, Vector3 spawnPos)
         {
             _isDead = true;
             onPlayerDied?.Raise();
@@ -333,18 +345,40 @@ namespace Shootopia
             }
 
             SetPlayerControlsEnabled(false);
+            SetCollidersEnabled(false);
 
             var weaponCtrl = GetComponent<WeaponController>();
             if (weaponCtrl != null) weaponCtrl.OnPlayerDied();
 
             if (_hideModelRoutine != null) StopCoroutine(_hideModelRoutine);
-            _hideModelRoutine = StartCoroutine(HideModelAfterDeathRoutine());
+            _hideModelRoutine = StartCoroutine(HideModelAndTeleportRoutine(spawnPos));
         }
 
-        private IEnumerator HideModelAfterDeathRoutine()
+        private IEnumerator HideModelAndTeleportRoutine(Vector3 spawnPos)
         {
             yield return new WaitForSeconds(1.0f);
             SetPlayerVisibility(false);
+
+            // Teleport to spawn position while invisible so network transform & interpolation buffers settle ahead of time
+            Vector3 delta = spawnPos - transform.position;
+            SetCharacterPosition(spawnPos);
+            Physics.SyncTransforms();
+
+            var netTransform = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+            if (netTransform != null && netTransform.CanCommitToTransform)
+            {
+                try { netTransform.Teleport(spawnPos, transform.rotation, transform.localScale); } catch { }
+            }
+
+            if (IsOwner)
+            {
+                var cinemachineCam = FindAnyObjectByType<Unity.Cinemachine.CinemachineCamera>();
+                if (cinemachineCam != null)
+                {
+                    cinemachineCam.OnTargetObjectWarped(transform, delta);
+                }
+            }
+
             _hideModelRoutine = null;
         }
 
@@ -359,7 +393,9 @@ namespace Shootopia
 
             _isDead = false;
 
-            // 1. Teleport and sync transforms FIRST while still hidden
+            if (_invincibilityRoutine != null) StopCoroutine(_invincibilityRoutine);
+            _invincibilityRoutine = StartCoroutine(InvincibilityRoutine());
+
             SetCharacterPosition(spawnPosition);
             Physics.SyncTransforms();
 
@@ -372,20 +408,22 @@ namespace Shootopia
             ResetLocomotionAnimator();
             ResetMovementState();
 
-            // 2. Re-enable controls and visibility at the new spawn location
-            SetPlayerControlsEnabled(true);
+            SetCollidersEnabled(true);
             SetPlayerVisibility(true);
             RemoveBurnEffect();
 
-            // Ensure player respawns unarmed on client
             var weaponCtrl = GetComponent<WeaponController>();
             if (weaponCtrl != null) weaponCtrl.UnequipAllLocal();
 
-            if (spawnVFXPrefab != null) Instantiate(spawnVFXPrefab, transform.position, Quaternion.identity);
-            if (spawnSound != null) AudioSource.PlayClipAtPoint(spawnSound, transform.position, 1f);
+            if (spawnVFXPrefab != null) Instantiate(spawnVFXPrefab, spawnPosition, Quaternion.identity);
+            if (spawnSound != null) AudioSource.PlayClipAtPoint(spawnSound, spawnPosition, 1f);
 
-            if (_invincibilityFlashRoutine != null) StopCoroutine(_invincibilityFlashRoutine);
-            _invincibilityFlashRoutine = StartCoroutine(InvincibilityFlashRoutine());
+            if (IsOwner)
+            {
+                SetPlayerControlsEnabled(true);
+                if (_invincibilityFlashRoutine != null) StopCoroutine(_invincibilityFlashRoutine);
+                _invincibilityFlashRoutine = StartCoroutine(InvincibilityFlashRoutine());
+            }
         }
 
         private IEnumerator InvincibilityFlashRoutine()
@@ -454,6 +492,7 @@ namespace Shootopia
         {
             if (!IsServer) return;
             _isDead = false;
+            _deathCount.Value = 0;
 
             SetCharacterPosition(position);
             if (rotation.HasValue) transform.rotation = rotation.Value;
@@ -471,6 +510,13 @@ namespace Shootopia
             // Ensure player starts match unarmed
             var weaponCtrl = GetComponent<WeaponController>();
             if (weaponCtrl != null) weaponCtrl.UnequipAll();
+
+            // Clear shields and invisibility carried from warmup
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null) shield.ResetShield();
+
+            var invis = GetComponent<PlayerInvisibility>();
+            if (invis != null) invis.ResetInvisibility();
 
             ResetPlayerClientRpc(position, rotation.HasValue ? rotation.Value : transform.rotation);
         }
@@ -497,6 +543,12 @@ namespace Shootopia
             // Ensure player starts match unarmed on client
             var weaponCtrl = GetComponent<WeaponController>();
             if (weaponCtrl != null) weaponCtrl.UnequipAllLocal();
+
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && !IsServer) shield.ResetShield();
+
+            var invis = GetComponent<PlayerInvisibility>();
+            if (invis != null && !IsServer) invis.ResetInvisibility();
         }
 
         #endregion
@@ -542,9 +594,25 @@ namespace Shootopia
         private void SetCharacterPosition(Vector3 position)
         {
             var cc = GetComponent<CharacterController>();
+            bool wasEnabled = cc != null && cc.enabled;
             if (cc != null) cc.enabled = false;
             transform.position = position;
-            if (cc != null) cc.enabled = true;
+            if (wasEnabled && cc != null) cc.enabled = true;
+        }
+
+        private void SetCollidersEnabled(bool enabled)
+        {
+            var cc = GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = enabled;
+
+            var cols = GetComponentsInChildren<Collider>(true);
+            foreach (var c in cols)
+            {
+                if (c != null && !(c is CharacterController))
+                {
+                    c.enabled = enabled;
+                }
+            }
         }
 
         private void ResetMovementState()

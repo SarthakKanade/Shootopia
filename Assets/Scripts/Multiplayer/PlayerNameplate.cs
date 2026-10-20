@@ -15,16 +15,14 @@ namespace Shootopia
     {
         [SerializeField] private TMP_Text _nameText;
         [SerializeField] private Canvas _canvas;
+        [SerializeField] private Slider _healthBarSlider;
+        [SerializeField] private Image _healthFillImage;
+        [SerializeField] private Image _healthBgImage;
 
         private PlayerNameDisplay _nameDisplay;
         private PlayerHealth _playerHealth;
         private NetworkObject _networkObject;
         private Transform _camTransform;
-
-        // Health bar UI elements constructed dynamically or wired
-        private Slider _healthBarSlider;
-        private Image _healthFillImage;
-        private Image _healthBgImage;
 
         private int _lastRelationship = -999; // -1: FFA (Opponent), 0: Teammate (Blue), 1: Opponent (Red)
         private bool _isLocalPlayer = false;
@@ -109,10 +107,6 @@ namespace Shootopia
             {
                 SetDeathHidden(true);
             }
-            else if (_isDeadHidden && (_playerHealth == null || !_playerHealth.IsDead))
-            {
-                SetDeathHidden(false);
-            }
         }
 
         private void UpdateNameplateText(FixedString64Bytes name)
@@ -149,17 +143,21 @@ namespace Shootopia
         {
             if (_canvas == null) return;
 
-            // Check if already created
-            var existingSlider = _canvas.GetComponentInChildren<Slider>(true);
-            if (existingSlider != null)
+            if (_healthBarSlider == null)
             {
-                _healthBarSlider = existingSlider;
-                var fill = _healthBarSlider.fillRect != null ? _healthBarSlider.fillRect.GetComponent<Image>() : null;
-                if (fill != null) _healthFillImage = fill;
+                _healthBarSlider = _canvas.GetComponentInChildren<Slider>(true);
+            }
+
+            if (_healthBarSlider != null)
+            {
+                if (_healthFillImage == null && _healthBarSlider.fillRect != null)
+                {
+                    _healthFillImage = _healthBarSlider.fillRect.GetComponent<Image>();
+                }
                 return;
             }
 
-            // Adjust name text position slightly higher to accommodate health bar below it
+            // Adjust name text position slightly higher
             if (_nameText != null)
             {
                 var nameRect = _nameText.GetComponent<RectTransform>();
@@ -171,17 +169,13 @@ namespace Shootopia
                 }
             }
 
-            // Create HealthBar root
-            GameObject healthBarGo = new GameObject("OverheadHealthBar", typeof(RectTransform));
+            // Minimal fallback health bar
+            GameObject healthBarGo = new GameObject("OverheadHealthBar", typeof(RectTransform), typeof(Slider));
             healthBarGo.transform.SetParent(_canvas.transform, false);
             var hbRect = healthBarGo.GetComponent<RectTransform>();
-            hbRect.anchorMin = new Vector2(0.5f, 0.5f);
-            hbRect.anchorMax = new Vector2(0.5f, 0.5f);
-            hbRect.pivot = new Vector2(0.5f, 0.5f);
             hbRect.anchoredPosition = new Vector2(0f, -8f);
             hbRect.sizeDelta = new Vector2(100f, 10f);
 
-            // Background
             GameObject bgGo = new GameObject("Background", typeof(RectTransform), typeof(Image));
             bgGo.transform.SetParent(healthBarGo.transform, false);
             var bgRect = bgGo.GetComponent<RectTransform>();
@@ -191,17 +185,8 @@ namespace Shootopia
             _healthBgImage = bgGo.GetComponent<Image>();
             _healthBgImage.color = HealthBgColor;
 
-            // Fill Area
-            GameObject fillArea = new GameObject("Fill Area", typeof(RectTransform));
-            fillArea.transform.SetParent(healthBarGo.transform, false);
-            var faRect = fillArea.GetComponent<RectTransform>();
-            faRect.anchorMin = Vector2.zero;
-            faRect.anchorMax = Vector2.one;
-            faRect.sizeDelta = Vector2.zero;
-
-            // Fill
             GameObject fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-            fillGo.transform.SetParent(fillArea.transform, false);
+            fillGo.transform.SetParent(healthBarGo.transform, false);
             var fillRect = fillGo.GetComponent<RectTransform>();
             fillRect.anchorMin = Vector2.zero;
             fillRect.anchorMax = Vector2.one;
@@ -209,16 +194,13 @@ namespace Shootopia
             _healthFillImage = fillGo.GetComponent<Image>();
             _healthFillImage.color = RedOpponentColor;
 
-            // Slider component
-            _healthBarSlider = healthBarGo.AddComponent<Slider>();
+            _healthBarSlider = healthBarGo.GetComponent<Slider>();
             _healthBarSlider.minValue = 0f;
             _healthBarSlider.maxValue = 1f;
             _healthBarSlider.value = 1f;
             _healthBarSlider.interactable = false;
             _healthBarSlider.targetGraphic = _healthFillImage;
             _healthBarSlider.fillRect = fillRect;
-
-            var transition = _healthBarSlider.colors;
             _healthBarSlider.transition = Selectable.Transition.None;
         }
 

@@ -618,7 +618,7 @@ Transform:
   m_GameObject: {fileID: 37659733}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 118, y: 15.35, z: 12}
+  m_LocalPosition: {x: 122.5, y: 14.77, z: 12}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -753,7 +753,7 @@ Transform:
   m_GameObject: {fileID: 42816607}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 152.5, y: 15.5, z: -40.91}
+  m_LocalPosition: {x: 146, y: 15.17, z: -32}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7736,6 +7736,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 491845302}
   m_CullTransparentMesh: 1
+--- !u!1 &498494595
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 498494596}
+  m_Layer: 0
+  m_Name: LootSpawnPoint_12
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &498494596
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 498494595}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 139.25, y: 23.35, z: 17.32}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1217891986}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &505889054
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10496,7 +10527,7 @@ Transform:
   m_GameObject: {fileID: 685519008}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 135.7, y: 15.5, z: -21.63}
+  m_LocalPosition: {x: 135.7, y: 15.85, z: -21.63}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -15245,7 +15276,7 @@ Transform:
   m_GameObject: {fileID: 969719961}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 126, y: 15.35, z: -2.5}
+  m_LocalPosition: {x: 122, y: 15.21, z: -1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -16193,7 +16224,7 @@ Transform:
   m_GameObject: {fileID: 1059101990}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 126.5, y: 15.35, z: 28}
+  m_LocalPosition: {x: 130, y: 14.57, z: 2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -18247,6 +18278,9 @@ Transform:
   - {fileID: 1706017397}
   - {fileID: 685519009}
   - {fileID: 42816608}
+  - {fileID: 1785836310}
+  - {fileID: 1795576555}
+  - {fileID: 498494596}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1223288228
@@ -22554,6 +22588,11 @@ MonoBehaviour:
   chest1DefensePrefab: {fileID: 6102936684620647954, guid: ed5c4589265d54ad88df7d21224947df, type: 3}
   chest2TrapsPrefab: {fileID: 3249151452987198751, guid: 861225f0d63dd4427a8261f7fe9e8fdf, type: 3}
   chest3AdvancedPrefab: {fileID: 7219438844821375034, guid: 63d0c1df4ec524923a460c9f0d411182, type: 3}
+  chestsPerPlayerRatio: 1.5
+  minChests: 4
+  maxChests: 12
+  baseCooldownSeconds: 25
+  minCooldownSeconds: 12
   spawnPoints:
   - {fileID: 969719962}
   - {fileID: 37659734}
@@ -22564,6 +22603,9 @@ MonoBehaviour:
   - {fileID: 1706017397}
   - {fileID: 685519009}
   - {fileID: 42816608}
+  - {fileID: 1785836310}
+  - {fileID: 1795576555}
+  - {fileID: 498494596}
 --- !u!4 &1434251482
 Transform:
   m_ObjectHideFlags: 0
@@ -23325,7 +23367,7 @@ Transform:
   m_GameObject: {fileID: 1474757673}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 133, y: 15.35, z: 16}
+  m_LocalPosition: {x: 133, y: 14.77, z: 16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -25936,7 +25978,7 @@ Transform:
   m_GameObject: {fileID: 1706017396}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 100.29, y: 15.5, z: 24.53}
+  m_LocalPosition: {x: 98, y: 15.49, z: 23}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -26904,6 +26946,68 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!1 &1785836309
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1785836310}
+  m_Layer: 0
+  m_Name: LootSpawnPoint_10
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1785836310
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1785836309}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 106, y: 14.37, z: 12}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1217891986}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1795576554
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1795576555}
+  m_Layer: 0
+  m_Name: LootSpawnPoint_11
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1795576555
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795576554}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 124, y: 14.37, z: -12}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1217891986}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1799681821
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -27337,7 +27441,7 @@ Transform:
   m_GameObject: {fileID: 1830237074}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 152, y: 17.95, z: 7.5}
+  m_LocalPosition: {x: 146, y: 17.58, z: 8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -29925,7 +30029,7 @@ Transform:
   m_GameObject: {fileID: 1991308114}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 152, y: 17.95, z: 26}
+  m_LocalPosition: {x: 146, y: 17.45, z: 24}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -31296,6 +31400,9 @@ MonoBehaviour:
   btnMainMenu: {fileID: 0}
   victoryClip: {fileID: 8300000, guid: 7e338f9689beb4e4ebc19ad8116ee3f0, type: 3}
   defeatClip: {fileID: 8300000, guid: bc3444f8d19c94703956892637d9addf, type: 3}
+  cyberFrameSprite: {fileID: 0}
+  goldButtonSprite: {fileID: 0}
+  blueButtonSprite: {fileID: 0}
 --- !u!114 &2064779310
 MonoBehaviour:
   m_ObjectHideFlags: 0

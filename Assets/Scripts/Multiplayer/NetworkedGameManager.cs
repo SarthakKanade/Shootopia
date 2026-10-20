@@ -258,6 +258,11 @@ namespace Shootopia
         public static void CloseLobbyUI()
         {
             Debug.Log("[NetworkedGameManager] Closing waiting room UI.");
+            if (HUDController.Instance != null)
+            {
+                HUDController.Instance.ClearKillFeed();
+            }
+
             if (WaitingRoomController.Instance != null)
             {
                 WaitingRoomController.Instance.OnMatchStarted();
@@ -492,12 +497,65 @@ namespace Shootopia
                 _activeGameMode.MatchActive.Value = true;
             }
             CloseWaitingRoomRpc();
-            Debug.Log("[NetworkedGameManager] Match started - players released");
+            // Clean up all leftover warmup entities (traps, smoke clouds, void zones, lava zones, projectiles, chests)
+            CleanupWarmupEntities();
 
             // 3. Start match game mode logic
             if (_activeGameMode != null)
             {
                 _activeGameMode.OnMatchStart();
+            }
+        }
+
+        private void CleanupWarmupEntities()
+        {
+            // 1. Destroy all warmup traps, smoke clouds, void zones, lava zones, and loose throwables
+            var traps = Object.FindObjectsByType<TrapBase>(FindObjectsSortMode.None);
+            foreach (var trap in traps)
+            {
+                if (trap != null) Object.Destroy(trap.gameObject);
+            }
+
+            var smokeClouds = Object.FindObjectsByType<SmokeCloud>(FindObjectsSortMode.None);
+            foreach (var smoke in smokeClouds)
+            {
+                if (smoke != null) Object.Destroy(smoke.gameObject);
+            }
+
+            var voidZones = Object.FindObjectsByType<VoidZone>(FindObjectsSortMode.None);
+            foreach (var voidZone in voidZones)
+            {
+                if (voidZone != null) Object.Destroy(voidZone.gameObject);
+            }
+
+            var lavaZones = Object.FindObjectsByType<LavaZone>(FindObjectsSortMode.None);
+            foreach (var lava in lavaZones)
+            {
+                if (lava != null) Object.Destroy(lava.gameObject);
+            }
+
+            var kinematicProj = Object.FindObjectsByType<KinematicProjectileController>(FindObjectsSortMode.None);
+            foreach (var p in kinematicProj)
+            {
+                if (p != null) Object.Destroy(p.gameObject);
+            }
+
+            var baseProj = Object.FindObjectsByType<BaseProjectile>(FindObjectsSortMode.None);
+            foreach (var p in baseProj)
+            {
+                if (p != null) Object.Destroy(p.gameObject);
+            }
+
+            // 2. Reset all Loot Boxes to fresh, available state with new rolled items
+            if (LootBoxSpawnManager.Instance != null)
+            {
+                LootBoxSpawnManager.Instance.ResetAllChestsForMatch();
+            }
+
+            // 3. Reposition and cleanly reset all connected players
+            if (NetworkBootstrapper.Instance != null)
+            {
+                NetworkBootstrapper.Instance.SpawnAllConnectedPlayers();
             }
         }
 

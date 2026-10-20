@@ -46,17 +46,6 @@ namespace Shootopia
             _weaponController = GetComponent<WeaponController>();
             _playerHealth = GetComponent<PlayerHealth>();
             _nameplate = GetComponentInChildren<PlayerNameplate>(true);
-
-            if (stealthTranslucentMaterial == null)
-            {
-                stealthTranslucentMaterial = Resources.Load<Material>("StealthTranslucent");
-                if (stealthTranslucentMaterial == null)
-                {
-#if UNITY_EDITOR
-                    stealthTranslucentMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/StealthTranslucent.mat");
-#endif
-                }
-            }
         }
 
         public override void OnNetworkSpawn()
@@ -170,6 +159,18 @@ namespace Shootopia
             Debug.Log($"[PlayerInvisibility] Deactivated for Player {OwnerClientId}");
         }
 
+        public void ResetInvisibility()
+        {
+            if (IsServer)
+            {
+                DeactivateInvisibilityInternal();
+            }
+            else
+            {
+                ApplyInvisibilityVisuals(false);
+            }
+        }
+
         private void OnInvisibilityStateChanged(bool previousValue, bool newValue)
         {
             ApplyInvisibilityVisuals(newValue);
@@ -277,9 +278,16 @@ namespace Shootopia
         /// - UI canvases
         /// - Shield forcefield spheres
         /// </summary>
+        private List<Renderer> _cachedBodyRenderers;
+
         private List<Renderer> GetBodyRenderers()
         {
-            List<Renderer> renderers = new List<Renderer>();
+            if (_cachedBodyRenderers != null && _cachedBodyRenderers.Count > 0)
+            {
+                return _cachedBodyRenderers;
+            }
+
+            _cachedBodyRenderers = new List<Renderer>();
 
             Transform weaponSocket = _weaponController != null ? _weaponController.WeaponSocket : null;
             if (weaponSocket == null)
@@ -302,10 +310,10 @@ namespace Shootopia
                 // Exclude Shield sphere renderers
                 if (r.name.Contains("Shield") || (r.transform.parent != null && r.transform.parent.name.Contains("Shield"))) continue;
 
-                renderers.Add(r);
+                _cachedBodyRenderers.Add(r);
             }
 
-            return renderers;
+            return _cachedBodyRenderers;
         }
 
         private void OnDisable()

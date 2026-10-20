@@ -140,6 +140,7 @@ namespace Shootopia
         private bool _isAimingBounce;
         private bool _inTrapCooldown;
         private Coroutine _trapCooldownRoutine;
+        private Collider[] _ownerColliders;
 
         // Public Properties
         public WeaponAttachSO CurrentAttach { get; private set; }
@@ -231,6 +232,7 @@ namespace Shootopia
             _chargeHandler = new WeaponChargeHandler(vfxImplosionPrefab);
             _aimHandler = new WeaponAimHandler(transform, animator, motor, aimRig);
             _playerHealth = GetComponent<PlayerHealth>() ?? GetComponentInParent<PlayerHealth>();
+            _ownerColliders = GetComponentsInChildren<Collider>(true);
         }
 
         private void LateUpdate()
@@ -782,18 +784,7 @@ namespace Shootopia
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
 
-                // Ignore physical collision between the spawned projectile/trap and the owner's colliders (including protection shield)
-                var projCols = proj.GetComponentsInChildren<Collider>(true);
-                var ownerCols = GetComponentsInChildren<Collider>(true);
-                foreach (var pCol in projCols)
-                {
-                    if (pCol == null || pCol is CharacterController) continue;
-                    foreach (var oCol in ownerCols)
-                    {
-                        if (oCol == null || oCol is CharacterController || pCol == oCol) continue;
-                        Physics.IgnoreCollision(pCol, oCol, true);
-                    }
-                }
+                IgnoreOwnerCollisions(proj);
 
                 var tb = proj.GetComponent<TrapBase>();
                 if (tb != null) tb.Initialise((int)OwnerClientId, Camera.main, data, launchVel);
@@ -848,18 +839,7 @@ namespace Shootopia
                 var bp = proj.GetComponent<BaseProjectile>();
                 if (bp != null) bp.Init(data, gameObject);
 
-                // Ignore physical collision between the spawned projectile/trap and the owner's colliders (including protection shield)
-                var projCols = proj.GetComponentsInChildren<Collider>(true);
-                var ownerCols = GetComponentsInChildren<Collider>(true);
-                foreach (var pCol in projCols)
-                {
-                    if (pCol == null || pCol is CharacterController) continue;
-                    foreach (var oCol in ownerCols)
-                    {
-                        if (oCol == null || oCol is CharacterController || pCol == oCol) continue;
-                        Physics.IgnoreCollision(pCol, oCol, true);
-                    }
-                }
+                IgnoreOwnerCollisions(proj);
 
                 var tb = proj.GetComponent<TrapBase>();
                 if (tb != null) tb.Initialise((int)OwnerClientId, null, data, velocity);
@@ -887,6 +867,26 @@ namespace Shootopia
             }
 
             if (_muzzleFlash != null) _muzzleFlash.Play();
+        }
+
+        private void IgnoreOwnerCollisions(GameObject projectileObj)
+        {
+            if (projectileObj == null) return;
+            var projCols = projectileObj.GetComponentsInChildren<Collider>(true);
+            if (_ownerColliders == null || _ownerColliders.Length == 0)
+                _ownerColliders = GetComponentsInChildren<Collider>(true);
+
+            for (int i = 0; i < projCols.Length; i++)
+            {
+                var pCol = projCols[i];
+                if (pCol == null || pCol is CharacterController) continue;
+                for (int j = 0; j < _ownerColliders.Length; j++)
+                {
+                    var oCol = _ownerColliders[j];
+                    if (oCol == null || oCol is CharacterController || pCol == oCol) continue;
+                    Physics.IgnoreCollision(pCol, oCol, true);
+                }
+            }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
@@ -1044,28 +1044,32 @@ namespace Shootopia
             ResetWeaponState();
 
             // Defense / Consumable item instant usage
-            if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Health") || attach.name.Contains("Health")))
+            if (attach.gameplayData != null)
             {
-                var hp = GetComponent<PlayerHealth>() ?? GetComponentInParent<PlayerHealth>();
-                if (hp != null) hp.Heal(hp.GetMaxHp());
-                ExpireWeapon();
-                return;
-            }
+                var cType = attach.gameplayData.consumableType;
+                if (cType == ConsumableType.Health || attach.gameplayData.name.Contains("Health") || attach.name.Contains("Health"))
+                {
+                    var hp = GetComponent<PlayerHealth>() ?? GetComponentInParent<PlayerHealth>();
+                    if (hp != null) hp.Heal(hp.GetMaxHp());
+                    ExpireWeapon();
+                    return;
+                }
 
-            if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Shield") || attach.name.Contains("Shield")))
-            {
-                var sh = GetComponent<PlayerShield>() ?? GetComponentInParent<PlayerShield>();
-                if (sh != null) sh.GrantShield(50f);
-                ExpireWeapon();
-                return;
-            }
+                if (cType == ConsumableType.Shield || attach.gameplayData.name.Contains("Shield") || attach.name.Contains("Shield"))
+                {
+                    var sh = GetComponent<PlayerShield>() ?? GetComponentInParent<PlayerShield>();
+                    if (sh != null) sh.GrantShield(50f);
+                    ExpireWeapon();
+                    return;
+                }
 
-            if (attach.gameplayData != null && (attach.gameplayData.name.Contains("Invis") || attach.name.Contains("Invis") || attach.name.Contains("Cloak")))
-            {
-                var invis = GetComponent<PlayerInvisibility>() ?? GetComponentInParent<PlayerInvisibility>();
-                if (invis != null) invis.ActivateInvisibility(10f);
-                ExpireWeapon();
-                return;
+                if (cType == ConsumableType.Invisibility || attach.gameplayData.name.Contains("Invis") || attach.name.Contains("Invis") || attach.name.Contains("Cloak"))
+                {
+                    var invis = GetComponent<PlayerInvisibility>() ?? GetComponentInParent<PlayerInvisibility>();
+                    if (invis != null) invis.ActivateInvisibility(10f);
+                    ExpireWeapon();
+                    return;
+                }
             }
 
             CurrentAttach = attach;

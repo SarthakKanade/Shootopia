@@ -43,24 +43,7 @@ namespace Shootopia
             // Check for IDamageable
             if (col.gameObject.TryGetComponent(out IDamageable damageable))
             {
-                if (IsOwnerProjectile())
-                {
-                    ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
-                    if (_owner != null)
-                    {
-                        var netObj = _owner.GetComponent<NetworkObject>();
-                        if (netObj != null) attackerId = netObj.OwnerClientId;
-                    }
-
-                    var targetHealth = col.gameObject.GetComponentInParent<PlayerHealth>();
-                    if (targetHealth == null) targetHealth = col.gameObject.GetComponent<PlayerHealth>();
-                    if (targetHealth != null)
-                    {
-                        targetHealth.LastAttackerClientId = attackerId;
-                    }
-
-                    damageable.TakeDamage(_damage, DamageType.Bullet, _weaponData);
-                }
+                DealDamage(damageable, _damage, DamageType.Bullet, col.collider);
 
                 bool isPlayer = col.gameObject.GetComponentInParent<PlayerHealth>() != null || col.gameObject.CompareTag("Player");
                 GameObject hitVfx = isPlayer ? (playerHitVFXPrefab != null ? playerHitVFXPrefab : (_weaponData != null ? _weaponData.playerHitVFXPrefab : null)) : null;

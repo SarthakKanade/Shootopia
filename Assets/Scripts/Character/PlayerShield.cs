@@ -38,16 +38,6 @@ namespace Shootopia
         private void Awake()
         {
             _input = GetComponent<PlayerInputRouter>();
-            if (shieldSpherePrefab == null)
-            {
-                shieldSpherePrefab = Resources.Load<GameObject>("PlayerShieldSphere");
-                if (shieldSpherePrefab == null)
-                {
-#if UNITY_EDITOR
-                    shieldSpherePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player/PlayerShieldSphere.prefab");
-#endif
-                }
-            }
         }
 
         public override void OnNetworkSpawn()
@@ -183,6 +173,18 @@ namespace Shootopia
             _isShieldActive.Value = false;
             _shieldTimer = 0f;
             Debug.Log($"[PlayerShield] Shield deactivated/shattered for Player {OwnerClientId}");
+        }
+
+        public void ResetShield()
+        {
+            if (IsServer)
+            {
+                DeactivateShieldInternal();
+            }
+            else if (_shieldInstance != null)
+            {
+                _shieldInstance.SetActive(false);
+            }
         }
 
         private void OnShieldStateChanged(bool previousValue, bool newValue)

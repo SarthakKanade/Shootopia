@@ -50,7 +50,7 @@ namespace Shootopia
                 var playerObj = health.gameObject;
                 bool isInLavaElevation = playerObj.transform.position.y <= lavaSurfaceY;
 
-                if (isInLavaElevation && !health.IsDead)
+                if (isInLavaElevation && !health.IsDead && !health.IsInvincible)
                 {
                     if (_playersInLava.Add(playerObj))
                     {
@@ -72,7 +72,7 @@ namespace Shootopia
             if (motor == null) return;
 
             var health = motor.GetComponent<PlayerHealth>();
-            if (health != null && health.IsDead) return;
+            if (health != null && (health.IsDead || health.IsInvincible)) return;
 
             if (_playersInLava.Add(motor.gameObject))
             {
@@ -136,7 +136,7 @@ namespace Shootopia
             // 3. Apply server-authoritative continuous lava damage
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             {
-                if (health != null && !health.IsDead)
+                if (health != null && !health.IsDead && !health.IsInvincible)
                 {
                     if (playerObj.transform.position.y <= killAbyssY)
                     {

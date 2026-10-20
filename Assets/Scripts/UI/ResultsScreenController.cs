@@ -31,6 +31,11 @@ namespace Shootopia
         [SerializeField] private AudioClip victoryClip;
         [SerializeField] private AudioClip defeatClip;
 
+        [Header("Styling Sprites")]
+        [SerializeField] private Sprite cyberFrameSprite;
+        [SerializeField] private Sprite goldButtonSprite;
+        [SerializeField] private Sprite blueButtonSprite;
+
         // Visual Styling Constants matching WaitingRoomModal
         private static readonly Color ColorDarkBackdrop = new Color(0.04f, 0.07f, 0.14f, 0.96f);
         private static readonly Color ColorFrameCyan = new Color(0.85f, 0.92f, 1f, 1f);
@@ -42,9 +47,7 @@ namespace Shootopia
         private static readonly Color ColorWhite = Color.white;
         private static readonly Color ColorLocalHighlight = new Color(0.18f, 0.72f, 1.0f, 0.35f);
 
-        private const string SPRITE_CYBER_FRAME = "Assets/3rdParty/Space_Exploration_GUI_Kit/Containers/Large/setting-container-large.png";
-        private const string SPRITE_GOLD_BTN = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/large-yellow-sparkle-large.png";
-        private const string SPRITE_BLUE_BTN = "Assets/3rdParty/Space_Exploration_GUI_Kit/Button_Images/Source_Image_Sprites/large/medium-blue-large.png";
+
 
         private bool _isActionInProgress = false;
         private bool _isStyled = false;
@@ -98,10 +101,7 @@ namespace Shootopia
             {
                 rootImg.color = ColorFrameCyan;
                 rootImg.type = Image.Type.Sliced;
-#if UNITY_EDITOR
-                var frameSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(SPRITE_CYBER_FRAME);
-                if (frameSprite != null) rootImg.sprite = frameSprite;
-#endif
+                if (cyberFrameSprite != null) rootImg.sprite = cyberFrameSprite;
             }
 
             // Dark inner backdrop
@@ -179,8 +179,8 @@ namespace Shootopia
             }
 
             // Style Buttons with WaitingRoom appearance and Juice
-            StyleActionButton(btnReturnToLobby, SPRITE_GOLD_BTN, new Vector2(260f, 60f), new Vector2(-155f, -250f), "RETURN TO LOBBY", new Color(0.12f, 0.06f, 0f, 1f));
-            StyleActionButton(btnMainMenu, SPRITE_BLUE_BTN, new Vector2(240f, 60f), new Vector2(165f, -250f), "MAIN MENU", Color.white);
+            StyleActionButton(btnReturnToLobby, goldButtonSprite, new Vector2(260f, 60f), new Vector2(-155f, -250f), "RETURN TO LOBBY", new Color(0.12f, 0.06f, 0f, 1f));
+            StyleActionButton(btnMainMenu, blueButtonSprite, new Vector2(240f, 60f), new Vector2(165f, -250f), "MAIN MENU", Color.white);
         }
 
         private void CreateHeaderCol(string name, Transform parent, string text, float width, TextAlignmentOptions align)
@@ -200,7 +200,7 @@ namespace Shootopia
             if (outcomeBannerText != null) tmp.font = outcomeBannerText.font;
         }
 
-        private void StyleActionButton(Button btn, string spritePath, Vector2 size, Vector2 pos, string labelText, Color textColor)
+        private void StyleActionButton(Button btn, Sprite buttonSprite, Vector2 size, Vector2 pos, string labelText, Color textColor)
         {
             if (btn == null) return;
 
@@ -215,10 +215,7 @@ namespace Shootopia
             if (img != null)
             {
                 img.type = Image.Type.Sliced;
-#if UNITY_EDITOR
-                var spr = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
-                if (spr != null) img.sprite = spr;
-#endif
+                if (buttonSprite != null) img.sprite = buttonSprite;
             }
 
             var txt = btn.GetComponentInChildren<TextMeshProUGUI>();

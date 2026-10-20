@@ -66,9 +66,9 @@ MonoBehaviour:
   maxRange: 0
   coneAngle: 0
   fuelDuration: 0
-  tickRate: 0.1
+  tickRate: 0.5
   fuseTime: 2.5
-  cloudRadius: 4.8
+  cloudRadius: 5.5
   cloudDuration: 10
   slowPercent: 0
   activationDelay: 0

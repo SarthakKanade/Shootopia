@@ -2025,7 +2025,7 @@ MonoBehaviour:
   defaultChargeVFXPrefab: {fileID: 0}
   scopeOverlay: {fileID: 3383112620698120021, guid: 7b41fdde6bd0b4c91847882d77d2a970, type: 3}
   playerFollowCamera: {fileID: 0}
-  vfxImplosionPrefab: {fileID: 0}
+  vfxImplosionPrefab: {fileID: 6441873369525384307, guid: 0f3d407feb92ebb49b98d0157de5008a, type: 3}
 --- !u!114 &4193384357287948399
 MonoBehaviour:
   m_ObjectHideFlags: 0

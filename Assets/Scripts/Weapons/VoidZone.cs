@@ -11,6 +11,7 @@ namespace Shootopia
         [Header("VFX")]
         [SerializeField] private GameObject implosionVFX;
         [SerializeField] private GameObject disappearVFX;
+        [SerializeField] private float explosionScale = 3.5f;
         
         private WeaponSO _data;
         private CinemachineImpulseSource _impulseSource;
@@ -44,8 +45,8 @@ namespace Shootopia
 
             float elapsed = 0f;
             float radius = (_data != null && _data.pullRadius > 0f) ? _data.pullRadius : 6f;
-            float duration = (_data != null && _data.voidDuration > 0f) ? _data.voidDuration : 4f;
-            float damageTickInterval = 0.5f; // Discrete interval matching burn damage
+            float duration = (_data != null && _data.voidDuration > 0f) ? _data.voidDuration : 7f;
+            float damageTickInterval = 0.25f; // 4 ticks/sec for responsive void vortex shredding
             float damageTickTimer = 0f;
 
             while (elapsed < duration)
@@ -76,7 +77,8 @@ namespace Shootopia
                     Vector3 dir = (transform.position - c.transform.position).normalized;
 
                     // Pull force magnitude (continuous smooth pull)
-                    float pullMag = (_data != null ? _data.pullForce : 12f) * Time.fixedDeltaTime;
+                    float pullForceVal = (_data != null && _data.pullForce > 0f) ? _data.pullForce : 5.5f;
+                    float pullMag = pullForceVal * Time.fixedDeltaTime;
                     
                     // Check if target has active forcefield shield (immune to void black hole pull!)
                     var playerShield = c.GetComponentInParent<PlayerShield>();
@@ -102,10 +104,10 @@ namespace Shootopia
                     // Apply movement to Rigidbody
                     else if (c.TryGetComponent<Rigidbody>(out var rb))
                     {
-                        rb.AddForce(dir * (_data != null ? _data.pullForce : 12f), ForceMode.Acceleration);
+                        rb.AddForce(dir * pullForceVal, ForceMode.Acceleration);
                     }
 
-                    // Discrete damage ticks (5 HP at a time with interval, matching burn)
+                    // Proximity-based void damage ticks (scaling up to 200+ HP if trapped at core)
                     if (shouldTickDamage)
                     {
                         var damageable = c.GetComponentInParent<IDamageable>();
@@ -128,7 +130,13 @@ namespace Shootopia
                                     targetHealth.LastAttackerClientId = _hasOwner ? _ownerID : Unity.Netcode.NetworkManager.ServerClientId;
                                 }
 
-                                damageable.TakeDamage(5.0f, DamageType.Environment, _data);
+                                float t = Mathf.Clamp01(dist / radius);
+                                float centerDPS = (_data != null && _data.damageAtCentre > 0f) ? _data.damageAtCentre : 30f;
+                                float edgeDPS = (_data != null && _data.damageAtEdge > 0f) ? _data.damageAtEdge : 8f;
+                                float dps = Mathf.Lerp(centerDPS, edgeDPS, t);
+                                float tickDamage = dps * damageTickInterval;
+
+                                damageable.TakeDamage(tickDamage, DamageType.Environment, _data);
                             }
                         }
                     }
@@ -137,19 +145,20 @@ namespace Shootopia
                 yield return new WaitForFixedUpdate();
             }
 
-            // Spawn disappear VFX (LaserExplosionBlue) at the end of the black hole on host & clients
-            if (disappearVFX == null)
-            {
-#if UNITY_EDITOR
-                disappearVFX = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/3rdParty/ImportedProjectiles/3rdParty/Polygon Arsenal/Prefabs/Combat/Explosions/Sci-Fi/Laser/LaserExplosionBlue.prefab");
-#endif
-            }
-
             if (disappearVFX != null)
             {
-                GameObject spawnedDisappear = Instantiate(disappearVFX, transform.position, Quaternion.LookRotation(Vector3.up));
-                float scale = (_data != null && _data.name.Contains("VoidGun")) ? 3.5f : 2.5f;
-                spawnedDisappear.transform.localScale = Vector3.one * scale;
+                try
+                {
+                    GameObject spawnedDisappear = Instantiate(disappearVFX, transform.position, Quaternion.LookRotation(Vector3.up));
+                    if (spawnedDisappear != null)
+                    {
+                        spawnedDisappear.transform.localScale = Vector3.one * explosionScale;
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[VoidZone] Failed to instantiate disappearVFX: {ex.Message}");
+                }
             }
 
             Destroy(gameObject);

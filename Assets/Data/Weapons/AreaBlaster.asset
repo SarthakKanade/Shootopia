@@ -12,11 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9eb3a0b5c1ed05644ad82778f657d754, type: 3}
   m_Name: AreaBlaster
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
+  icon: {fileID: 0}
+  themeColor: {r: 1, g: 0.35, b: 0.03, a: 1}
+  chargeVFXPrefab: {fileID: 0}
+  consumableType: 0
   weaponPrefab: {fileID: 6906896758769685781, guid: 41024e7341d8048c6b561ef3dd42757c, type: 3}
   weaponName: Area Blaster
   Damage: 100
   FireRate: 1.2
   HitVFXPrefab: {fileID: 899829158140259175, guid: fb1f6c926579ce449add3f69e9c33d7a, type: 3}
+  playerHitVFXPrefab: {fileID: 0}
   audio: {fileID: 11400000, guid: 78ab00112233445566778899aabbcc10, type: 2}
   isAutomatic: 0
   CanZoom: 0
@@ -40,6 +45,7 @@ MonoBehaviour:
   hasGravity: 0
   throwAngle: 0
   throwForce: 12
+  throwScaleMultiplier: 1.5
   isExplosive: 1
   splashDamage: 25
   blastRadius: 4.5

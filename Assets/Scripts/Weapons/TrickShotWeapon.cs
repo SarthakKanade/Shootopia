@@ -13,12 +13,14 @@ namespace Shootopia
         [SerializeField] private float _scrollSpeed = 0.5f;
 
         private StarterAssetsInputs _inputs;
+        private PlayerInputRouter _inputRouter;
         private Material _lineMaterial;
         private float _offset;
 
         void Start()
         {
             _inputs = GetComponentInParent<StarterAssetsInputs>();
+            _inputRouter = GetComponentInParent<PlayerInputRouter>();
             if (_previewLine != null)
             {
                 _previewLine.enabled = false;
@@ -29,9 +31,10 @@ namespace Shootopia
 
         void Update()
         {
-            if (_inputs == null || _previewLine == null) return;
+            if (_previewLine == null) return;
 
-            if (_inputs.zoom)
+            bool isZooming = (_inputRouter != null && _inputRouter.Intent.AltFire) || (_inputs != null && _inputs.zoom);
+            if (isZooming)
             {
                 UpdatePreview();
             }

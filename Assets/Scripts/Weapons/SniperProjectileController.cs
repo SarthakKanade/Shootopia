@@ -42,24 +42,7 @@ namespace Shootopia
             // Check for IDamageable
             if (other.TryGetComponent(out IDamageable damageable))
             {
-                if (IsOwnerProjectile())
-                {
-                    ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
-                    if (_owner != null)
-                    {
-                        var netObj = _owner.GetComponent<NetworkObject>();
-                        if (netObj != null) attackerId = netObj.OwnerClientId;
-                    }
-
-                    var targetHealth = other.GetComponentInParent<PlayerHealth>();
-                    if (targetHealth == null) targetHealth = other.GetComponent<PlayerHealth>();
-                    if (targetHealth != null)
-                    {
-                        targetHealth.LastAttackerClientId = attackerId;
-                    }
-
-                    damageable.TakeDamage(_damage, DamageType.Bullet, _weaponData);
-                }
+                DealDamage(damageable, _damage, DamageType.Bullet, other);
             }
 
             // Visuals

@@ -412,7 +412,6 @@ namespace Shootopia
 
         public void PlayWaitingRoomMusic(float fadeSeconds = 1.0f)
         {
-            EnsureSoundtrackLoaded();
             if (waitingRoomMusicClip != null)
             {
                 PlayMusic(waitingRoomMusicClip, fadeSeconds);
@@ -421,7 +420,6 @@ namespace Shootopia
 
         public void PlayMapMusic(string mapOrSceneName = null, float fadeSeconds = 1.0f)
         {
-            EnsureSoundtrackLoaded();
             if (string.IsNullOrEmpty(mapOrSceneName))
             {
                 mapOrSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
@@ -444,43 +442,7 @@ namespace Shootopia
             }
         }
 
-        public void EnsureSoundtrackLoaded()
-        {
-#if UNITY_EDITOR
-            if (waitingRoomMusicClip == null)
-            {
-                waitingRoomMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/02. Lively City.mp3");
-            }
-            if (gasStationMusicClip == null)
-            {
-                gasStationMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/16. Battle Theme III (loop).mp3");
-            }
-            if (volcanoMusicClip == null)
-            {
-                volcanoMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/15. Volcanic Crater.mp3");
-            }
-            if (menuMusicClip == null)
-            {
-                menuMusicClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/BGM/lobby_theme.wav");
-            }
-            if (defaultClickClip == null)
-            {
-                defaultClickClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/ui_click.wav");
-            }
-            if (defaultHoverClip == null)
-            {
-                defaultHoverClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/ui_hover.wav");
-            }
-            if (victoryClip == null)
-            {
-                victoryClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/UI/match_end.wav");
-            }
-            if (defeatClip == null)
-            {
-                defeatClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/Anime SFX Vol 1 AmbroggioMusic/Low Health.mp3");
-            }
-#endif
-        }
+
 
         private IEnumerator FadeMusicRoutine(AudioClip newClip, float fadeDuration)
         {

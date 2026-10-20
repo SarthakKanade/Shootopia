@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "unity-mcp": {
+      "command": "node",
+      "args": [
+        "/Users/sarthakkanade/Unity_Live/Shootopia/unity-mcp-server/src/index.js"
+      ],
+      "env": {
+        "UNITY_BRIDGE_PORT": "7890"
+      }
+    }
+  }
+}

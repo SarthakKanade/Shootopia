@@ -43,39 +43,20 @@ namespace Shootopia
                     float dist = Vector3.Distance(transform.position, targetPos);
                     
                     // Check if it's a Robot for status effects (check parent too)
+                    float normalizedDist = Mathf.Clamp01(dist / (_weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f));
+                    float maxDamage = _weaponData.Damage;
+                    float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
+                    bool isDirectHit = dist <= 0.45f;
+                    float calculatedDamage = isDirectHit ? maxDamage : Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+
+                    DealDamage(t, calculatedDamage, DamageType.Projectile);
+
                     if (IsOwnerProjectile())
                     {
-                        ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
-                        if (_owner != null)
-                        {
-                            var netObj = _owner.GetComponent<NetworkObject>();
-                            if (netObj != null) attackerId = netObj.OwnerClientId;
-                        }
-
-                        if (t is PlayerHealth ph)
-                        {
-                            ph.LastAttackerClientId = attackerId;
-                        }
-                        else if (t is MonoBehaviour mb)
-                        {
-                            var ph2 = mb.GetComponentInParent<PlayerHealth>();
-                            if (ph2 == null) ph2 = mb.GetComponent<PlayerHealth>();
-                            if (ph2 != null) ph2.LastAttackerClientId = attackerId;
-                        }
-
-                        float normalizedDist = Mathf.Clamp01(dist / (_weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f));
-                        float maxDamage = _weaponData.Damage;
-                        float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
-                        bool isDirectHit = dist <= 0.45f;
-                        float calculatedDamage = isDirectHit ? maxDamage : Mathf.Lerp(maxDamage, minDamage, normalizedDist);
-
-                        t.TakeDamage(calculatedDamage, DamageType.Projectile, _weaponData);
-
                         PlayerHealth targetHealth = t as PlayerHealth;
                         if (targetHealth == null && t is MonoBehaviour mbTarget)
                         {
-                            targetHealth = mbTarget.GetComponentInParent<PlayerHealth>();
-                            if (targetHealth == null) targetHealth = mbTarget.GetComponent<PlayerHealth>();
+                            targetHealth = mbTarget.GetComponentInParent<PlayerHealth>() ?? mbTarget.GetComponent<PlayerHealth>();
                         }
 
                         if (targetHealth != null)

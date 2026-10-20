@@ -4,10 +4,19 @@ using UnityEngine;
 
 namespace Shootopia
 {
+    public enum LootItemType
+    {
+        Weapon,
+        FullHeal,
+        Shield,
+        Invisibility
+    }
+
     [Serializable]
     public class LootEntry
     {
         public string displayName;
+        public LootItemType itemType = LootItemType.Weapon;
         public WeaponAttachSO weaponAttach;
         public GameObject customPreviewPrefab;
         [Tooltip("Higher weight = higher chance of dropping relative to other items in the table.")]

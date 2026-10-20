@@ -835,7 +835,7 @@ namespace Shootopia
 
             if (weaponIcon != null)
             {
-                Sprite icon = GetWeaponSprite(rawName);
+                Sprite icon = (weaponData != null && weaponData.icon != null) ? weaponData.icon : GetWeaponSprite(rawName);
                 if (icon != null)
                 {
                     weaponIcon.sprite = icon;
@@ -1188,6 +1188,16 @@ namespace Shootopia
                     label.text = $"<color=#00F0FF>{killer}</color>{wpnStr}<color=#FF4D4D>{victim}</color>";
                 }
                 StartCoroutine(FadeAndDestroyKillEntry(entryObj, 4.0f));
+            }
+        }
+
+        public void ClearKillFeed()
+        {
+            if (killFeedContainer == null) return;
+            for (int i = killFeedContainer.childCount - 1; i >= 0; i--)
+            {
+                var child = killFeedContainer.GetChild(i);
+                if (child != null) Destroy(child.gameObject);
             }
         }
 

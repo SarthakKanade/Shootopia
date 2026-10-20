@@ -71,44 +71,28 @@ namespace Shootopia
                 {
                     if (!damagedTargets.Add(damageable)) continue;
 
-                    if (IsOwnerProjectile())
+                    // Check if this target is the direct contact hit
+                    bool isDirectHit = directHitCollider != null && (hit == directHitCollider || hit.transform.root == directHitCollider.transform.root);
+                    float damage;
+
+                    if (isDirectHit)
                     {
-                        ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
-                        if (_owner != null)
-                        {
-                            var netObj = _owner.GetComponent<NetworkObject>();
-                            if (netObj != null) attackerId = netObj.OwnerClientId;
-                        }
-
-                        var targetHealth = hit.GetComponentInParent<PlayerHealth>() ?? hit.GetComponent<PlayerHealth>();
-                        if (targetHealth != null)
-                        {
-                            targetHealth.LastAttackerClientId = attackerId;
-                        }
-
-                        // Check if this target is the direct contact hit
-                        bool isDirectHit = directHitCollider != null && (hit == directHitCollider || hit.transform.root == directHitCollider.transform.root);
-                        float damage;
-
-                        if (isDirectHit)
-                        {
-                            // Direct contact hit guarantees full center damage (100 = 1-hit KO)
-                            damage = maxDamage;
-                        }
-                        else
-                        {
-                            // Distance from Point of Contact (POC) to closest point on target's collider
-                            Vector3 closestPt = hit.ClosestPoint(poc);
-                            float distance = Vector3.Distance(poc, closestPt);
-                            
-                            // Linear damage falloff: maxDamage at POC -> minDamage at blast edge
-                            float t = Mathf.Clamp01(distance / blastRadius);
-                            damage = Mathf.Lerp(maxDamage, minDamage, t);
-                            damage = Mathf.Clamp(damage, minDamage, maxDamage);
-                        }
-
-                        damageable.TakeDamage(damage, DamageType.Explosion, _weaponData);
+                        // Direct contact hit guarantees full center damage (100 = 1-hit KO)
+                        damage = maxDamage;
                     }
+                    else
+                    {
+                        // Distance from Point of Contact (POC) to closest point on target's collider
+                        Vector3 closestPt = hit.ClosestPoint(poc);
+                        float distance = Vector3.Distance(poc, closestPt);
+                        
+                        // Linear damage falloff: maxDamage at POC -> minDamage at blast edge
+                        float t = Mathf.Clamp01(distance / blastRadius);
+                        damage = Mathf.Lerp(maxDamage, minDamage, t);
+                        damage = Mathf.Clamp(damage, minDamage, maxDamage);
+                    }
+
+                    DealDamage(damageable, damage, DamageType.Explosion, hit);
                 }
             }
 

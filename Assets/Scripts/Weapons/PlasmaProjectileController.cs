@@ -27,24 +27,7 @@ namespace Shootopia
         {
             if (col.TryGetComponent(out IDamageable t))
             {
-                if (IsOwnerProjectile())
-                {
-                    ulong attackerId = Unity.Netcode.NetworkManager.ServerClientId;
-                    if (_owner != null)
-                    {
-                        var netObj = _owner.GetComponent<NetworkObject>();
-                        if (netObj != null) attackerId = netObj.OwnerClientId;
-                    }
-
-                    var targetHealth = col.GetComponentInParent<PlayerHealth>();
-                    if (targetHealth == null) targetHealth = col.GetComponent<PlayerHealth>();
-                    if (targetHealth != null)
-                    {
-                        targetHealth.LastAttackerClientId = attackerId;
-                    }
-
-                    t.TakeDamage(18f, DamageType.Bullet, _weaponData);
-                }
+                DealDamage(t, 18f, DamageType.Bullet, col);
                 if (hitSparkVFX != null)
                 {
                     Instantiate(hitSparkVFX, transform.position, Quaternion.identity);

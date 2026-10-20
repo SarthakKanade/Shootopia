@@ -826,17 +826,7 @@ namespace Shootopia
             }
         }
 
-#if UNITY_EDITOR
-        public void AutoAssignMusicClips()
-        {
-            if (waitingRoomBgm == null)
-                waitingRoomBgm = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/02. Lively City.mp3");
-            if (gasStationBgm == null)
-                gasStationBgm = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/16. Battle Theme III (loop).mp3");
-            if (volcanoBgm == null)
-                volcanoBgm = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/28 High Quality 16-bit RPG Music/mp3/15. Volcanic Crater.mp3");
-        }
-#endif
+
 
         public static void ShowGameOver(string winnerInfo, PlayerScoreEntry[] scores)
         {

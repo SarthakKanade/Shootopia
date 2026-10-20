@@ -17,6 +17,8 @@ namespace Shootopia
         private bool _armed = false;
         private bool _stuck = false;
         private bool _exploded = false;
+        private bool _isTriggered = false;
+        private Coroutine _pulseRoutine;
 
         private void Awake()
         {
@@ -115,7 +117,7 @@ namespace Shootopia
                 _proximitySensor.enabled = true;
             }
             
-            StartCoroutine(PulseRoutine());
+            _pulseRoutine = StartCoroutine(PulseRoutine());
         }
 
         private IEnumerator PulseRoutine()
@@ -209,7 +211,7 @@ namespace Shootopia
 
         private void CheckTrigger(Collider col)
         {
-            if (!_armed || _exploded || col == null) return;
+            if (!_armed || _isTriggered || _exploded || col == null) return;
 
             var targetHealth = col.GetComponentInParent<PlayerHealth>() ?? col.GetComponent<PlayerHealth>();
             if (targetHealth != null)
@@ -220,13 +222,57 @@ namespace Shootopia
                 bool allowSelfTrigger = (_data != null && _data.selfTrigger);
                 if (!isOwner || allowSelfTrigger)
                 {
-                    Explode();
+                    StartTriggerSequence();
                 }
             }
             else if (col.GetComponent<IDamageable>() != null || col.GetComponentInParent<IDamageable>() != null)
             {
-                Explode();
+                StartTriggerSequence();
             }
+        }
+
+        private void StartTriggerSequence()
+        {
+            if (_isTriggered || _exploded) return;
+            _isTriggered = true;
+
+            if (_proximitySensor != null) _proximitySensor.enabled = false;
+            if (_pulseRoutine != null) StopCoroutine(_pulseRoutine);
+
+            StartCoroutine(TriggerBufferRoutine());
+        }
+
+        private IEnumerator TriggerBufferRoutine()
+        {
+            // Very small buffer after trigger and before blast with rapid warning blink
+            float bufferDuration = 0.35f;
+            float blinkInterval = 0.07f;
+            float elapsed = 0f;
+            bool blinkOn = true;
+
+            Material mat = _armRing != null ? _armRing.material : null;
+            if (mat != null) mat.EnableKeyword("_EMISSION");
+            Color warningColor = new Color(1.0f, 0.1f, 0.1f);
+
+            while (elapsed < bufferDuration)
+            {
+                blinkOn = !blinkOn;
+                if (mat != null)
+                {
+                    mat.SetColor("_EmissionColor", blinkOn ? warningColor * 4.5f : Color.black);
+                }
+                if (_trapLight != null)
+                {
+                    _trapLight.enabled = blinkOn;
+                    _trapLight.color = warningColor;
+                    _trapLight.intensity = blinkOn ? 3.5f : 0f;
+                }
+
+                yield return new WaitForSeconds(blinkInterval);
+                elapsed += blinkInterval;
+            }
+
+            Explode();
         }
 
         private bool IsFriendlyTarget(PlayerHealth targetHealth)
