@@ -22,9 +22,16 @@ namespace Shootopia
         [SerializeField] private LootChestType chestType = LootChestType.Chest1_Defense;
         public LootChestType ChestType => chestType;
         [SerializeField] private LootTableSO lootTable;
-        [SerializeField] private float cooldownSeconds = 30f;
+        [SerializeField] private float cooldownSeconds = 7f;
         [SerializeField] private Transform previewPivot;
         [SerializeField] private FloatingItemPreview floatingPreview;
+
+        [Header("Drop-In Fall Animation")]
+        [Tooltip("Height above target ground point from which chest drops when appearing.")]
+        [SerializeField] private float dropHeight = 0.6f;
+        [Tooltip("Duration of the drop fall in seconds.")]
+        [SerializeField] private float dropDuration = 0.22f;
+        [SerializeField] private AudioClip landingSound;
 
         [Header("VFX & Audio Juice")]
         [SerializeField] private GameObject lootVFXPrefab;
@@ -34,6 +41,10 @@ namespace Shootopia
         [Header("Fallback Health & Shield Attachments")]
         [SerializeField] private WeaponAttachSO healthBoxAttach;
         [SerializeField] private WeaponAttachSO shieldAttach;
+
+        private bool _isDropping = false;
+        private Coroutine _dropRoutine;
+        private Vector3 _groundPosition = Vector3.zero;
 
         // Network State
         private readonly NetworkVariable<bool> _isAvailable = new NetworkVariable<bool>(true, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -77,6 +88,16 @@ namespace Shootopia
             ResetLidBones();
         }
 
+        public void SetGroundPosition(Vector3 groundPos)
+        {
+            _groundPosition = groundPos;
+            transform.position = groundPos;
+            if (IsServer && _netPosition != null)
+            {
+                _netPosition.Value = groundPos;
+            }
+        }
+
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
@@ -87,7 +108,11 @@ namespace Shootopia
 
             if (IsServer)
             {
-                _netPosition.Value = transform.position;
+                if (_groundPosition == Vector3.zero)
+                {
+                    _groundPosition = transform.position;
+                }
+                _netPosition.Value = _groundPosition;
                 RollNewItemServer();
                 _isAvailable.Value = true;
             }
@@ -95,11 +120,18 @@ namespace Shootopia
             {
                 if (_netPosition.Value != Vector3.zero)
                 {
-                    transform.position = _netPosition.Value;
+                    _groundPosition = _netPosition.Value;
+                    transform.position = _groundPosition;
                 }
             }
 
             UpdateVisualState();
+
+            // Trigger drop on client when it spawns into the world
+            if (!IsServer && IsAvailable)
+            {
+                TriggerDropAnimation(_groundPosition);
+            }
         }
 
         public override void OnNetworkDespawn()
@@ -110,16 +142,41 @@ namespace Shootopia
             _netPosition.OnValueChanged -= OnPositionChanged;
         }
 
+        private void OnDisable()
+        {
+            if (_dropRoutine != null)
+            {
+                StopCoroutine(_dropRoutine);
+                _dropRoutine = null;
+            }
+            if (_groundPosition != Vector3.zero)
+            {
+                transform.position = _groundPosition;
+            }
+            transform.localScale = new Vector3(0.75f, 0.75f, 0.75f);
+            _isDropping = false;
+        }
+
         private void OnPositionChanged(Vector3 previousValue, Vector3 newValue)
         {
             if (newValue != Vector3.zero)
             {
+                _groundPosition = newValue;
                 transform.position = newValue;
+                if (IsAvailable && !_isOpening)
+                {
+                    TriggerDropAnimation(newValue);
+                }
             }
         }
 
         private void Start()
         {
+            if (_groundPosition == Vector3.zero)
+            {
+                _groundPosition = transform.position;
+            }
+
             // For offline testing / sandbox scenes without active Netcode server
             if (!IsSpawned || !NetworkManager.Singleton.IsListening)
             {
@@ -127,9 +184,18 @@ namespace Shootopia
                 {
                     _localOfflineIndex = lootTable.GetRandomEntryIndex();
                 }
-            }
 
-            UpdateVisualState();
+                UpdateVisualState();
+
+                if (IsAvailable)
+                {
+                    TriggerDropAnimation(_groundPosition);
+                }
+            }
+            else
+            {
+                UpdateVisualState();
+            }
         }
 
         private bool _isOpening = false;
@@ -137,7 +203,7 @@ namespace Shootopia
         private void OnTriggerEnter(Collider other)
         {
             bool available = IsSpawned ? _isAvailable.Value : true;
-            if (!available || _isOpening) return;
+            if (!available || _isOpening || _isDropping) return;
 
             var health = other.GetComponentInParent<PlayerHealth>();
             if (health == null) health = other.GetComponent<PlayerHealth>();
@@ -344,7 +410,14 @@ namespace Shootopia
         public void ResetChestForMatchStart()
         {
             StopAllCoroutines();
+            _dropRoutine = null;
+            _isDropping = false;
             _isOpening = false;
+            transform.localScale = new Vector3(0.75f, 0.75f, 0.75f);
+            if (_groundPosition != Vector3.zero)
+            {
+                transform.position = _groundPosition;
+            }
             ResetLidBones();
 
             if (IsServer)
@@ -360,6 +433,7 @@ namespace Shootopia
                     _localOfflineIndex = lootTable.GetRandomEntryIndex();
                 }
                 UpdateVisualState();
+                TriggerDropAnimation(_groundPosition);
             }
         }
 
@@ -372,6 +446,7 @@ namespace Shootopia
                 _localOfflineIndex = lootTable.GetRandomEntryIndex();
             }
             UpdateVisualState();
+            TriggerDropAnimation(_groundPosition);
         }
 
         private void RelocateToRandomSpawnPointServer()
@@ -426,6 +501,7 @@ namespace Shootopia
 
             if (newPos != Vector3.zero)
             {
+                _groundPosition = newPos;
                 _netPosition.Value = newPos;
                 transform.position = newPos;
                 Debug.Log($"[LootBoxController] {chestType} relocated to new spawn point at {newPos}");
@@ -457,6 +533,13 @@ namespace Shootopia
         private void OnAvailabilityChanged(bool previousValue, bool newValue)
         {
             UpdateVisualState();
+            if (!previousValue && newValue)
+            {
+                Vector3 targetPos = (_netPosition != null && _netPosition.Value != Vector3.zero) 
+                    ? _netPosition.Value 
+                    : (_groundPosition != Vector3.zero ? _groundPosition : transform.position);
+                TriggerDropAnimation(targetPos);
+            }
         }
 
         private void OnItemIndexChanged(int previousValue, int newValue)
@@ -566,6 +649,98 @@ namespace Shootopia
                 var vfx = Instantiate(lootVFXPrefab, transform.position + Vector3.up * 1f, Quaternion.identity);
                 Destroy(vfx, 3f);
             }
+        }
+
+        public void TriggerDropAnimation(Vector3 targetGroundPos)
+        {
+            if (!gameObject.activeInHierarchy) return;
+
+            if (targetGroundPos != Vector3.zero)
+            {
+                _groundPosition = targetGroundPos;
+            }
+            else if (_groundPosition == Vector3.zero)
+            {
+                _groundPosition = transform.position;
+            }
+
+            if (_dropRoutine != null)
+            {
+                StopCoroutine(_dropRoutine);
+                _dropRoutine = null;
+            }
+            _dropRoutine = StartCoroutine(DropAnimationRoutine(_groundPosition));
+        }
+
+        private IEnumerator DropAnimationRoutine(Vector3 targetGroundPos)
+        {
+            _isDropping = true;
+            Vector3 baseScale = new Vector3(0.75f, 0.75f, 0.75f);
+            _groundPosition = targetGroundPos;
+            Vector3 startPos = targetGroundPos + Vector3.up * dropHeight;
+            transform.position = startPos;
+            transform.localScale = baseScale;
+
+            float elapsed = 0f;
+            float duration = Mathf.Max(0.08f, dropDuration);
+
+            // Gravity fall with acceleration (ease-in: t * t)
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float easeIn = t * t;
+                transform.position = Vector3.Lerp(startPos, targetGroundPos, easeIn);
+                yield return null;
+            }
+
+            transform.position = targetGroundPos;
+
+            // Landing sound
+            if (landingSound != null)
+            {
+                AudioSource.PlayClipAtPoint(landingSound, targetGroundPos, 0.7f);
+            }
+
+            // Impact juice: quick squash on landing
+            float squashDuration = 0.05f;
+            elapsed = 0f;
+            Vector3 squashScale = new Vector3(baseScale.x * 1.10f, baseScale.y * 0.75f, baseScale.z * 1.10f);
+            while (elapsed < squashDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / squashDuration);
+                transform.localScale = Vector3.Lerp(baseScale, squashScale, t);
+                yield return null;
+            }
+
+            // Slight rebound
+            float reboundDuration = 0.07f;
+            elapsed = 0f;
+            Vector3 reboundScale = new Vector3(baseScale.x * 0.94f, baseScale.y * 1.08f, baseScale.z * 0.94f);
+            while (elapsed < reboundDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / reboundDuration);
+                transform.localScale = Vector3.Lerp(squashScale, reboundScale, t);
+                yield return null;
+            }
+
+            // Settle to base scale
+            float settleDuration = 0.05f;
+            elapsed = 0f;
+            while (elapsed < settleDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / settleDuration);
+                transform.localScale = Vector3.Lerp(reboundScale, baseScale, t);
+                yield return null;
+            }
+
+            transform.position = targetGroundPos;
+            transform.localScale = baseScale;
+            _isDropping = false;
+            _dropRoutine = null;
         }
     }
 }

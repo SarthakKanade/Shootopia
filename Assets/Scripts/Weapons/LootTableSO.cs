@@ -38,6 +38,8 @@ namespace Shootopia
         {
             if (entries == null || entries.Count == 0) return -1;
 
+            /*
+            // [ISOLATED / COMMENTED OUT] Weighted drop chances logic:
             float totalWeight = 0f;
             foreach (var entry in entries)
             {
@@ -64,6 +66,10 @@ namespace Shootopia
             }
 
             return entries.Count - 1;
+            */
+
+            // Equal chance for all items in that chest
+            return UnityEngine.Random.Range(0, entries.Count);
         }
 
         /// <summary>

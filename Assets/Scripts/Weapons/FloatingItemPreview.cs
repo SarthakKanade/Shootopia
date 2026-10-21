@@ -19,10 +19,10 @@ namespace Shootopia
         [SerializeField] private float bobHeight = 0.07f;
 
         [Tooltip("Target visual scale dimension relative to the loot box.")]
-        [SerializeField] private float targetWorldSize = 0.64f;
+        [SerializeField] private float targetWorldSize = 0.85f;
 
         [Tooltip("Vertical offset from the pivot anchor.")]
-        [SerializeField] private Vector3 heightOffset = new Vector3(0f, 0.2f, 0f);
+        [SerializeField] private Vector3 heightOffset = new Vector3(0f, 0.25f, 0f);
 
         private Vector3 _baseLocalPos;
         private GameObject _previewInstance;
@@ -161,11 +161,31 @@ namespace Shootopia
                     // Scale factor: maintain comparable size to chest (~0.85m), with soft clamp for cubic items
                     float minDim = Mathf.Min(localBounds.size.x, localBounds.size.y, localBounds.size.z);
                     float aspect = minDim / maxDim;
-                    float effectiveTarget = Mathf.Lerp(targetWorldSize, targetWorldSize * 0.7f, aspect);
+                    float effectiveTarget = Mathf.Lerp(targetWorldSize, targetWorldSize * 0.9f, aspect);
                     float scaleFactor = effectiveTarget / maxDim;
 
                     _previewInstance.transform.localScale = Vector3.one * scaleFactor;
                     _previewInstance.transform.localPosition = heightOffset - (localBounds.center * scaleFactor);
+                }
+            }
+
+            // Ensure emission keyword is active on all materials with emission color for maximum visibility from afar
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var r = renderers[i];
+                if (r == null || !r.enabled) continue;
+                var mats = r.materials;
+                for (int m = 0; m < mats.Length; m++)
+                {
+                    var mat = mats[m];
+                    if (mat != null && mat.HasProperty("_EmissionColor"))
+                    {
+                        Color ec = mat.GetColor("_EmissionColor");
+                        if (ec.r > 0.02f || ec.g > 0.02f || ec.b > 0.02f)
+                        {
+                            mat.EnableKeyword("_EMISSION");
+                        }
+                    }
                 }
             }
         }

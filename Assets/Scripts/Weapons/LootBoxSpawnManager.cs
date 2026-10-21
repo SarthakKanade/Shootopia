@@ -18,21 +18,21 @@ namespace Shootopia
         [SerializeField] private GameObject chest3AdvancedPrefab;
 
         [Header("Player Ratio Scaling")]
-        [Tooltip("Target number of chests per player ratio (e.g. 1.5 means 6 chests for 4 players).")]
-        [SerializeField] private float chestsPerPlayerRatio = 1.5f;
+        [Tooltip("Target number of chests per player ratio (e.g. 2.5 means 10 chests for 4 players).")]
+        [SerializeField] private float chestsPerPlayerRatio = 2.5f;
 
-        [Tooltip("Minimum number of chests to spawn regardless of player count (guarantees at least 1 of each type).")]
-        [SerializeField] private int minChests = 4;
+        [Tooltip("Minimum number of chests to spawn regardless of player count.")]
+        [SerializeField] private int minChests = 8;
 
         [Tooltip("Maximum chests to spawn on map.")]
-        [SerializeField] private int maxChests = 12;
+        [SerializeField] private int maxChests = 20;
 
         [Header("Chest Interval Scaling")]
         [Tooltip("Base cooldown in seconds when 1 player is connected.")]
-        [SerializeField] private float baseCooldownSeconds = 25f;
+        [SerializeField] private float baseCooldownSeconds = 7.0f;
 
         [Tooltip("Minimum cooldown seconds regardless of player count.")]
-        [SerializeField] private float minCooldownSeconds = 12f;
+        [SerializeField] private float minCooldownSeconds = 3.5f;
 
         public float GetChestCooldown()
         {
@@ -133,7 +133,8 @@ namespace Shootopia
 
         public int CalculateTargetChestCount(int playerCount, int availableSpawnPointsCount)
         {
-            // Exact 1:1:1 equal ratio: target count is quantized in sets of 3 (1 of each chest type)
+            /*
+            // Previous logic: target count quantized in sets of 3
             int sets = Mathf.Max(1, Mathf.RoundToInt((playerCount * chestsPerPlayerRatio) / 3f));
             int target = sets * 3;
             target = Mathf.Max(target, 3);
@@ -150,6 +151,14 @@ namespace Shootopia
                 {
                     target = Mathf.Min(target, availableSpawnPointsCount);
                 }
+            }
+            return target;
+            */
+
+            int target = Mathf.Clamp(Mathf.RoundToInt(playerCount * chestsPerPlayerRatio), minChests, maxChests);
+            if (availableSpawnPointsCount > 0)
+            {
+                target = Mathf.Min(target, availableSpawnPointsCount);
             }
             return target;
         }
@@ -230,6 +239,7 @@ namespace Shootopia
             GameObject[] prefabs = new GameObject[] { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
             string[] names = new string[] { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
 
+            /*
             // Maintain equal 1:1:1 balance by picking whichever type currently has the least count among active chests
             int count1 = 0, count2 = 0, count3 = 0;
             foreach (var c in allChests)
@@ -241,18 +251,13 @@ namespace Shootopia
                 else if (lbc.ChestType == LootChestType.Chest2_TrapsAndStarters) count2++;
                 else if (lbc.ChestType == LootChestType.Chest3_AdvancedWeapons) count3++;
             }
+            */
 
             int spawned = 0;
             for (int i = 0; i < availablePoints.Count && spawned < countToSpawn; i++)
             {
-                int idx = 0;
-                if (count2 <= count1 && count2 <= count3) idx = 1;
-                else if (count3 <= count1 && count3 <= count2) idx = 2;
-                else idx = 0;
-
-                if (idx == 0) count1++;
-                else if (idx == 1) count2++;
-                else count3++;
+                // Equal chance of a spot spawning any of the 3 chests
+                int idx = Random.Range(0, 3);
 
                 var pt = availablePoints[i];
                 SpawnChestInstance(prefabs[idx], pt.position, names[idx]);
@@ -348,7 +353,8 @@ namespace Shootopia
             GameObject[] prefabs = new GameObject[] { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
             string[] names = new string[] { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
 
-            // Guarantee strictly equal 1:1:1 distribution across all 3 types
+            /*
+            // Previous logic: Guarantee strictly equal 1:1:1 distribution across all 3 types
             int sets = targetCount / 3;
             for (int s = 0; s < sets; s++)
             {
@@ -370,6 +376,17 @@ namespace Shootopia
                 var temp = toSpawn[i];
                 toSpawn[i] = toSpawn[r];
                 toSpawn[r] = temp;
+            }
+            */
+
+            // Equal chance for each spot spawning any of the 3 chest types (1/3 probability each)
+            for (int i = 0; i < targetCount && i < availablePoints.Count; i++)
+            {
+                int chestIdx = Random.Range(0, 3);
+                if (prefabs[chestIdx] != null)
+                {
+                    toSpawn.Add((prefabs[chestIdx], names[chestIdx]));
+                }
             }
 
             for (int i = 0; i < toSpawn.Count && i < availablePoints.Count; i++)
@@ -395,6 +412,7 @@ namespace Shootopia
             if (ctrl != null)
             {
                 ctrl.gameObject.SetActive(true);
+                ctrl.SetGroundPosition(position);
             }
 
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && NetworkManager.Singleton.IsServer)
@@ -404,6 +422,11 @@ namespace Shootopia
                 {
                     netObj.Spawn();
                 }
+            }
+
+            if (ctrl != null)
+            {
+                ctrl.TriggerDropAnimation(position);
             }
 
             Debug.Log($"[LootBoxSpawnManager] Spawned {name} (75% scale) at {position}");

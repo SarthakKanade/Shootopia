@@ -47,8 +47,8 @@ MonoBehaviour:
   rotationSpeed: 65
   bobSpeed: 2.2
   bobHeight: 0.07
-  targetWorldSize: 0.6375
-  heightOffset: {x: 0, y: 0.2, z: 0}
+  targetWorldSize: 0.85
+  heightOffset: {x: 0, y: 0.25, z: 0}
 --- !u!1 &7219438844821375034
 GameObject:
   m_ObjectHideFlags: 0
@@ -147,9 +147,12 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   chestType: 2
   lootTable: {fileID: 11400000, guid: 5838e78eceb4d4eff9c896772743ba29, type: 2}
-  cooldownSeconds: 30
+  cooldownSeconds: 7
   previewPivot: {fileID: 5891716122689219285}
   floatingPreview: {fileID: 4857176975514337226}
+  dropHeight: 0.6
+  dropDuration: 0.22
+  landingSound: {fileID: 8300000, guid: 9c140e7480b77435f86253abc0b2589a, type: 3}
   lootVFXPrefab: {fileID: 1193953125369175018, guid: 7d39067bead4bc14aa0b451564aa5198, type: 3}
   lootSound: {fileID: 8300000, guid: 4869f8f53c1064090a83b524e94e4333, type: 3}
   chestMeshObject: {fileID: 8562560729683209214}
