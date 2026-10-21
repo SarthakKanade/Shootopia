@@ -170,6 +170,19 @@ namespace Shootopia
             ApplyPlatformPerformanceSettings();
         }
 
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus)
+            {
+                // Throttle background frame rate to 30 FPS to minimize host CPU/GPU load while tabbed out
+                Application.targetFrameRate = 30;
+            }
+            else
+            {
+                ApplyPlatformPerformanceSettings();
+            }
+        }
+
         private void OnApplicationQuit()
         {
             _isQuitting = true;
@@ -356,15 +369,10 @@ namespace Shootopia
             }
             else
             {
-                // Desktop: Sync to monitor refresh rate and restore quality level 1 (PC) if at level 0
+                // Desktop: Enable VSync and clamp frame rate to screen refresh rate (avoids uncapped 500+ FPS host load)
                 QualitySettings.vSyncCount = 1;
-                Application.targetFrameRate = -1;
-
-                if (!Application.isMobilePlatform && QualitySettings.GetQualityLevel() == 0)
-                {
-                    QualitySettings.SetQualityLevel(1, true);
-                    Debug.Log("[DeviceProfileManager] Restored Quality Level to PC (1)");
-                }
+                double refreshRate = Screen.currentResolution.refreshRateRatio.value;
+                Application.targetFrameRate = refreshRate >= 115 ? 120 : (refreshRate >= 85 ? 90 : 60);
             }
         }
 

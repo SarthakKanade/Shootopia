@@ -168,8 +168,6 @@ namespace Shootopia
                 if (kb.leftShiftKey.wasPressedThisFrame) intent.Roll = true;
                 if (kb.spaceKey.wasPressedThisFrame) intent.Jump = true;
                 if (kb.oKey.wasPressedThisFrame) intent.Roll = true;
-                if (kb.qKey.wasPressedThisFrame) intent.SwapWeapon = true;
-                if (kb.yKey.wasPressedThisFrame) intent.ToggleShield = true;
             }
             if (pad != null)
             {
@@ -177,7 +175,6 @@ namespace Shootopia
                 if (pad.buttonEast.wasPressedThisFrame) intent.Roll = true;
                 if (pad.buttonSouth.wasPressedThisFrame) intent.Jump = true;
                 if (pad.leftShoulder.wasPressedThisFrame) intent.Roll = true;
-                if (pad.buttonNorth.wasPressedThisFrame) intent.SwapWeapon = true;
             }
 
             // --- Merge external (touch) intent if present ---

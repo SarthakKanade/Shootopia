@@ -39,23 +39,43 @@ namespace Shootopia
         private void IgnoreOwnerCollisions(int ownerID)
         {
             var myCols = GetComponentsInChildren<Collider>(true);
-            if (myCols == null || myCols.Length == 0) return;
+            if (myCols == null || myCols.Length == 0 || ownerID < 0) return;
 
-            if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.SpawnManager != null && ownerID >= 0)
+            GameObject ownerGo = null;
+            if (Unity.Netcode.NetworkManager.Singleton != null)
             {
-                var ownerNetObj = Unity.Netcode.NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject((ulong)ownerID);
-                if (ownerNetObj != null)
+                var nm = Unity.Netcode.NetworkManager.Singleton;
+                if (nm.IsServer || (ulong)ownerID == nm.LocalClientId)
                 {
-                    var oCols = ownerNetObj.GetComponentsInChildren<Collider>(true);
-                    foreach (var mc in myCols)
+                    var ownerNetObj = nm.SpawnManager?.GetPlayerNetworkObject((ulong)ownerID);
+                    if (ownerNetObj != null) ownerGo = ownerNetObj.gameObject;
+                }
+            }
+
+            if (ownerGo == null)
+            {
+                for (int i = 0; i < PlayerHealth.ActivePlayers.Count; i++)
+                {
+                    var p = PlayerHealth.ActivePlayers[i];
+                    if (p != null && (int)p.OwnerClientId == ownerID)
                     {
-                        if (mc == null || mc is CharacterController) continue;
-                        foreach (var oc in oCols)
+                        ownerGo = p.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            if (ownerGo != null)
+            {
+                var oCols = ownerGo.GetComponentsInChildren<Collider>(true);
+                foreach (var mc in myCols)
+                {
+                    if (mc == null || mc is CharacterController) continue;
+                    foreach (var oc in oCols)
+                    {
+                        if (oc != null && mc != oc && !(oc is CharacterController))
                         {
-                            if (oc != null && mc != oc && !(oc is CharacterController))
-                            {
-                                Physics.IgnoreCollision(mc, oc, true);
-                            }
+                            Physics.IgnoreCollision(mc, oc, true);
                         }
                     }
                 }

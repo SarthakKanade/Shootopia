@@ -123,10 +123,9 @@ namespace Shootopia
                 }
             }
 
-            var playerObjs = FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None);
-            if (playerObjs != null && playerObjs.Length > 0)
+            if (PlayerHealth.ActivePlayers.Count > 0)
             {
-                count = Mathf.Max(count, playerObjs.Length);
+                count = Mathf.Max(count, PlayerHealth.ActivePlayers.Count);
             }
 
             return count;
@@ -134,12 +133,23 @@ namespace Shootopia
 
         public int CalculateTargetChestCount(int playerCount, int availableSpawnPointsCount)
         {
-            int target = Mathf.RoundToInt(playerCount * chestsPerPlayerRatio);
-            target = Mathf.Max(target, minChests);
+            // Exact 1:1:1 equal ratio: target count is quantized in sets of 3 (1 of each chest type)
+            int sets = Mathf.Max(1, Mathf.RoundToInt((playerCount * chestsPerPlayerRatio) / 3f));
+            int target = sets * 3;
+            target = Mathf.Max(target, 3);
             target = Mathf.Min(target, maxChests);
+
             if (availableSpawnPointsCount > 0)
             {
-                target = Mathf.Min(target, availableSpawnPointsCount);
+                int maxSets = availableSpawnPointsCount / 3;
+                if (maxSets >= 1)
+                {
+                    target = Mathf.Min(target, maxSets * 3);
+                }
+                else
+                {
+                    target = Mathf.Min(target, availableSpawnPointsCount);
+                }
             }
             return target;
         }
@@ -220,14 +230,32 @@ namespace Shootopia
             GameObject[] prefabs = new GameObject[] { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
             string[] names = new string[] { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
 
+            // Maintain equal 1:1:1 balance by picking whichever type currently has the least count among active chests
+            int count1 = 0, count2 = 0, count3 = 0;
+            foreach (var c in allChests)
+            {
+                if (c == null) continue;
+                var lbc = c.GetComponent<LootBoxController>();
+                if (lbc == null) continue;
+                if (lbc.ChestType == LootChestType.Chest1_Defense) count1++;
+                else if (lbc.ChestType == LootChestType.Chest2_TrapsAndStarters) count2++;
+                else if (lbc.ChestType == LootChestType.Chest3_AdvancedWeapons) count3++;
+            }
+
             int spawned = 0;
-            int cycle = _activeChests.Count;
             for (int i = 0; i < availablePoints.Count && spawned < countToSpawn; i++)
             {
-                int idx = cycle % 3;
+                int idx = 0;
+                if (count2 <= count1 && count2 <= count3) idx = 1;
+                else if (count3 <= count1 && count3 <= count2) idx = 2;
+                else idx = 0;
+
+                if (idx == 0) count1++;
+                else if (idx == 1) count2++;
+                else count3++;
+
                 var pt = availablePoints[i];
                 SpawnChestInstance(prefabs[idx], pt.position, names[idx]);
-                cycle++;
                 spawned++;
             }
         }
@@ -320,19 +348,19 @@ namespace Shootopia
             GameObject[] prefabs = new GameObject[] { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
             string[] names = new string[] { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
 
-            // Ensure at least 1 of each type is always represented
-            for (int i = 0; i < 3 && i < targetCount; i++)
+            // Guarantee strictly equal 1:1:1 distribution across all 3 types
+            int sets = targetCount / 3;
+            for (int s = 0; s < sets; s++)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    if (prefabs[i] != null) toSpawn.Add((prefabs[i], names[i]));
+                }
+            }
+            int remainder = targetCount % 3;
+            for (int i = 0; i < remainder; i++)
             {
                 if (prefabs[i] != null) toSpawn.Add((prefabs[i], names[i]));
-            }
-
-            // Fill remaining chests cycling evenly through all 3 types
-            int cycle = 0;
-            while (toSpawn.Count < targetCount)
-            {
-                int idx = cycle % 3;
-                if (prefabs[idx] != null) toSpawn.Add((prefabs[idx], names[idx]));
-                cycle++;
             }
 
             // Shuffle types order across spawn positions
@@ -383,12 +411,23 @@ namespace Shootopia
 
         public bool IsPositionObstructed(Vector3 position)
         {
+            // 1. Check for enclosed roof/building above within 15 meters
+            if (Physics.Raycast(position + Vector3.up * 0.2f, Vector3.up, out RaycastHit roofHit, 15f))
+            {
+                string roofName = roofHit.collider.name.ToLower();
+                if (roofName.Contains("building") || roofName.Contains("station") || roofName.Contains("house") || roofName.Contains("roof") || roofName.Contains("ceilingbarrier"))
+                {
+                    return true;
+                }
+            }
+
+            // 2. Check for overlapping obstacle colliders
             var colliders = Physics.OverlapSphere(position + Vector3.up * 0.5f, 0.5f);
             foreach (var col in colliders)
             {
                 if (col.isTrigger) continue;
                 string name = col.gameObject.name.ToLower();
-                if (name.Contains("platform") || name.Contains("floor") || name.Contains("ground") || name.Contains("coal") || name.Contains("pedestal") || name.Contains("stairs") || name.Contains("bridge"))
+                if (name.Contains("platform") || name.Contains("floor") || name.Contains("ground") || name.Contains("coal") || name.Contains("pedestal") || name.Contains("stairs") || name.Contains("bridge") || name.Contains("terrain") || name.Contains("road") || name.Contains("pavement"))
                 {
                     continue;
                 }

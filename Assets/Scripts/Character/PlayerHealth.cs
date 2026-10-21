@@ -53,6 +53,21 @@ namespace Shootopia
         public bool IsFrozen => _statusEffects != null && _statusEffects.IsFrozen;
         public bool IsBurning => _statusEffects != null && _statusEffects.IsBurning;
 
+        public static readonly System.Collections.Generic.List<PlayerHealth> ActivePlayers = new System.Collections.Generic.List<PlayerHealth>();
+
+        private void OnEnable()
+        {
+            if (!ActivePlayers.Contains(this))
+            {
+                ActivePlayers.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActivePlayers.Remove(this);
+        }
+
         private void Awake()
         {
             _statusEffects = GetComponent<PlayerStatusEffects>() ?? gameObject.AddComponent<PlayerStatusEffects>();

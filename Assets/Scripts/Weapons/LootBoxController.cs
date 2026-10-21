@@ -20,6 +20,7 @@ namespace Shootopia
     {
         [Header("Chest Configuration")]
         [SerializeField] private LootChestType chestType = LootChestType.Chest1_Defense;
+        public LootChestType ChestType => chestType;
         [SerializeField] private LootTableSO lootTable;
         [SerializeField] private float cooldownSeconds = 30f;
         [SerializeField] private Transform previewPivot;

@@ -42,6 +42,7 @@ namespace Shootopia
         [SerializeField] private CanvasGroup quickFilterGroup;
         [SerializeField] private Button btnCloseQuickFilter;
         [SerializeField] private Button chipQuickAll, chipQuickFFA, chipQuickTDM;
+        [SerializeField] private Button chipQuickMapAll, chipQuickMapSectorAlpha, chipQuickMapGasStation;
         [SerializeField] private TextMeshProUGUI quickModeDescText;
         [SerializeField] private Button btnConfirmQuickPlay;
 
@@ -113,6 +114,7 @@ namespace Shootopia
         private string _selectedCreateMode = "FFA";
         private string _selectedCreateMap = "Map1";
         private string _quickMatchMode = "ALL";
+        private string _quickMatchMap = "ALL";
         private string _browserModeFilter = "ALL";
         private int _selectedSkin = 0;
         private int _createMaxPlayers = 8;
@@ -196,6 +198,9 @@ namespace Shootopia
             if (chipQuickAll != null) chipQuickAll.onClick.AddListener(() => SetQuickMode("ALL"));
             if (chipQuickFFA != null) chipQuickFFA.onClick.AddListener(() => SetQuickMode("FFA"));
             if (chipQuickTDM != null) chipQuickTDM.onClick.AddListener(() => SetQuickMode("TDM"));
+            if (chipQuickMapAll != null) chipQuickMapAll.onClick.AddListener(() => SetQuickMap("ALL"));
+            if (chipQuickMapSectorAlpha != null) chipQuickMapSectorAlpha.onClick.AddListener(() => SetQuickMap("Map1"));
+            if (chipQuickMapGasStation != null) chipQuickMapGasStation.onClick.AddListener(() => SetQuickMap("GasStationMap"));
             if (btnConfirmQuickPlay != null) btnConfirmQuickPlay.onClick.AddListener(StartQuickMatch);
 
             // Custom Rooms Modal
@@ -305,19 +310,32 @@ namespace Shootopia
         {
             _quickMatchMode = mode;
             UpdateChipVisuals();
+            UpdateQuickMatchDesc();
+        }
 
+        private void SetQuickMap(string map)
+        {
+            _quickMatchMap = map;
+            UpdateChipVisuals();
+            UpdateQuickMatchDesc();
+        }
+
+        private void UpdateQuickMatchDesc()
+        {
             if (quickModeDescText != null)
             {
-                if (_quickMatchMode == "FFA") quickModeDescText.text = "FREE-FOR-ALL: High-octane solo arena combat. Every agent for themselves!";
-                else if (_quickMatchMode == "TDM") quickModeDescText.text = "TEAM DEATHMATCH: Red vs Blue squad warfare. First team to score threshold wins!";
-                else quickModeDescText.text = "ANY MODE: Connects to the fastest available public match.";
+                string modeStr = _quickMatchMode == "FFA" ? "Free-For-All" : (_quickMatchMode == "TDM" ? "Team Deathmatch" : "Any Mode");
+                string mapStr = _quickMatchMap == "Map1" ? "Sector Alpha" : (_quickMatchMap == "GasStationMap" ? "Gas Station" : "Any Map");
+                quickModeDescText.text = $"Mode: <color=#00E5FF>{modeStr}</color>  |  Map: <color=#FFD54F>{mapStr}</color>\nFast-matchmaking into public session with selected preferences.";
             }
         }
 
         private async void StartQuickMatch()
         {
             CloseTopModal();
-            ShowBusy(true, $"SEARCHING FOR {_quickMatchMode} MATCH...");
+            string modeName = _quickMatchMode == "ALL" ? "ANY" : _quickMatchMode;
+            string mapName = _quickMatchMap == "ALL" ? "ANY MAP" : (_quickMatchMap == "Map1" ? "SECTOR ALPHA" : "GAS STATION");
+            ShowBusy(true, $"SEARCHING FOR {modeName} ON {mapName}...");
 
             try
             {
@@ -328,9 +346,19 @@ namespace Shootopia
                     var sessions = await SessionManager.Instance.GetPublicSessions();
                     var match = sessions.Find(s =>
                     {
-                        if (_quickMatchMode == "ALL") return true;
-                        string mode = (s.Properties != null && s.Properties.ContainsKey("GameMode")) ? s.Properties["GameMode"].Value : "FFA";
-                        return mode.Equals(_quickMatchMode, StringComparison.OrdinalIgnoreCase);
+                        if (_quickMatchMode != "ALL")
+                        {
+                            string mode = (s.Properties != null && s.Properties.ContainsKey("GameMode")) ? s.Properties["GameMode"].Value : "FFA";
+                            if (!mode.Equals(_quickMatchMode, StringComparison.OrdinalIgnoreCase)) return false;
+                        }
+
+                        if (_quickMatchMap != "ALL")
+                        {
+                            string map = (s.Properties != null && s.Properties.ContainsKey("MapName")) ? s.Properties["MapName"].Value : "Map1";
+                            if (!map.Equals(_quickMatchMap, StringComparison.OrdinalIgnoreCase)) return false;
+                        }
+
+                        return true;
                     });
 
                     if (match != null)
@@ -340,8 +368,9 @@ namespace Shootopia
                     else
                     {
                         string modeToUse = _quickMatchMode == "ALL" ? "FFA" : _quickMatchMode;
+                        string mapToUse = _quickMatchMap == "ALL" ? "Map1" : _quickMatchMap;
                         string hostName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
-                        await SessionManager.Instance.CreateSession($"{hostName}'s Match", true, 8, modeToUse);
+                        await SessionManager.Instance.CreateSession($"{hostName}'s Match", true, 8, modeToUse, mapToUse);
                     }
                 }
                 else
@@ -746,6 +775,10 @@ namespace Shootopia
             SetChipActive(chipQuickAll, _quickMatchMode == "ALL");
             SetChipActive(chipQuickFFA, _quickMatchMode == "FFA");
             SetChipActive(chipQuickTDM, _quickMatchMode == "TDM");
+
+            SetChipActive(chipQuickMapAll, _quickMatchMap == "ALL");
+            SetChipActive(chipQuickMapSectorAlpha, _quickMatchMap == "Map1");
+            SetChipActive(chipQuickMapGasStation, _quickMatchMap == "GasStationMap");
 
             SetChipActive(chipModeFFA, _selectedCreateMode == "FFA");
             SetChipActive(chipModeTDM, _selectedCreateMode == "TDM");

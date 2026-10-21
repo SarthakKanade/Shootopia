@@ -241,6 +241,7 @@ namespace Shootopia
             _musicSource.loop = true;
             _musicSource.spatialBlend = 0f; // 2D Music
             _musicSource.priority = 128;
+            _musicSource.clip = AudioClip.Create("SilentInit", 1, 1, 44100, false);
 
             // Attach dynamic low-pass filter for frequency carving during intense SFX bursts
             _musicLowPassFilter = musicGo.AddComponent<AudioLowPassFilter>();

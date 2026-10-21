@@ -62,12 +62,16 @@ namespace Shootopia
                 _shieldInstance.transform.localPosition = Vector3.up * 1.0f;
                 _shieldInstance.transform.localRotation = Quaternion.identity;
 
-                // Ensure Layer 2 (Ignore Raycast) so Cinemachine camera raycasts never zoom in
-                int ignoreRaycastLayer = 2;
-                _shieldInstance.layer = ignoreRaycastLayer;
+                // Set Layer to Player (3) and tag Player so Cinemachine avoids colliding with it,
+                // while weapon raycasts and melee spherecasts can detect and damage the shield.
+                int playerLayer = LayerMask.NameToLayer("Player");
+                if (playerLayer < 0) playerLayer = 3;
+                _shieldInstance.layer = playerLayer;
+                _shieldInstance.tag = "Player";
                 foreach (Transform child in _shieldInstance.GetComponentsInChildren<Transform>(true))
                 {
-                    child.gameObject.layer = ignoreRaycastLayer;
+                    child.gameObject.layer = playerLayer;
+                    child.gameObject.tag = "Player";
                 }
 
                 // Add physical damage receiver to forcefield surface
@@ -78,20 +82,37 @@ namespace Shootopia
                 var shieldCol = _shieldInstance.GetComponent<SphereCollider>();
                 if (shieldCol != null)
                 {
-                    shieldCol.isTrigger = false; // Rigid solid physical forcefield sphere!
-
-                    // Ignore collision with owner player's standard colliders so owner moves freely inside
-                    var playerCols = GetComponentsInChildren<Collider>(true);
-                    foreach (var pCol in playerCols)
-                    {
-                        if (pCol != null && pCol != shieldCol && !(pCol is CharacterController))
-                        {
-                            Physics.IgnoreCollision(pCol, shieldCol, true);
-                        }
-                    }
+                    shieldCol.isTrigger = false; // Rigid solid physical forcefield sphere for projectiles/raycasts
+                    IgnoreCharacterControllers(shieldCol);
                 }
 
                 _shieldInstance.SetActive(_isShieldActive.Value);
+            }
+        }
+
+        private void IgnoreCharacterControllers(Collider shieldCol)
+        {
+            if (shieldCol == null) return;
+
+            // 1. Ignore all colliders (including CharacterController) on owner
+            var ownerCols = GetComponentsInChildren<Collider>(true);
+            foreach (var col in ownerCols)
+            {
+                if (col != null && col != shieldCol)
+                {
+                    Physics.IgnoreCollision(col, shieldCol, true);
+                }
+            }
+
+            // 2. Ignore CharacterControllers of all active players so shield never pushes opponents away
+            foreach (var player in PlayerHealth.ActivePlayers)
+            {
+                if (player == null) continue;
+                var cc = player.GetComponent<CharacterController>();
+                if (cc != null && cc != shieldCol)
+                {
+                    Physics.IgnoreCollision(cc, shieldCol, true);
+                }
             }
         }
 
@@ -198,6 +219,10 @@ namespace Shootopia
 
             if (newValue)
             {
+                if (_shieldInstance != null)
+                {
+                    IgnoreCharacterControllers(_shieldInstance.GetComponent<SphereCollider>());
+                }
                 if (shieldActivateSound != null) AudioSource.PlayClipAtPoint(shieldActivateSound, transform.position, 0.8f);
             }
             else if (previousValue && !newValue)

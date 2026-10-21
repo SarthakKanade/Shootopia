@@ -41,10 +41,10 @@ namespace Shootopia
 
         private void Update()
         {
-            // Find all player health objects in the scene to guarantee complete coverage
-            var allPlayers = FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None);
-            foreach (var health in allPlayers)
+            var activePlayers = PlayerHealth.ActivePlayers;
+            for (int i = 0; i < activePlayers.Count; i++)
             {
+                var health = activePlayers[i];
                 if (health == null || health.gameObject == null) continue;
 
                 var playerObj = health.gameObject;

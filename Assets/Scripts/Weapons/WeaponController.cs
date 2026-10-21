@@ -1326,7 +1326,11 @@ namespace Shootopia
             Vector3 aimDir = (Aim != null && Aim.AimPoint != Vector3.zero) ? (Aim.AimPoint - origin).normalized : transform.forward;
             if (aimDir.sqrMagnitude < 0.001f) aimDir = transform.forward;
 
-            RaycastHit[] hits = Physics.SphereCastAll(origin, 0.8f, aimDir, 2.5f, hitMask, QueryTriggerInteraction.Ignore);
+            // Punch (weaponUsed == null) hits close to body (1.2m range, 0.45m radius). Knife/weapons use 1.6m range, 0.55m radius.
+            float castRadius = (weaponUsed == null) ? 0.45f : 0.55f;
+            float castDistance = (weaponUsed == null) ? 1.2f : 1.6f;
+
+            RaycastHit[] hits = Physics.SphereCastAll(origin, castRadius, aimDir, castDistance, hitMask, QueryTriggerInteraction.Ignore);
 
             foreach (var hit in hits)
             {
