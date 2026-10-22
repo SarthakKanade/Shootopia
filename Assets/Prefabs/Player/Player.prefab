@@ -930,7 +930,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -1888,13 +1888,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 1.35
+  m_Height: 1.95
   m_Radius: 0.3
   m_SlopeLimit: 45
   m_StepOffset: 0.25
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0.675, z: 0}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &696820457866010404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2020,12 +2020,11 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   hitRange: 200
-  _fallbackHitscanImpactVFX: {fileID: 0}
-  _hitscanImpactSound: {fileID: 8300000, guid: 1bea37feb4c6391449543919a3c6cbe5, type: 3}
-  defaultChargeVFXPrefab: {fileID: 0}
+  fallbackHitscanImpactVFX: {fileID: 0}
+  hitscanImpactSound: {fileID: 0}
+  vfxImplosionPrefab: {fileID: 6441873369525384307, guid: 0f3d407feb92ebb49b98d0157de5008a, type: 3}
   scopeOverlay: {fileID: 3383112620698120021, guid: 7b41fdde6bd0b4c91847882d77d2a970, type: 3}
   playerFollowCamera: {fileID: 0}
-  vfxImplosionPrefab: {fileID: 6441873369525384307, guid: 0f3d407feb92ebb49b98d0157de5008a, type: 3}
 --- !u!114 &4193384357287948399
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2161,16 +2160,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerHealth
   ShowTopMostFoldoutHeaderGroup: 1
-  _maxHp: 100
-  _totalLives: 3
-  _onHpChanged: {fileID: 0}
-  _onPlayerDied: {fileID: 0}
-  _playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
+  maxHp: 100
+  totalLives: 3
+  onHpChanged: {fileID: 0}
+  onPlayerDied: {fileID: 0}
   playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
-  _deathVFXPrefab: {fileID: 2512073696466879513, guid: f4b33787de16f4a889514fe33c0d15c2, type: 3}
-  _spawnVFXPrefab: {fileID: 1232804221357758, guid: b1ede0eef436590479b9282c69418d53, type: 3}
-  _deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
-  _spawnSound: {fileID: 8300000, guid: f790d7f529634200b67ccfa75123ba3e, type: 3}
+  spawnVFXPrefab: {fileID: 0}
+  deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
   spawnSound: {fileID: 8300000, guid: f790d7f529634200b67ccfa75123ba3e, type: 3}
 --- !u!114 &4872018251373267336
 MonoBehaviour:
@@ -2538,7 +2534,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 0
@@ -2580,6 +2576,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerNameplate
   _nameText: {fileID: 1449194981815396750}
   _canvas: {fileID: 3335849556662963886}
+  _healthBarSlider: {fileID: 0}
+  _healthFillImage: {fileID: 0}
+  _healthBgImage: {fileID: 0}
 --- !u!1 &8404499055963783926
 GameObject:
   m_ObjectHideFlags: 0

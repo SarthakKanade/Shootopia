@@ -76,8 +76,13 @@ namespace Shootopia
                     float dist = Vector3.Distance(transform.position, c.transform.position);
                     Vector3 dir = (transform.position - c.transform.position).normalized;
 
-                    // Pull force magnitude (continuous smooth pull)
-                    float pullForceVal = (_data != null && _data.pullForce > 0f) ? _data.pullForce : 5.5f;
+                    // Pull force magnitude (matched in power to player run speed: 5.0 m/s)
+                    float pullForceVal = (_data != null && _data.pullForce > 0f) ? _data.pullForce : 5.0f;
+                    var motor = c.GetComponentInParent<CharacterMotor>() ?? c.GetComponent<CharacterMotor>();
+                    if (motor != null && motor.moveSpeed > 0f)
+                    {
+                        pullForceVal = motor.moveSpeed;
+                    }
                     float pullMag = pullForceVal * Time.fixedDeltaTime;
                     
                     // Check if target has active forcefield shield (immune to void black hole pull!)

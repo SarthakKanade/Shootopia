@@ -51,7 +51,7 @@ MonoBehaviour:
   afterburnDPS: 0
   afterburnDuration: 0
   pullRadius: 6
-  pullForce: 5.5
+  pullForce: 5
   voidDuration: 7
   damageAtCentre: 30
   damageAtEdge: 8

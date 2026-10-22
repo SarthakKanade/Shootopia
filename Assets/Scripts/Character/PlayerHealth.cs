@@ -41,11 +41,15 @@ namespace Shootopia
         public static event Action<bool> OnLocalPlayerHitConfirmed;
         public static event Action<Vector3, float> OnLocalPlayerDamagedWithPosition;
 
+        [Header("Spawn Protection")]
+        [SerializeField] private float spawnInvincibilityDuration = 5.0f;
+
         private bool _isDead = false;
         private bool _isInvincible = false;
         private Coroutine _invincibilityRoutine;
         private Coroutine _invincibilityFlashRoutine;
         private Coroutine _hideModelRoutine;
+        private GameObject _invincibilityAuraInstance;
         private PlayerStatusEffects _statusEffects;
 
         public bool IsDead => _isDead;
@@ -97,15 +101,41 @@ namespace Shootopia
                     Transform sp = SpawnPointManager.Instance.GetSpawnPoint(spawnType);
                     if (sp != null) Teleport(sp.position);
                 }
+
+                // Initial match spawn invincibility (5 seconds)
+                StartInvincibilityServer(spawnInvincibilityDuration);
             }
 
             onHpChanged?.Raise(_currentHp.Value);
+        }
+
+        private void Start()
+        {
+            // Offline sandbox initial spawn invincibility (5 seconds)
+            if (!IsSpawned || !NetworkManager.Singleton.IsListening)
+            {
+                StartInvincibilityLocal(spawnInvincibilityDuration);
+            }
         }
 
         public override void OnNetworkDespawn()
         {
             base.OnNetworkDespawn();
             _currentHp.OnValueChanged -= OnHpValueChanged;
+            if (_invincibilityAuraInstance != null)
+            {
+                Destroy(_invincibilityAuraInstance);
+                _invincibilityAuraInstance = null;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_invincibilityAuraInstance != null)
+            {
+                Destroy(_invincibilityAuraInstance);
+                _invincibilityAuraInstance = null;
+            }
         }
 
         private void OnHpValueChanged(float previousValue, float newValue)
@@ -284,8 +314,7 @@ namespace Shootopia
             // Wait remaining 2.0 seconds (total 3.0s delay) while client transform & buffers settle at spawnPos
             yield return new WaitForSeconds(2.0f);
 
-            if (_invincibilityRoutine != null) StopCoroutine(_invincibilityRoutine);
-            _invincibilityRoutine = StartCoroutine(InvincibilityRoutine());
+            StartInvincibilityServer(spawnInvincibilityDuration);
 
             SetCharacterPosition(spawnPos);
             Physics.SyncTransforms();
@@ -307,11 +336,111 @@ namespace Shootopia
             RespawnClientRpc(spawnPos);
         }
 
-        private IEnumerator InvincibilityRoutine()
+        public void StartInvincibilityServer(float duration = 5.0f)
+        {
+            if (_invincibilityRoutine != null) StopCoroutine(_invincibilityRoutine);
+            _invincibilityRoutine = StartCoroutine(InvincibilityRoutine(duration));
+            TriggerSpawnInvincibilityClientRpc(duration);
+        }
+
+        private IEnumerator InvincibilityRoutine(float duration)
         {
             _isInvincible = true;
-            yield return new WaitForSeconds(1.5f);
+            yield return new WaitForSeconds(duration);
             _isInvincible = false;
+            _invincibilityRoutine = null;
+        }
+
+        [ClientRpc]
+        private void TriggerSpawnInvincibilityClientRpc(float duration)
+        {
+            StartInvincibilityLocal(duration);
+        }
+
+        public void StartInvincibilityLocal(float duration)
+        {
+            _isInvincible = true;
+            if (_invincibilityRoutine != null) StopCoroutine(_invincibilityRoutine);
+            _invincibilityRoutine = StartCoroutine(LocalInvincibilityRoutine(duration));
+        }
+
+        private IEnumerator LocalInvincibilityRoutine(float duration)
+        {
+            _isInvincible = true;
+            ShowInvincibilityAura(true);
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                if (_isDead)
+                {
+                    ShowInvincibilityAura(false);
+                    _isInvincible = false;
+                    _invincibilityRoutine = null;
+                    yield break;
+                }
+
+                // In the last 1.2 seconds, pulse / blink the aura to signal it's ending
+                float remaining = duration - elapsed;
+                if (remaining < 1.2f && _invincibilityAuraInstance != null)
+                {
+                    bool blinkVisible = (Mathf.FloorToInt(remaining * 8f) % 2) == 0;
+                    _invincibilityAuraInstance.SetActive(blinkVisible);
+                }
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            ShowInvincibilityAura(false);
+            _isInvincible = false;
+            _invincibilityRoutine = null;
+        }
+
+        private void ShowInvincibilityAura(bool show)
+        {
+            if (show)
+            {
+                if (_invincibilityAuraInstance == null)
+                {
+                    _invincibilityAuraInstance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    _invincibilityAuraInstance.name = "SpawnInvincibilityAura";
+                    _invincibilityAuraInstance.transform.SetParent(transform, false);
+                    _invincibilityAuraInstance.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+                    _invincibilityAuraInstance.transform.localScale = new Vector3(1.85f, 2.2f, 1.85f);
+
+                    // Strictly remove collider so it never blocks shots or player raycasts
+                    var col = _invincibilityAuraInstance.GetComponent<Collider>();
+                    if (col != null) Destroy(col);
+
+                    var rend = _invincibilityAuraInstance.GetComponent<Renderer>();
+                    if (rend != null)
+                    {
+                        var mat = Resources.Load<Material>("SpawnInvincibility_Mat");
+                        if (mat != null)
+                        {
+                            rend.material = new Material(mat);
+                        }
+                        else
+                        {
+                            Shader s = Shader.Find("Shootopia/ForcefieldBarrier") ?? Shader.Find("Universal Render Pipeline/Lit");
+                            var runtimeMat = new Material(s);
+                            runtimeMat.SetColor("_BaseColor", new Color(1.0f, 0.45f, 0.05f, 0.4f));
+                            runtimeMat.SetColor("_RimColor", new Color(1.0f, 0.75f, 0.2f, 1f));
+                            runtimeMat.SetFloat("_Alpha", 0.75f);
+                            rend.material = runtimeMat;
+                        }
+                    }
+                }
+                _invincibilityAuraInstance.SetActive(true);
+            }
+            else
+            {
+                if (_invincibilityAuraInstance != null)
+                {
+                    _invincibilityAuraInstance.SetActive(false);
+                }
+            }
         }
 
         [ClientRpc]
@@ -340,6 +469,8 @@ namespace Shootopia
         private void DeathClientRpc(DamageType type, Vector3 spawnPos)
         {
             _isDead = true;
+            _isInvincible = false;
+            ShowInvincibilityAura(false);
             onPlayerDied?.Raise();
 
             // Immediately hide overhead nameplate so it never lingers on the death spot
@@ -408,8 +539,7 @@ namespace Shootopia
 
             _isDead = false;
 
-            if (_invincibilityRoutine != null) StopCoroutine(_invincibilityRoutine);
-            _invincibilityRoutine = StartCoroutine(InvincibilityRoutine());
+            StartInvincibilityLocal(spawnInvincibilityDuration);
 
             SetCharacterPosition(spawnPosition);
             Physics.SyncTransforms();
@@ -436,8 +566,6 @@ namespace Shootopia
             if (IsOwner)
             {
                 SetPlayerControlsEnabled(true);
-                if (_invincibilityFlashRoutine != null) StopCoroutine(_invincibilityFlashRoutine);
-                _invincibilityFlashRoutine = StartCoroutine(InvincibilityFlashRoutine());
             }
         }
 
