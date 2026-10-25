@@ -52,9 +52,6 @@ namespace Shootopia
 
         [Header("Audio Configuration")]
         [SerializeField] private PlayerAudioSO playerAudioConfig;
-        [SerializeField] private float footstepInterval = 0.32f;
-        private float _footstepTimer = 0f;
-        private int _footstepIndex = 0;
 
         private readonly NetworkVariable<Quaternion> _modelRotation = new NetworkVariable<Quaternion>(Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
@@ -253,22 +250,17 @@ namespace Shootopia
                     }
                 }
 
-                // If spawned in a gameplay arena and elevation is at or below void level, snap immediately to spawn point
+                // If elevation is at or below void level, apply lethal environmental damage
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 if (MapRegistry.IsGameplayMap(sceneName))
                 {
                     float voidThreshold = MapRegistry.GetVoidThreshold(sceneName);
-                    if (transform.position.y <= voidThreshold && SpawnPointManager.Instance != null)
+                    if (transform.position.y <= voidThreshold)
                     {
-                        var sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
-                        if (sp != null)
+                        var health = GetComponent<PlayerHealth>();
+                        if (health != null && !health.IsDead)
                         {
-                            if (Controller != null) Controller.enabled = false;
-                            transform.position = sp.position;
-                            transform.rotation = sp.rotation;
-                            if (Controller != null) Controller.enabled = true;
-                            VerticalVelocity = 0f;
-                            IsInLava = false;
+                            health.TakeDamage(9999f, DamageType.Environment);
                         }
                     }
                 }

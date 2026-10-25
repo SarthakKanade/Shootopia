@@ -59,41 +59,51 @@ namespace Shootopia
             // Sphere overlap for splash damage from POC
             Collider[] hits = Physics.OverlapSphere(poc, blastRadius);
             var damagedTargets = new System.Collections.Generic.HashSet<IDamageable>();
+            var damagedPlayers = new System.Collections.Generic.HashSet<PlayerHealth>();
             
             foreach (Collider hit in hits)
             {
-                // Skip the shooter's own colliders unless self-damage is explicitly enabled
-                if (_weaponData != null && !_weaponData.selfDamage && _owner != null && hit.transform.root == _owner.transform.root)
+                if (hit == null) continue;
+                bool isOwner = (_owner != null && hit.transform.root == _owner.transform.root);
+                bool allowSelfDamage = (_weaponData != null && (_weaponData.selfDamage || _weaponData.isExplosive));
+                if (isOwner && !allowSelfDamage)
                     continue;
 
-                IDamageable damageable = hit.GetComponentInParent<IDamageable>() ?? hit.GetComponent<IDamageable>();
-                if (damageable != null)
+                IDamageable damageable = null;
+                var targetHealth = hit.GetComponentInParent<PlayerHealth>() ?? hit.GetComponent<PlayerHealth>();
+                if (targetHealth != null)
                 {
-                    if (!damagedTargets.Add(damageable)) continue;
-
-                    // Check if this target is the direct contact hit
-                    bool isDirectHit = directHitCollider != null && (hit == directHitCollider || hit.transform.root == directHitCollider.transform.root);
-                    float damage;
-
-                    if (isDirectHit)
-                    {
-                        // Direct contact hit guarantees full center damage (100 = 1-hit KO)
-                        damage = maxDamage;
-                    }
-                    else
-                    {
-                        // Distance from Point of Contact (POC) to closest point on target's collider
-                        Vector3 closestPt = hit.ClosestPoint(poc);
-                        float distance = Vector3.Distance(poc, closestPt);
-                        
-                        // Linear damage falloff: maxDamage at POC -> minDamage at blast edge
-                        float t = Mathf.Clamp01(distance / blastRadius);
-                        damage = Mathf.Lerp(maxDamage, minDamage, t);
-                        damage = Mathf.Clamp(damage, minDamage, maxDamage);
-                    }
-
-                    DealDamage(damageable, damage, DamageType.Explosion, hit);
+                    if (!damagedPlayers.Add(targetHealth)) continue;
+                    damageable = targetHealth;
                 }
+                else
+                {
+                    damageable = hit.GetComponentInParent<IDamageable>() ?? hit.GetComponent<IDamageable>();
+                    if (damageable == null || !damagedTargets.Add(damageable)) continue;
+                }
+
+                // Check if this target is the direct contact hit
+                bool isDirectHit = directHitCollider != null && (hit == directHitCollider || hit.transform.root == directHitCollider.transform.root);
+                float damage;
+
+                if (isDirectHit)
+                {
+                    // Direct contact hit guarantees full center damage (100 = 1-hit KO)
+                    damage = maxDamage;
+                }
+                else
+                {
+                    // Distance from Point of Contact (POC) to closest point on target's collider
+                    Vector3 closestPt = hit.ClosestPoint(poc);
+                    float distance = Vector3.Distance(poc, closestPt);
+                    
+                    // Linear damage falloff: maxDamage at POC -> minDamage at blast edge
+                    float t = Mathf.Clamp01(distance / blastRadius);
+                    damage = Mathf.Lerp(maxDamage, minDamage, t);
+                    damage = Mathf.Clamp(damage, minDamage, maxDamage);
+                }
+
+                DealDamage(damageable, damage, DamageType.Explosion, hit);
             }
 
             // Visuals at POC

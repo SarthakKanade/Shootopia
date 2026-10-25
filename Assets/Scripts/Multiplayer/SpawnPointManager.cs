@@ -19,10 +19,26 @@ namespace Shootopia
             {
                 if (_instance == null)
                 {
-                    _instance = Object.FindAnyObjectByType<SpawnPointManager>();
+                    _instance = Object.FindAnyObjectByType<SpawnPointManager>(FindObjectsInactive.Include);
                     if (_instance != null)
                     {
+                        if (!_instance.gameObject.activeSelf)
+                        {
+                            Debug.LogWarning("[SpawnPointManager] SpawnPointManager was inactive in scene! Auto-enabling it.");
+                            _instance.gameObject.SetActive(true);
+                        }
                         _instance.InitializeSpawnPoints();
+                    }
+                    else
+                    {
+                        var scenePoints = Object.FindObjectsByType<SpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                        if (scenePoints != null && scenePoints.Length > 0)
+                        {
+                            Debug.LogWarning("[SpawnPointManager] No SpawnPointManager in scene, but spawn points exist. Auto-creating SpawnPointManager.");
+                            var go = new GameObject("SpawnPointManager");
+                            _instance = go.AddComponent<SpawnPointManager>();
+                            _instance.InitializeSpawnPoints();
+                        }
                     }
                 }
                 return _instance;
@@ -52,11 +68,16 @@ namespace Shootopia
             _spawnPointsByType.Clear();
             _lastUsedIndex.Clear();
 
-            // Find all spawn point components in the scene
-            var scenePoints = Object.FindObjectsByType<SpawnPoint>(FindObjectsSortMode.None);
+            // Find all spawn point components in the scene (including inactive if any)
+            var scenePoints = Object.FindObjectsByType<SpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var sp in scenePoints)
             {
                 if (sp == null || sp.transform == null) continue;
+
+                if (!sp.gameObject.activeSelf)
+                {
+                    sp.gameObject.SetActive(true);
+                }
 
                 if (!_spawnPointsByType.ContainsKey(sp.Type))
                 {

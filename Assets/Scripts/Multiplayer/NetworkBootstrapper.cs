@@ -244,8 +244,8 @@ namespace Shootopia
             string currentSceneName = SceneManager.GetActiveScene().name;
             if (!IsValidSpawnScene(currentSceneName)) return;
 
-            // Resolve spawn position with safe platform fallback
-            Vector3 spawnPos = Vector3.up * 0.5f;
+            // Resolve spawn position with safe platform fallback (offset per clientId so fallback never overlaps players)
+            Vector3 spawnPos = new Vector3((clientId % 4) * 3f, 0.5f, ((clientId / 4) % 4) * 3f);
             Quaternion spawnRot = Quaternion.identity;
 
             if (SpawnPointManager.Instance != null)

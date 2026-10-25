@@ -17,12 +17,13 @@ namespace Shootopia
     public class LavaZone : MonoBehaviour
     {
         [Header("Lava Damage & Sinking Parameters")]
-        [SerializeField] private float burnDPS = 35.0f;          // Continuous Damage Per Second while in lava
         [SerializeField] private float sinkSpeed = 1.2f;         // Downward sinking velocity (m/s)
         [SerializeField] private float lavaSurfaceY = 0.5f;       // Surface elevation threshold for lava (Y <= 0.5f)
         [SerializeField] private float killAbyssY = -10.0f;       // Abyss depth threshold for instant death
+        [SerializeField] private float deathDelay = 2.0f;         // Keep full health for 2 seconds before instant kill
 
         private readonly HashSet<GameObject> _playersInLava = new HashSet<GameObject>();
+        private readonly Dictionary<GameObject, float> _lavaImmersionTimers = new Dictionary<GameObject, float>();
 
         private void OnTriggerEnter(Collider other)
         {
@@ -49,12 +50,14 @@ namespace Shootopia
 
                 var playerObj = health.gameObject;
                 bool isInLavaElevation = playerObj.transform.position.y <= lavaSurfaceY;
+                bool isDeepAbyss = playerObj.transform.position.y <= killAbyssY;
 
-                if (isInLavaElevation && !health.IsDead && !health.IsInvincible)
+                if (isInLavaElevation && !health.IsDead && (!health.IsInvincible || isDeepAbyss))
                 {
                     if (_playersInLava.Add(playerObj))
                     {
-                        health.ApplyBurnEffect(999f, burnDPS);
+                        _lavaImmersionTimers[playerObj] = 0f;
+                        health.ApplyBurnEffect(999f, 0f); // Visual fiery tint only, zero tick damage
                     }
                     ProcessPlayerInLava(playerObj, health);
                 }
@@ -76,9 +79,10 @@ namespace Shootopia
 
             if (_playersInLava.Add(motor.gameObject))
             {
+                _lavaImmersionTimers[motor.gameObject] = 0f;
                 if (health != null)
                 {
-                    health.ApplyBurnEffect(999f, burnDPS);
+                    health.ApplyBurnEffect(999f, 0f); // Visual fiery tint only, zero tick damage
                 }
             }
         }
@@ -86,11 +90,14 @@ namespace Shootopia
         private void HandlePlayerExit(GameObject playerObj)
         {
             if (playerObj == null) return;
+            _lavaImmersionTimers.Remove(playerObj);
+
             var motor = playerObj.GetComponentInParent<CharacterMotor>();
             if (motor == null) motor = playerObj.GetComponent<CharacterMotor>();
 
             if (motor != null)
             {
+                _lavaImmersionTimers.Remove(motor.gameObject);
                 _playersInLava.Remove(motor.gameObject);
 
                 var input = motor.GetComponent<PlayerInputRouter>();
@@ -133,21 +140,23 @@ namespace Shootopia
                 motor.transform.position += Vector3.down * sinkSpeed * Time.deltaTime;
             }
 
-            // 3. Apply server-authoritative continuous lava damage
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            // 3. Keep health full for the first 2 seconds, then instant kill (no repetitive damage tick SFX)
+            if (!_lavaImmersionTimers.ContainsKey(playerObj))
             {
-                if (health != null && !health.IsDead && !health.IsInvincible)
+                _lavaImmersionTimers[playerObj] = 0f;
+            }
+            _lavaImmersionTimers[playerObj] += Time.deltaTime;
+
+            bool canApplyDamage = (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening || NetworkManager.Singleton.IsServer);
+            if (canApplyDamage && health != null && !health.IsDead)
+            {
+                bool reachedAbyss = playerObj.transform.position.y <= killAbyssY;
+                bool reachedDelay = _lavaImmersionTimers[playerObj] >= deathDelay;
+
+                if (reachedAbyss || reachedDelay)
                 {
-                    if (playerObj.transform.position.y <= killAbyssY)
-                    {
-                        // Instant death in deep abyss
-                        health.TakeDamage(9999f, DamageType.Environment);
-                    }
-                    else
-                    {
-                        // Continuous lava heat damage per second
-                        health.TakeDamage(burnDPS * Time.deltaTime, DamageType.Environment);
-                    }
+                    health.TakeDamage(9999f, DamageType.Environment);
+                    _lavaImmersionTimers[playerObj] = 0f;
                 }
             }
         }

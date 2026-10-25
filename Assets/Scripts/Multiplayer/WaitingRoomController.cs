@@ -131,13 +131,18 @@ namespace Shootopia
                 activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
             }
 
+            bool isHost = SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null && SessionManager.Instance.GetCurrentSession().IsHost;
+
             bool isAlreadyStarted = false;
-            try
+            if (!isHost)
             {
-                isAlreadyStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) || 
-                                   (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+                try
+                {
+                    isAlreadyStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value) || 
+                                       (activeMode != null && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+                }
+                catch { }
             }
-            catch { }
 
             if (isAlreadyStarted)
             {
@@ -145,6 +150,7 @@ namespace Shootopia
                 return;
             }
 
+            _matchStarted = false;
             SetLobbyVisible(true);
 
             RegisterCallbacks();
@@ -378,10 +384,14 @@ namespace Shootopia
             }
 
             bool isTeamMode = (mode == "TDM" || mode.Contains("TEAM"));
+            int durSec = SessionManager.Instance != null ? SessionManager.Instance.GetSessionMatchDuration() : 300;
+            int scoreGoal = SessionManager.Instance != null ? SessionManager.Instance.GetSessionScoreLimit() : 10;
+            int durMin = Mathf.Max(1, durSec / 60);
 
             if (roomModeBadge != null)
             {
-                roomModeBadge.text = isTeamMode ? "TEAM DEATHMATCH" : "FREE-FOR-ALL";
+                string modeLabel = isTeamMode ? "TEAM DEATHMATCH" : "FREE-FOR-ALL";
+                roomModeBadge.text = $"{modeLabel} • {durMin}M • {scoreGoal} {(isTeamMode ? "PTS" : "KILLS")}";
                 roomModeBadge.color = isTeamMode ? ColorGold : ColorSapphire;
             }
 

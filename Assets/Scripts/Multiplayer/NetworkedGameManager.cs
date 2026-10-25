@@ -124,11 +124,24 @@ namespace Shootopia
                     }
                 }
 
-                Debug.Log($"[NetworkedGameManager] Initializing match. Selected mode from metadata: {selectedMode}");
+                int configuredDuration = 300;
+                int configuredScoreLimit = 10;
+                if (SessionManager.Instance != null)
+                {
+                    configuredDuration = SessionManager.Instance.GetSessionMatchDuration();
+                    configuredScoreLimit = SessionManager.Instance.GetSessionScoreLimit();
+                }
+
+                Debug.Log($"[NetworkedGameManager] Initializing match. Selected mode: {selectedMode}, Duration: {configuredDuration}s, ScoreLimit: {configuredScoreLimit}");
                 ActiveModeName.Value = selectedMode;
                 ApplyActiveGameMode(selectedMode);
 
-                // If in a multiplayer session with WaitingRoom UI present, wait for host to start match
+                if (_activeGameMode != null)
+                {
+                    _activeGameMode.ConfigureMatchRules(configuredDuration, configuredScoreLimit);
+                }
+
+                // Locate or enable WaitingRoomController
                 var waitingRoom = WaitingRoomController.Instance;
                 if (waitingRoom == null)
                 {
@@ -139,23 +152,15 @@ namespace Shootopia
                     }
                 }
 
-                bool isMultiplayer = (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
-                                     || (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && NetworkManager.Singleton.ConnectedClientsList.Count > 1);
-
-                if (isMultiplayer || waitingRoom != null)
+                // Explicitly keep state in Warmup Lobby until host clicks START MATCH
+                MatchStarted.Value = false;
+                if (_activeGameMode != null)
                 {
-                    Debug.Log("[NetworkedGameManager] Multiplayer session active or WaitingRoom UI present. Waiting in Warmup until host starts match.");
-                    if (_activeGameMode != null)
-                    {
-                        _activeGameMode.MatchActive.Value = false;
-                        _activeGameMode.PreMatchCountdown.Value = -1;
-                    }
-                    return;
+                    _activeGameMode.MatchActive.Value = false;
+                    _activeGameMode.PreMatchCountdown.Value = -1;
                 }
-
-                // Start match immediately: only for purely offline/singleplayer testing with no WaitingRoom UI
-                Debug.Log("[NetworkedGameManager] Starting match sequence directly (offline/singleplayer test).");
-                StartCoroutine(PreMatchSequence());
+                Debug.Log("[NetworkedGameManager] Waiting in Warmup Lobby until host starts match.");
+                return;
             }
             else
             {
@@ -232,6 +237,8 @@ namespace Shootopia
             MatchStarted.Value = true;
             CloseWaitingRoomRpc();
             BroadcastMatchStartedDirect();
+
+            _ = SessionManager.Instance?.UpdateSessionStateAsync("InProgress");
 
             // Start the official pre-match sequence and spawn players
             StartCoroutine(PreMatchSequence());
@@ -505,6 +512,40 @@ namespace Shootopia
             {
                 _activeGameMode.OnMatchStart();
             }
+
+            // Grant initial match spawn invincibility (5 seconds) to all players on match start
+            GrantMatchStartInvincibility();
+        }
+
+        private void GrantMatchStartInvincibility()
+        {
+            if (!IsServer) return;
+            Debug.Log("[NetworkedGameManager] Granting initial match spawn invincibility to all players.");
+            
+            // 1. Grant to all tracked ActivePlayers
+            foreach (var player in PlayerHealth.ActivePlayers)
+            {
+                if (player != null && player.IsSpawned)
+                {
+                    player.StartInvincibilityServer(player.SpawnInvincibilityDuration);
+                }
+            }
+
+            // 2. Also ensure all ConnectedClients with PlayerObject get it
+            if (NetworkManager.Singleton != null)
+            {
+                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                {
+                    if (client.PlayerObject != null)
+                    {
+                        var health = client.PlayerObject.GetComponent<PlayerHealth>();
+                        if (health != null && health.IsSpawned)
+                        {
+                            health.StartInvincibilityServer(health.SpawnInvincibilityDuration);
+                        }
+                    }
+                }
+            }
         }
 
         private void CleanupWarmupEntities()
@@ -526,12 +567,6 @@ namespace Shootopia
             foreach (var voidZone in voidZones)
             {
                 if (voidZone != null) Object.Destroy(voidZone.gameObject);
-            }
-
-            var lavaZones = Object.FindObjectsByType<LavaZone>(FindObjectsSortMode.None);
-            foreach (var lava in lavaZones)
-            {
-                if (lava != null) Object.Destroy(lava.gameObject);
             }
 
             var kinematicProj = Object.FindObjectsByType<KinematicProjectileController>(FindObjectsSortMode.None);
@@ -586,6 +621,18 @@ namespace Shootopia
                 // Resolve display names from the player registry
                 string killerName = ResolvePlayerDisplayName(killerClientId);
                 string victimName = ResolvePlayerDisplayName(victimClientId);
+
+                if (killerClientId == victimClientId)
+                {
+                    if (weaponName == "Lava" || weaponName == "Environment")
+                    {
+                        killerName = weaponName;
+                    }
+                    else
+                    {
+                        victimName = "Themselves";
+                    }
+                }
 
                 // Broadcast cosmetic killfeed entry to all clients
                 _activeGameMode.BroadcastKillFeedClientRpc(killerName, victimName, weaponName, killerClientId, victimClientId);

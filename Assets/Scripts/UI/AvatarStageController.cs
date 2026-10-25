@@ -111,8 +111,7 @@ namespace Shootopia
         public void SetSkin(int skinIndex)
         {
             _currentSkinIndex = skinIndex;
-            GameObject prefabToUse = (skinIndex == 1 && robotAvatarPrefab != null) ? robotAvatarPrefab : defaultAvatarPrefab;
-            SpawnAvatar(prefabToUse);
+            SpawnAvatar();
         }
 
         public void SpawnAvatar(GameObject prefab = null)
@@ -122,7 +121,7 @@ namespace Shootopia
                 Destroy(_spawnedAvatar);
             }
 
-            var toSpawn = prefab != null ? prefab : (_currentSkinIndex == 1 && robotAvatarPrefab != null ? robotAvatarPrefab : defaultAvatarPrefab);
+            var toSpawn = prefab != null ? prefab : defaultAvatarPrefab;
             if (toSpawn != null && avatarHolder != null)
             {
                 _spawnedAvatar = Instantiate(toSpawn, avatarHolder);
@@ -145,6 +144,18 @@ namespace Shootopia
 
                 var rigidbodies = _spawnedAvatar.GetComponentsInChildren<Rigidbody>();
                 foreach (var rb in rigidbodies) rb.isKinematic = true;
+
+                // Apply active model variant (0 = Vanguard [Body01/Head01], 1 = Valkyrie [Body02/Head02])
+                var body01 = _spawnedAvatar.transform.Find("ModelRoot/DefaultMalePolyart/Body01");
+                var head01 = _spawnedAvatar.transform.Find("ModelRoot/DefaultMalePolyart/Head01");
+                var body02 = _spawnedAvatar.transform.Find("ModelRoot/DefaultMalePolyart/Body02");
+                var head02 = _spawnedAvatar.transform.Find("ModelRoot/DefaultMalePolyart/Head02");
+
+                bool isValkyrie = (_currentSkinIndex == 1);
+                if (body01 != null) body01.gameObject.SetActive(!isValkyrie);
+                if (head01 != null) head01.gameObject.SetActive(!isValkyrie);
+                if (body02 != null) body02.gameObject.SetActive(isValkyrie);
+                if (head02 != null) head02.gameObject.SetActive(isValkyrie);
 
                 // Ensure animator plays clean idle loop
                 var anim = _spawnedAvatar.GetComponentInChildren<Animator>();

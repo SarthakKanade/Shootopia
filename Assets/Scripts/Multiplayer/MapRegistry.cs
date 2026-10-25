@@ -26,7 +26,7 @@ namespace Shootopia
 
         public static readonly MapData[] AvailableMaps = new MapData[]
         {
-            new MapData("Map1", "SECTOR ALPHA", "Floating sci-fi arena with jump pads and lava hazards", 1.0f),
+            new MapData("Map1", "SECTOR ALPHA", "Floating sci-fi arena with jump pads and lava hazards", -15.0f),
             new MapData("GasStationMap", "GAS STATION", "Cyberpunk gas station surrounded by a containment forcefield", -10.0f)
         };
 

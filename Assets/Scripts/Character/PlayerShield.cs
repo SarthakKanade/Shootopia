@@ -27,9 +27,20 @@ namespace Shootopia
         private readonly NetworkVariable<bool> _isShieldActive = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private readonly NetworkVariable<float> _currentShieldHp = new NetworkVariable<float>(50f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-        public bool IsShieldActive => _isShieldActive.Value;
-        public float CurrentShieldHp => _currentShieldHp.Value;
+        private bool _localShieldActive = false;
+        private float _localShieldHp = 50f;
+        private int _lastDamageAbsorptionFrame = -100;
+        private float _lastDamageAbsorptionTime = -100f;
+
+        public bool IsShieldActive => IsSpawned ? _isShieldActive.Value : _localShieldActive;
+        public float CurrentShieldHp => IsSpawned ? _currentShieldHp.Value : _localShieldHp;
         public float MaxShieldHp => maxShieldHp;
+
+        /// <summary>
+        /// True if shield is actively up, OR if the shield absorbed damage / shattered within the current or previous frame (or within 0.35s).
+        /// Used to block status effects (Freeze, Burn, Stun) from leaking through when an attack hits or breaks the shield.
+        /// </summary>
+        public bool WasActiveOrAbsorbedRecently => IsShieldActive || (Time.frameCount - _lastDamageAbsorptionFrame <= 2) || (Time.time - _lastDamageAbsorptionTime <= 0.35f);
 
         private GameObject _shieldInstance;
         private PlayerInputRouter _input;
@@ -38,6 +49,14 @@ namespace Shootopia
         private void Awake()
         {
             _input = GetComponent<PlayerInputRouter>();
+        }
+
+        private void Start()
+        {
+            if (!IsSpawned)
+            {
+                SetupShieldInstance();
+            }
         }
 
         public override void OnNetworkSpawn()
@@ -168,7 +187,18 @@ namespace Shootopia
 
         public void GrantShield(float customShieldHp = 50f)
         {
-            GrantShieldServerRpc(customShieldHp);
+            if (IsSpawned)
+            {
+                GrantShieldServerRpc(customShieldHp);
+            }
+            else
+            {
+                _localShieldHp = customShieldHp;
+                _shieldTimer = 0f;
+                _localShieldActive = true;
+                if (_shieldInstance == null) SetupShieldInstance();
+                if (_shieldInstance != null) _shieldInstance.SetActive(true);
+            }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
@@ -178,6 +208,7 @@ namespace Shootopia
             _currentShieldHp.Value = customShieldHp;
             _shieldTimer = 0f;
             _isShieldActive.Value = true;
+            GetComponent<PlayerStatusEffects>()?.ClearAllEffects();
             Debug.Log($"[PlayerShield] Custom shield granted for Player {OwnerClientId} ({customShieldHp} HP, 15s duration)");
         }
 
@@ -186,11 +217,14 @@ namespace Shootopia
             _currentShieldHp.Value = maxShieldHp;
             _shieldTimer = 0f;
             _isShieldActive.Value = true;
+            GetComponent<PlayerStatusEffects>()?.ClearAllEffects();
             Debug.Log($"[PlayerShield] Shield activated for Player {OwnerClientId} ({maxShieldHp} HP, {maxShieldDuration}s duration)");
         }
 
         private void DeactivateShieldInternal()
         {
+            _lastDamageAbsorptionFrame = Time.frameCount;
+            _lastDamageAbsorptionTime = Time.time;
             _isShieldActive.Value = false;
             _shieldTimer = 0f;
             Debug.Log($"[PlayerShield] Shield deactivated/shattered for Player {OwnerClientId}");
@@ -202,9 +236,13 @@ namespace Shootopia
             {
                 DeactivateShieldInternal();
             }
-            else if (_shieldInstance != null)
+            else
             {
-                _shieldInstance.SetActive(false);
+                _localShieldActive = false;
+                if (_shieldInstance != null)
+                {
+                    _shieldInstance.SetActive(false);
+                }
             }
         }
 
@@ -237,7 +275,14 @@ namespace Shootopia
         /// </summary>
         public void TakeDamage(float amount)
         {
-            TakeDamageServerRpc(amount);
+            if (IsSpawned)
+            {
+                TakeDamageServerRpc(amount);
+            }
+            else if (_localShieldActive)
+            {
+                AbsorbDamageInternal(amount);
+            }
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
@@ -254,25 +299,40 @@ namespace Shootopia
         /// </summary>
         public float AbsorbDamage(float incomingDamage)
         {
-            if (!_isShieldActive.Value) return incomingDamage;
+            if (!IsShieldActive) return incomingDamage;
 
             return AbsorbDamageInternal(incomingDamage);
         }
 
         private float AbsorbDamageInternal(float incomingDamage)
         {
-            float shieldHp = _currentShieldHp.Value;
+            _lastDamageAbsorptionFrame = Time.frameCount;
+            _lastDamageAbsorptionTime = Time.time;
 
-            if (IsServer)
+            float shieldHp = CurrentShieldHp;
+            float newShieldHp = Mathf.Max(0f, shieldHp - incomingDamage);
+
+            if (IsSpawned)
             {
-                // Shield absorbs incoming damage. Even if hit is a lethal nuke (incomingDamage > shieldHp),
-                // the shield absorbs the entire hit, shatters, and lets ZERO overflow damage through to health!
-                _currentShieldHp.Value = Mathf.Max(0f, shieldHp - incomingDamage);
-                Debug.Log($"[PlayerShield] Server absorbed {incomingDamage} damage for Player {OwnerClientId}. Remaining Shield HP: {_currentShieldHp.Value}");
-
-                if (_currentShieldHp.Value <= 0f)
+                if (IsServer)
                 {
-                    DeactivateShieldInternal();
+                    _currentShieldHp.Value = newShieldHp;
+                    Debug.Log($"[PlayerShield] Server absorbed {incomingDamage} damage for Player {OwnerClientId}. Remaining Shield HP: {_currentShieldHp.Value}");
+
+                    if (_currentShieldHp.Value <= 0f)
+                    {
+                        DeactivateShieldInternal();
+                    }
+                }
+            }
+            else
+            {
+                _localShieldHp = newShieldHp;
+                Debug.Log($"[PlayerShield] Offline absorbed {incomingDamage} damage. Remaining Shield HP: {_localShieldHp}");
+                if (_localShieldHp <= 0f)
+                {
+                    _localShieldActive = false;
+                    if (_shieldInstance != null) _shieldInstance.SetActive(false);
                 }
             }
 

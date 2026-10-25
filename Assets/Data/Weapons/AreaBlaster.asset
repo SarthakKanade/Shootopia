@@ -49,7 +49,7 @@ MonoBehaviour:
   isExplosive: 1
   splashDamage: 25
   blastRadius: 4.5
-  selfDamage: 0
+  selfDamage: 1
   freezeDuration: 0
   maxSlowPercent: 0
   minSlowPercent: 0

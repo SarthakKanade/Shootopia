@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using Unity.Services.Multiplayer;
@@ -54,6 +55,7 @@ namespace Shootopia
         [SerializeField] private GameObject tabContentCreate, tabContentJoin;
 
         [Header("Custom Rooms: Create Tab")]
+        [SerializeField] private CustomRoomCreateConfig createRoomConfig;
         [SerializeField] private TMP_InputField inputCreateRoomName;
         [SerializeField] private Button chipModeFFA, chipModeTDM;
         [SerializeField] private Button chipMapSectorAlpha, chipMapGasStation;
@@ -61,8 +63,68 @@ namespace Shootopia
         [SerializeField] private Button btnDecreasePlayers;
         [SerializeField] private Button btnIncreasePlayers;
         [SerializeField] private TextMeshProUGUI labelMaxPlayers;
+        [SerializeField] private TextMeshProUGUI labelMaxPlayersUnit;
+        [SerializeField] private TMP_InputField inputMaxPlayers;
         [SerializeField] private Toggle togglePublicRoom;
         [SerializeField] private Button btnConfirmCreate;
+
+        [Header("Custom Rooms: Match Rules")]
+        [SerializeField] private Slider sliderMatchDuration;
+        [SerializeField] private Button btnDecreaseDuration;
+        [SerializeField] private Button btnIncreaseDuration;
+        [SerializeField] private TextMeshProUGUI labelMatchDuration;
+        [SerializeField] private TextMeshProUGUI labelDurationUnit;
+        [SerializeField] private TMP_InputField inputMatchDuration;
+
+        [SerializeField] private Slider sliderScoreLimit;
+        [SerializeField] private Button btnDecreaseScore;
+        [SerializeField] private Button btnIncreaseScore;
+        [SerializeField] private TextMeshProUGUI labelScoreLimit;
+        [SerializeField] private TextMeshProUGUI labelScoreLimitUnit;
+        [SerializeField] private TMP_InputField inputScoreLimit;
+
+        [Header("Custom Rooms: Rules Configuration (Inspector Editable)")]
+        [Tooltip("Default match duration in minutes for Free-For-All mode.")]
+        [SerializeField] private int defaultFfaDurationMinutes = 5;
+
+        [Tooltip("Default score/kill limit for Free-For-All mode.")]
+        [SerializeField] private int defaultFfaScoreLimit = 10;
+
+        [Tooltip("Default match duration in minutes for Team Deathmatch mode.")]
+        [SerializeField] private int defaultTdmDurationMinutes = 7;
+
+        [Tooltip("Default score/kill limit for Team Deathmatch mode.")]
+        [SerializeField] private int defaultTdmScoreLimit = 15;
+
+        [Tooltip("Minimum match duration in minutes.")]
+        [SerializeField] private int minDurationMinutes = 1;
+
+        [Tooltip("Maximum match duration in minutes.")]
+        [SerializeField] private int maxDurationMinutes = 30;
+
+        [Tooltip("Duration adjustment step in minutes for +/- buttons.")]
+        [SerializeField] private int durationStepMinutes = 1;
+
+        [Tooltip("Minimum score/kill limit.")]
+        [SerializeField] private int minScoreLimit = 5;
+
+        [Tooltip("Maximum score/kill limit.")]
+        [SerializeField] private int maxScoreLimit = 100;
+
+        [Tooltip("Score adjustment step for +/- buttons.")]
+        [SerializeField] private int scoreLimitStep = 5;
+
+        [Tooltip("Default max players for custom rooms.")]
+        [SerializeField] private int defaultMaxPlayers = 8;
+
+        [Tooltip("Minimum player limit for custom rooms.")]
+        [SerializeField] private int minPlayers = 2;
+
+        [Tooltip("Maximum player limit for custom rooms.")]
+        [SerializeField] private int maxPlayersLimit = 12;
+
+        [Tooltip("Player adjustment step for +/- buttons.")]
+        [SerializeField] private int playerStep = 1;
 
         [Header("Custom Rooms: Join Tab (Browser & Code)")]
         [SerializeField] private TMP_InputField inputJoinCode;
@@ -118,6 +180,10 @@ namespace Shootopia
         private string _browserModeFilter = "ALL";
         private int _selectedSkin = 0;
         private int _createMaxPlayers = 8;
+        private int _createDurationMinutes = 5;
+        private int _createScoreLimit = 10;
+        private bool _hasCustomizedDuration = false;
+        private bool _hasCustomizedScore = false;
         private bool _isMuted = false;
         private bool _isBusy = false;
         private readonly Stack<GameObject> _modalStack = new Stack<GameObject>();
@@ -150,11 +216,61 @@ namespace Shootopia
             InitSettingsValues();
             UpdateChipVisuals();
 
+            if (createRoomConfig == null && tabContentCreate != null)
+            {
+                createRoomConfig = tabContentCreate.GetComponent<CustomRoomCreateConfig>();
+            }
+
+            if (createRoomConfig != null)
+            {
+                defaultFfaDurationMinutes = createRoomConfig.defaultFfaDuration;
+                defaultFfaScoreLimit = createRoomConfig.defaultFfaScore;
+                defaultTdmDurationMinutes = createRoomConfig.defaultTdmDuration;
+                defaultTdmScoreLimit = createRoomConfig.defaultTdmScore;
+                minDurationMinutes = createRoomConfig.minDuration;
+                maxDurationMinutes = createRoomConfig.maxDuration;
+                durationStepMinutes = createRoomConfig.durationStep;
+                minScoreLimit = createRoomConfig.minScore;
+                maxScoreLimit = createRoomConfig.maxScore;
+                scoreLimitStep = createRoomConfig.scoreStep;
+                defaultMaxPlayers = createRoomConfig.defaultPlayers;
+                minPlayers = createRoomConfig.minPlayers;
+                maxPlayersLimit = createRoomConfig.maxPlayers;
+                playerStep = createRoomConfig.playerStep;
+                if (!string.IsNullOrEmpty(createRoomConfig.defaultMode)) _selectedCreateMode = createRoomConfig.defaultMode;
+                if (!string.IsNullOrEmpty(createRoomConfig.defaultMap)) _selectedCreateMap = createRoomConfig.defaultMap;
+            }
+
+            _createMaxPlayers = defaultMaxPlayers;
+            _createDurationMinutes = (_selectedCreateMode == "TDM") ? defaultTdmDurationMinutes : defaultFfaDurationMinutes;
+            _createScoreLimit = (_selectedCreateMode == "TDM") ? defaultTdmScoreLimit : defaultFfaScoreLimit;
+
             if (sliderMaxPlayers != null)
             {
-                _createMaxPlayers = Mathf.Clamp(Mathf.RoundToInt(sliderMaxPlayers.value), 2, 12);
+                sliderMaxPlayers.minValue = minPlayers;
+                sliderMaxPlayers.maxValue = maxPlayersLimit;
+                sliderMaxPlayers.wholeNumbers = true;
+                sliderMaxPlayers.value = _createMaxPlayers;
             }
             UpdateMaxPlayersDisplay();
+
+            if (sliderMatchDuration != null)
+            {
+                sliderMatchDuration.minValue = minDurationMinutes;
+                sliderMatchDuration.maxValue = maxDurationMinutes;
+                sliderMatchDuration.wholeNumbers = true;
+                sliderMatchDuration.value = _createDurationMinutes;
+            }
+            UpdateDurationDisplay();
+
+            if (sliderScoreLimit != null)
+            {
+                sliderScoreLimit.minValue = minScoreLimit;
+                sliderScoreLimit.maxValue = maxScoreLimit;
+                sliderScoreLimit.wholeNumbers = true;
+                sliderScoreLimit.value = _createScoreLimit;
+            }
+            UpdateScoreLimitDisplay();
 
             await MultiplayerAutoInitializer.EnsureInitializedAsync();
         }
@@ -176,6 +292,25 @@ namespace Shootopia
             if (_isBusy && spinnerIcon != null)
             {
                 spinnerIcon.Rotate(0f, 0f, -180f * Time.unscaledDeltaTime);
+            }
+
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.cKey.wasPressedThisFrame || Keyboard.current.oKey.wasPressedThisFrame)
+                {
+                    if (modalCustomize != null)
+                    {
+                        if (modalCustomize.activeSelf) CloseTopModal();
+                        else OpenModal(modalCustomize, customizeGroup);
+                    }
+                }
+                else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+                {
+                    if (_modalStack.Count > 0)
+                    {
+                        CloseTopModal();
+                    }
+                }
             }
         }
 
@@ -213,19 +348,22 @@ namespace Shootopia
             if (chipModeTDM != null) chipModeTDM.onClick.AddListener(() => SetCreateMode("TDM"));
             if (chipMapSectorAlpha != null) chipMapSectorAlpha.onClick.AddListener(() => SetCreateMap("Map1"));
             if (chipMapGasStation != null) chipMapGasStation.onClick.AddListener(() => SetCreateMap("GasStationMap"));
-            
-            if (btnDecreasePlayers == null && tabContentCreate != null)
-            {
-                btnDecreasePlayers = tabContentCreate.transform.Find("SliderMaxPlayers/BtnMinus")?.GetComponent<Button>();
-            }
-            if (btnIncreasePlayers == null && tabContentCreate != null)
-            {
-                btnIncreasePlayers = tabContentCreate.transform.Find("SliderMaxPlayers/BtnPlus")?.GetComponent<Button>();
-            }
 
             if (sliderMaxPlayers != null) sliderMaxPlayers.onValueChanged.AddListener(OnMaxPlayersChanged);
             if (btnDecreasePlayers != null) btnDecreasePlayers.onClick.AddListener(() => AdjustMaxPlayers(-1));
             if (btnIncreasePlayers != null) btnIncreasePlayers.onClick.AddListener(() => AdjustMaxPlayers(1));
+            if (inputMaxPlayers != null) inputMaxPlayers.onEndEdit.AddListener(OnMaxPlayersInputEndEdit);
+
+            if (sliderMatchDuration != null) sliderMatchDuration.onValueChanged.AddListener(OnDurationChanged);
+            if (btnDecreaseDuration != null) btnDecreaseDuration.onClick.AddListener(() => AdjustDuration(-1));
+            if (btnIncreaseDuration != null) btnIncreaseDuration.onClick.AddListener(() => AdjustDuration(1));
+            if (inputMatchDuration != null) inputMatchDuration.onEndEdit.AddListener(OnDurationInputEndEdit);
+
+            if (sliderScoreLimit != null) sliderScoreLimit.onValueChanged.AddListener(OnScoreLimitChanged);
+            if (btnDecreaseScore != null) btnDecreaseScore.onClick.AddListener(() => AdjustScoreLimit(-1));
+            if (btnIncreaseScore != null) btnIncreaseScore.onClick.AddListener(() => AdjustScoreLimit(1));
+            if (inputScoreLimit != null) inputScoreLimit.onEndEdit.AddListener(OnScoreLimitInputEndEdit);
+
             if (btnConfirmCreate != null) btnConfirmCreate.onClick.AddListener(ConfirmCreateRoom);
 
             // Join Tab
@@ -346,6 +484,12 @@ namespace Shootopia
                     var sessions = await SessionManager.Instance.GetPublicSessions();
                     var match = sessions.Find(s =>
                     {
+                        // Exclude matches that have already started
+                        if (s.Properties != null && s.Properties.TryGetValue("State", out var stateProp))
+                        {
+                            if (stateProp.Value.Equals("InProgress", StringComparison.OrdinalIgnoreCase)) return false;
+                        }
+
                         if (_quickMatchMode != "ALL")
                         {
                             string mode = (s.Properties != null && s.Properties.ContainsKey("GameMode")) ? s.Properties["GameMode"].Value : "FFA";
@@ -423,6 +567,18 @@ namespace Shootopia
         private void SetCreateMode(string mode)
         {
             _selectedCreateMode = mode;
+            if (!_hasCustomizedScore)
+            {
+                _createScoreLimit = (mode == "TDM") ? defaultTdmScoreLimit : defaultFfaScoreLimit;
+                if (sliderScoreLimit != null) sliderScoreLimit.value = _createScoreLimit;
+            }
+            if (!_hasCustomizedDuration)
+            {
+                _createDurationMinutes = (mode == "TDM") ? defaultTdmDurationMinutes : defaultFfaDurationMinutes;
+                if (sliderMatchDuration != null) sliderMatchDuration.value = _createDurationMinutes;
+            }
+            UpdateScoreLimitDisplay();
+            UpdateDurationDisplay();
             UpdateChipVisuals();
         }
 
@@ -434,7 +590,7 @@ namespace Shootopia
 
         private void AdjustMaxPlayers(int delta)
         {
-            _createMaxPlayers = Mathf.Clamp(_createMaxPlayers + delta, 2, 12);
+            _createMaxPlayers = Mathf.Clamp(_createMaxPlayers + (delta * playerStep), minPlayers, maxPlayersLimit);
             if (sliderMaxPlayers != null && Mathf.RoundToInt(sliderMaxPlayers.value) != _createMaxPlayers)
             {
                 sliderMaxPlayers.value = _createMaxPlayers;
@@ -444,16 +600,119 @@ namespace Shootopia
 
         private void OnMaxPlayersChanged(float val)
         {
-            _createMaxPlayers = Mathf.Clamp(Mathf.RoundToInt(val), 2, 12);
+            _createMaxPlayers = Mathf.Clamp(Mathf.RoundToInt(val), minPlayers, maxPlayersLimit);
+            UpdateMaxPlayersDisplay();
+        }
+
+        private void OnMaxPlayersInputEndEdit(string text)
+        {
+            if (int.TryParse(text, out int val) && val > 0)
+            {
+                _createMaxPlayers = Mathf.Clamp(val, minPlayers, maxPlayersLimit);
+                if (sliderMaxPlayers != null) sliderMaxPlayers.value = _createMaxPlayers;
+            }
             UpdateMaxPlayersDisplay();
         }
 
         private void UpdateMaxPlayersDisplay()
         {
-            if (labelMaxPlayers != null)
+            string numStr = _createMaxPlayers.ToString();
+            if (inputMaxPlayers != null && inputMaxPlayers.text != numStr)
             {
-                labelMaxPlayers.text = $"{_createMaxPlayers} PLAYERS";
+                inputMaxPlayers.text = numStr;
             }
+            else if (labelMaxPlayers != null)
+            {
+                labelMaxPlayers.text = numStr;
+            }
+            if (labelMaxPlayersUnit != null) labelMaxPlayersUnit.text = "PLAYERS";
+        }
+
+        private void AdjustDuration(int delta)
+        {
+            _hasCustomizedDuration = true;
+            _createDurationMinutes = Mathf.Clamp(_createDurationMinutes + (delta * durationStepMinutes), minDurationMinutes, maxDurationMinutes);
+            if (sliderMatchDuration != null && Mathf.RoundToInt(sliderMatchDuration.value) != _createDurationMinutes)
+            {
+                sliderMatchDuration.value = _createDurationMinutes;
+            }
+            UpdateDurationDisplay();
+        }
+
+        private void OnDurationChanged(float val)
+        {
+            _hasCustomizedDuration = true;
+            _createDurationMinutes = Mathf.Clamp(Mathf.RoundToInt(val), minDurationMinutes, maxDurationMinutes);
+            UpdateDurationDisplay();
+        }
+
+        private void OnDurationInputEndEdit(string text)
+        {
+            if (int.TryParse(text, out int val) && val > 0)
+            {
+                _hasCustomizedDuration = true;
+                _createDurationMinutes = Mathf.Clamp(val, minDurationMinutes, maxDurationMinutes);
+                if (sliderMatchDuration != null) sliderMatchDuration.value = _createDurationMinutes;
+            }
+            UpdateDurationDisplay();
+        }
+
+        private void UpdateDurationDisplay()
+        {
+            string numStr = _createDurationMinutes.ToString();
+            if (inputMatchDuration != null && inputMatchDuration.text != numStr)
+            {
+                inputMatchDuration.text = numStr;
+            }
+            else if (labelMatchDuration != null)
+            {
+                labelMatchDuration.text = numStr;
+            }
+            if (labelDurationUnit != null) labelDurationUnit.text = "MINS";
+        }
+
+        private void AdjustScoreLimit(int delta)
+        {
+            _hasCustomizedScore = true;
+            _createScoreLimit = Mathf.Clamp(_createScoreLimit + (delta * scoreLimitStep), minScoreLimit, maxScoreLimit);
+            if (sliderScoreLimit != null && Mathf.RoundToInt(sliderScoreLimit.value) != _createScoreLimit)
+            {
+                sliderScoreLimit.value = _createScoreLimit;
+            }
+            UpdateScoreLimitDisplay();
+        }
+
+        private void OnScoreLimitChanged(float val)
+        {
+            _hasCustomizedScore = true;
+            _createScoreLimit = Mathf.Clamp(Mathf.RoundToInt(val), minScoreLimit, maxScoreLimit);
+            UpdateScoreLimitDisplay();
+        }
+
+        private void OnScoreLimitInputEndEdit(string text)
+        {
+            if (int.TryParse(text, out int val) && val > 0)
+            {
+                _hasCustomizedScore = true;
+                _createScoreLimit = Mathf.Clamp(val, minScoreLimit, maxScoreLimit);
+                if (sliderScoreLimit != null) sliderScoreLimit.value = _createScoreLimit;
+            }
+            UpdateScoreLimitDisplay();
+        }
+
+        private void UpdateScoreLimitDisplay()
+        {
+            string numStr = _createScoreLimit.ToString();
+            if (inputScoreLimit != null && inputScoreLimit.text != numStr)
+            {
+                inputScoreLimit.text = numStr;
+            }
+            else if (labelScoreLimit != null)
+            {
+                labelScoreLimit.text = numStr;
+            }
+            string unit = (_selectedCreateMode == "TDM") ? "PTS" : "KILLS";
+            if (labelScoreLimitUnit != null) labelScoreLimitUnit.text = unit;
         }
 
         private async void ConfirmCreateRoom()
@@ -464,6 +723,8 @@ namespace Shootopia
                 : $"{hostName}'s Arena";
 
             int maxPlayers = _createMaxPlayers;
+            int matchDurationSeconds = _createDurationMinutes * 60;
+            int scoreLimit = _createScoreLimit;
             bool isPublic = togglePublicRoom == null || togglePublicRoom.isOn;
 
             CloseTopModal();
@@ -472,7 +733,7 @@ namespace Shootopia
             try
             {
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
-                await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode, _selectedCreateMap);
+                await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode, _selectedCreateMap, matchDurationSeconds, scoreLimit);
             }
             catch (Exception ex)
             {
@@ -581,10 +842,23 @@ namespace Shootopia
             string mode = (session.Properties != null && session.Properties.ContainsKey("GameMode")) ? session.Properties["GameMode"].Value : "FFA";
             string map = (session.Properties != null && session.Properties.ContainsKey("MapName")) ? session.Properties["MapName"].Value : "Map1";
             string mapDisplay = MapRegistry.GetDisplayName(map);
+            string state = (session.Properties != null && session.Properties.ContainsKey("State")) ? session.Properties["State"].Value : "Lobby";
+            bool isInProgress = state.Equals("InProgress", StringComparison.OrdinalIgnoreCase);
             int maxPlayers = session.MaxPlayers;
 
+            string durationStr = "";
+            if (session.Properties != null && session.Properties.TryGetValue("MatchDuration", out var durProp) && int.TryParse(durProp.Value, out int durSec) && durSec > 0)
+            {
+                durationStr = $" • {durSec / 60}m";
+            }
+            string scoreStr = "";
+            if (session.Properties != null && session.Properties.TryGetValue("ScoreLimit", out var scoreProp) && int.TryParse(scoreProp.Value, out int scoreGoal) && scoreGoal > 0)
+            {
+                scoreStr = $" • {scoreGoal}pts";
+            }
+
             if (texts.Length > 0) texts[0].text = roomName;
-            if (texts.Length > 1) texts[1].text = $"{mode} • {mapDisplay} • MAX {maxPlayers}P";
+            if (texts.Length > 1) texts[1].text = $"{mode} • {mapDisplay}{durationStr}{scoreStr} • MAX {maxPlayers}P{(isInProgress ? " • [IN MATCH]" : "")}";
 
             if (joinBtn != null)
             {
@@ -611,7 +885,17 @@ namespace Shootopia
 
         private void SelectSkin(int skinIndex)
         {
-            _selectedSkin = skinIndex;
+            _selectedSkin = Mathf.Clamp(skinIndex, 0, 1);
+            if (PlayerProfileManager.Instance != null)
+            {
+                PlayerProfileManager.Instance.SetSelectedModel(_selectedSkin);
+            }
+            else
+            {
+                PlayerPrefs.SetInt("Shootopia_SelectedModelIndex", _selectedSkin);
+                PlayerPrefs.Save();
+            }
+
             if (AvatarStageController.Instance != null)
             {
                 AvatarStageController.Instance.SetSkin(_selectedSkin);
@@ -623,6 +907,25 @@ namespace Shootopia
 
         private void InitSettingsValues()
         {
+            _selectedSkin = PlayerProfileManager.Instance != null 
+                ? PlayerProfileManager.Instance.SelectedModelIndex 
+                : PlayerPrefs.GetInt("Shootopia_SelectedModelIndex", 0);
+
+            if (btnSkinAgent != null)
+            {
+                var txt = btnSkinAgent.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null) txt.text = "VANGUARD";
+            }
+            if (btnSkinRobot != null)
+            {
+                var txt = btnSkinRobot.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null) txt.text = "VALKYRIE";
+            }
+            if (AvatarStageController.Instance != null)
+            {
+                AvatarStageController.Instance.SetSkin(_selectedSkin);
+            }
+
             float master = PlayerPrefs.GetFloat("AudioManager_MasterVolume", 1.0f);
             float music = PlayerPrefs.GetFloat("AudioManager_MusicVolume", 0.65f);
             float sfx = PlayerPrefs.GetFloat("AudioManager_SFXVolume", 1.0f);
@@ -792,6 +1095,16 @@ namespace Shootopia
 
             SetChipActive(btnSkinAgent, _selectedSkin == 0);
             SetChipActive(btnSkinRobot, _selectedSkin == 1);
+
+            if (btnCustomize != null)
+            {
+                var custTxt = btnCustomize.GetComponentInChildren<TextMeshProUGUI>();
+                if (custTxt != null)
+                {
+                    string opName = _selectedSkin == 1 ? "VALKYRIE" : "VANGUARD";
+                    custTxt.text = $"{opName} [C]";
+                }
+            }
         }
 
         private void SetChipActive(Button chip, bool isActive)

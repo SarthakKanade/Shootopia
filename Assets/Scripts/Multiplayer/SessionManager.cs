@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Unity.Services.Multiplayer;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine.SceneManagement;
 
 namespace Shootopia
@@ -40,6 +41,9 @@ namespace Shootopia
         public bool IsHost => _currentSession != null && _currentSession.IsHost;
         public ISession CurrentSession => _currentSession;
 
+        public static int ConfiguredMatchDuration { get; private set; } = 300;
+        public static int ConfiguredScoreLimit { get; private set; } = 10;
+
         private ISession _currentSession;
         private bool _isProcessingSession = false;
 
@@ -69,6 +73,32 @@ namespace Shootopia
             }
         }
 
+        /// <summary>
+        /// Ensures UnityTransport uses WebSockets on WebGL (required by Unity Relay on that platform).
+        /// UDP is kept for all other platforms (Mac, Windows, etc.).
+        /// Must be called before any session is created or joined.
+        /// </summary>
+        private void ConfigureTransportForPlatform()
+        {
+            if (NetworkManager.Singleton == null) return;
+            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+            if (transport == null) return;
+
+#if UNITY_WEBGL
+            if (!transport.UseWebSockets)
+            {
+                transport.UseWebSockets = true;
+                Debug.Log("[SessionManager] WebGL build target: enabled WebSockets on UnityTransport for Relay.");
+            }
+#else
+            if (transport.UseWebSockets)
+            {
+                transport.UseWebSockets = false;
+                Debug.Log("[SessionManager] Non-WebGL build target: keeping UDP on UnityTransport for Relay.");
+            }
+#endif
+        }
+
         private void ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
         {
             Debug.Log($"[SessionManager] ConnectionApproval for client {request.ClientNetworkId}. Approving connection.");
@@ -84,11 +114,27 @@ namespace Shootopia
                 try
                 {
                     UnsubscribeFromSessionEvents(_currentSession);
-                    await _currentSession.LeaveAsync();
+                    if (_currentSession.IsHost)
+                    {
+                        var hostSession = _currentSession.AsHost();
+                        if (hostSession != null)
+                        {
+                            await hostSession.DeleteAsync();
+                            Debug.Log("[SessionManager] Host cleanly deleted session on exit.");
+                        }
+                        else
+                        {
+                            await _currentSession.LeaveAsync();
+                        }
+                    }
+                    else
+                    {
+                        await _currentSession.LeaveAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[SessionManager] Note leaving session: {ex.Message}");
+                    Debug.LogWarning($"[SessionManager] Note leaving/deleting session: {ex.Message}");
                 }
                 _currentSession = null;
             }
@@ -109,7 +155,7 @@ namespace Shootopia
         /// <summary>
         /// Creates a new multiplayer session on Unity Gaming Services and starts NGO Host.
         /// </summary>
-        public async Task CreateSession(string sessionName, bool isPublic, int maxPlayers, string gameMode, string mapName = "Map1")
+        public async Task CreateSession(string sessionName, bool isPublic, int maxPlayers, string gameMode, string mapName = "Map1", int matchDurationSeconds = 300, int scoreLimit = 10)
         {
             if (_isProcessingSession)
             {
@@ -118,14 +164,17 @@ namespace Shootopia
             }
 
             _isProcessingSession = true;
+            ConfiguredMatchDuration = matchDurationSeconds > 0 ? matchDurationSeconds : 300;
+            ConfiguredScoreLimit = scoreLimit > 0 ? scoreLimit : 10;
 
             try
             {
                 await EnsurePreviousSessionCleanedUpAsync();
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
                 EnsureConnectionApprovalSetup();
+                ConfigureTransportForPlatform();
 
-                Debug.Log($"[SessionManager] Creating session '{sessionName}' (Public: {isPublic}, MaxPlayers: {maxPlayers}, Mode: {gameMode}, Map: {mapName})...");
+                Debug.Log($"[SessionManager] Creating session '{sessionName}' (Public: {isPublic}, MaxPlayers: {maxPlayers}, Mode: {gameMode}, Map: {mapName}, Duration: {ConfiguredMatchDuration}s, ScoreLimit: {ConfiguredScoreLimit})...");
 
                 var options = new SessionOptions
                 {
@@ -138,7 +187,10 @@ namespace Shootopia
                 options.SessionProperties = new Dictionary<string, SessionProperty>
                 {
                     { "GameMode", new SessionProperty(gameMode, VisibilityPropertyOptions.Public, PropertyIndex.String1) },
-                    { "MapName", new SessionProperty(mapName, VisibilityPropertyOptions.Public, PropertyIndex.String2) }
+                    { "MapName", new SessionProperty(mapName, VisibilityPropertyOptions.Public, PropertyIndex.String2) },
+                    { "State", new SessionProperty("Lobby", VisibilityPropertyOptions.Public, PropertyIndex.String3) },
+                    { "MatchDuration", new SessionProperty(ConfiguredMatchDuration.ToString(), VisibilityPropertyOptions.Public, PropertyIndex.String4) },
+                    { "ScoreLimit", new SessionProperty(ConfiguredScoreLimit.ToString(), VisibilityPropertyOptions.Public, PropertyIndex.String5) }
                 };
 
                 // WithRelayNetwork automatically configures UTP transport and initiates NGO Host
@@ -199,6 +251,7 @@ namespace Shootopia
             {
                 await EnsurePreviousSessionCleanedUpAsync();
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                ConfigureTransportForPlatform();
 
                 LoadingScreenManager.ShowOverlay("WARPING TO LOBBY...");
                 Debug.Log($"[SessionManager] Joining session by code '{joinCode}'...");
@@ -254,6 +307,7 @@ namespace Shootopia
             {
                 await EnsurePreviousSessionCleanedUpAsync();
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                ConfigureTransportForPlatform();
 
                 LoadingScreenManager.ShowOverlay("WARPING TO LOBBY...");
                 Debug.Log($"[SessionManager] Joining session by ID '{sessionId}'...");
@@ -484,6 +538,48 @@ namespace Shootopia
             return MapRegistry.DEFAULT_MAP;
         }
 
+        public int GetSessionMatchDuration()
+        {
+            if (_currentSession != null && _currentSession.Properties != null && _currentSession.Properties.TryGetValue("MatchDuration", out var prop))
+            {
+                if (int.TryParse(prop.Value, out int val) && val > 0) return val;
+            }
+            return ConfiguredMatchDuration > 0 ? ConfiguredMatchDuration : 300;
+        }
+
+        public int GetSessionScoreLimit()
+        {
+            if (_currentSession != null && _currentSession.Properties != null && _currentSession.Properties.TryGetValue("ScoreLimit", out var prop))
+            {
+                if (int.TryParse(prop.Value, out int val) && val > 0) return val;
+            }
+            return ConfiguredScoreLimit > 0 ? ConfiguredScoreLimit : 10;
+        }
+
+        public async Task UpdateSessionMatchRulesAsync(int durationSeconds, int scoreLimit)
+        {
+            if (_currentSession == null || !_currentSession.IsHost) return;
+            try
+            {
+                var hostSession = _currentSession.AsHost();
+                if (hostSession != null)
+                {
+                    ConfiguredMatchDuration = durationSeconds > 0 ? durationSeconds : 300;
+                    ConfiguredScoreLimit = scoreLimit > 0 ? scoreLimit : 10;
+
+                    hostSession.SetProperty("MatchDuration", new SessionProperty(ConfiguredMatchDuration.ToString(), VisibilityPropertyOptions.Public, PropertyIndex.String4));
+                    hostSession.SetProperty("ScoreLimit", new SessionProperty(ConfiguredScoreLimit.ToString(), VisibilityPropertyOptions.Public, PropertyIndex.String5));
+                    await hostSession.SavePropertiesAsync();
+                    Debug.Log($"[SessionManager] Host updated match rules: Duration={ConfiguredMatchDuration}s, ScoreLimit={ConfiguredScoreLimit}");
+                    OnSessionUpdated?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SessionManager] Failed to update match rules: {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Updates the session's chosen map (Host only).
         /// </summary>
@@ -531,6 +627,29 @@ namespace Shootopia
             }
         }
 
+        /// <summary>
+        /// Updates the session state (e.g. "Lobby", "InProgress") in UGS metadata (Host only).
+        /// </summary>
+        public async Task UpdateSessionStateAsync(string newState)
+        {
+            if (_currentSession == null || !_currentSession.IsHost) return;
+            try
+            {
+                var hostSession = _currentSession.AsHost();
+                if (hostSession != null)
+                {
+                    hostSession.SetProperty("State", new SessionProperty(newState, VisibilityPropertyOptions.Public, PropertyIndex.String3));
+                    await hostSession.SavePropertiesAsync();
+                    Debug.Log($"[SessionManager] Host updated session State to: {newState}");
+                    OnSessionUpdated?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SessionManager] Failed to update session State: {ex.Message}");
+            }
+        }
+
         private void OnApplicationQuit()
         {
             if (_currentSession != null)
@@ -538,7 +657,14 @@ namespace Shootopia
                 try
                 {
                     UnsubscribeFromSessionEvents(_currentSession);
-                    _ = _currentSession.LeaveAsync();
+                    if (_currentSession.IsHost)
+                    {
+                        _ = _currentSession.AsHost()?.DeleteAsync();
+                    }
+                    else
+                    {
+                        _ = _currentSession.LeaveAsync();
+                    }
                 }
                 catch { }
                 _currentSession = null;

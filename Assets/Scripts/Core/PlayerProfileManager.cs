@@ -28,18 +28,23 @@ namespace Shootopia
         private const string KEY_INVERT_Y = "Shootopia_InvertY";
         private const string KEY_CROSSHAIR_STYLE = "Shootopia_CrosshairStyle";
 
+        private const string KEY_MODEL_INDEX = "Shootopia_SelectedModelIndex";
+
         public static event Action<string> OnPlayerNameChanged;
         public static event Action OnSettingsChanged;
+        public static event Action<int> OnModelChanged;
 
         private string _displayName;
         private float _mouseSensitivity = 1.0f;
         private bool _invertY = false;
         private int _crosshairStyle = 0;
+        private int _selectedModelIndex = 0; // 0 = Vanguard, 1 = Valkyrie
 
         public string DisplayName => _displayName;
         public float MouseSensitivity => _mouseSensitivity;
         public bool InvertY => _invertY;
         public int CrosshairStyle => _crosshairStyle;
+        public int SelectedModelIndex => _selectedModelIndex;
 
         private void Awake()
         {
@@ -69,8 +74,17 @@ namespace Shootopia
             _mouseSensitivity = PlayerPrefs.GetFloat(KEY_MOUSE_SENS, 1.0f);
             _invertY = PlayerPrefs.GetInt(KEY_INVERT_Y, 0) == 1;
             _crosshairStyle = PlayerPrefs.GetInt(KEY_CROSSHAIR_STYLE, 0);
+            _selectedModelIndex = PlayerPrefs.GetInt(KEY_MODEL_INDEX, 0);
 
-            Debug.Log($"[PlayerProfileManager] Loaded profile for: {_displayName} (Sens: {_mouseSensitivity}, InvertY: {_invertY})");
+            Debug.Log($"[PlayerProfileManager] Loaded profile for: {_displayName} (Sens: {_mouseSensitivity}, InvertY: {_invertY}, Model: {_selectedModelIndex})");
+        }
+
+        public void SetSelectedModel(int index)
+        {
+            _selectedModelIndex = Mathf.Clamp(index, 0, 1);
+            PlayerPrefs.SetInt(KEY_MODEL_INDEX, _selectedModelIndex);
+            PlayerPrefs.Save();
+            OnModelChanged?.Invoke(_selectedModelIndex);
         }
 
         public void SetDisplayName(string newName)

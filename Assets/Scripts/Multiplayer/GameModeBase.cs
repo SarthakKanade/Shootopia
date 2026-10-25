@@ -40,11 +40,26 @@ namespace Shootopia
 
         public readonly NetworkVariable<float> MatchTimeRemaining = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
+        [Header("Match Rules (Configured by Room Owner)")]
+        public readonly NetworkVariable<int> TargetScoreLimit = new NetworkVariable<int>(10, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public readonly NetworkVariable<float> InitialMatchDuration = new NetworkVariable<float>(300f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
         /// <summary>
         /// Expose match variables to external systems (e.g., UI displays).
         /// </summary>
         public float TimeRemaining => MatchTimeRemaining.Value;
         public bool IsInProgress => MatchInProgress.Value;
+        public int ScoreLimit => TargetScoreLimit.Value > 0 ? TargetScoreLimit.Value : 10;
+        public float TotalDuration => InitialMatchDuration.Value > 0 ? InitialMatchDuration.Value : 300f;
+
+        public virtual void ConfigureMatchRules(float durationSeconds, int scoreLimit)
+        {
+            if (!IsServer) return;
+            InitialMatchDuration.Value = durationSeconds > 0 ? durationSeconds : 300f;
+            TargetScoreLimit.Value = scoreLimit > 0 ? scoreLimit : 10;
+            MatchTimeRemaining.Value = InitialMatchDuration.Value;
+            Debug.Log($"[GameModeBase] Configured match rules: Duration={InitialMatchDuration.Value}s ({InitialMatchDuration.Value / 60f:F1}m), ScoreLimit={TargetScoreLimit.Value}");
+        }
 
         protected readonly Dictionary<ulong, int> PlayerKills = new Dictionary<ulong, int>();
         protected readonly Dictionary<ulong, int> PlayerDeaths = new Dictionary<ulong, int>();
@@ -96,13 +111,26 @@ namespace Shootopia
         {
             if (!IsServer) return;
 
-            if (!PlayerKills.ContainsKey(killerClientId)) PlayerKills[killerClientId] = 0;
-            PlayerKills[killerClientId]++;
+            bool isSelfDeath = (killerClientId == victimClientId);
+
+            if (isSelfDeath)
+            {
+                // Self death (suicide, lava, environment hazard): subtract 1 point (-1), clamped to minimum 0
+                if (!PlayerKills.ContainsKey(victimClientId)) PlayerKills[victimClientId] = 0;
+                PlayerKills[victimClientId] = Mathf.Max(0, PlayerKills[victimClientId] - 1);
+            }
+            else
+            {
+                if (!PlayerKills.ContainsKey(killerClientId)) PlayerKills[killerClientId] = 0;
+                PlayerKills[killerClientId]++;
+            }
 
             if (!PlayerDeaths.ContainsKey(victimClientId)) PlayerDeaths[victimClientId] = 0;
             PlayerDeaths[victimClientId]++;
 
-            SyncPlayerStatsClientRpc(killerClientId, PlayerKills[killerClientId], victimClientId, PlayerDeaths[victimClientId]);
+            ulong scoreTargetId = isSelfDeath ? victimClientId : killerClientId;
+            int targetScore = PlayerKills[scoreTargetId];
+            SyncPlayerStatsClientRpc(scoreTargetId, targetScore, victimClientId, PlayerDeaths[victimClientId]);
         }
 
         [ClientRpc]

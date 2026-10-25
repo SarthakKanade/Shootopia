@@ -32,34 +32,50 @@ namespace Shootopia
         {
             Collider[] hits = Physics.OverlapSphere(transform.position, _weaponData.blastRadius);
             System.Collections.Generic.HashSet<IDamageable> processed = new System.Collections.Generic.HashSet<IDamageable>();
+            System.Collections.Generic.HashSet<PlayerHealth> processedPlayers = new System.Collections.Generic.HashSet<PlayerHealth>();
             foreach (Collider c in hits)
             {
-                IDamageable t = c.GetComponentInParent<IDamageable>();
-                if (t != null && !processed.Contains(t))
+                if (c == null) continue;
+                IDamageable t = null;
+                PlayerHealth ph = c.GetComponentInParent<PlayerHealth>() ?? c.GetComponent<PlayerHealth>();
+                if (ph != null)
                 {
-                    processed.Add(t);
-                    // Use center of collider for distance check if possible, otherwise transform position
-                    Vector3 targetPos = c.bounds.center;
-                    float dist = Vector3.Distance(transform.position, targetPos);
-                    
-                    // Check if it's a Robot for status effects (check parent too)
-                    float normalizedDist = Mathf.Clamp01(dist / (_weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f));
-                    float maxDamage = _weaponData.Damage;
-                    float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
-                    bool isDirectHit = dist <= 0.45f;
-                    float calculatedDamage = isDirectHit ? maxDamage : Mathf.Lerp(maxDamage, minDamage, normalizedDist);
+                    if (!processedPlayers.Add(ph)) continue;
+                    t = ph;
+                }
+                else
+                {
+                    t = c.GetComponentInParent<IDamageable>();
+                    if (t == null || !processed.Add(t)) continue;
+                }
 
-                    DealDamage(t, calculatedDamage, DamageType.Projectile);
+                // Use center of collider for distance check if possible, otherwise transform position
+                Vector3 targetPos = c.bounds.center;
+                float dist = Vector3.Distance(transform.position, targetPos);
+                
+                // Check if it's a Robot for status effects (check parent too)
+                float normalizedDist = Mathf.Clamp01(dist / (_weaponData.blastRadius > 0.1f ? _weaponData.blastRadius : 3.5f));
+                float maxDamage = _weaponData.Damage;
+                float minDamage = _weaponData.splashDamage > 0f ? _weaponData.splashDamage : (maxDamage * 0.25f);
+                bool isDirectHit = dist <= 0.45f;
+                float calculatedDamage = isDirectHit ? maxDamage : Mathf.Lerp(maxDamage, minDamage, normalizedDist);
 
-                    if (IsOwnerProjectile())
+                DealDamage(t, calculatedDamage, DamageType.Projectile);
+
+                if (IsOwnerProjectile())
+                {
+                    PlayerHealth targetHealth = ph;
+                    if (targetHealth == null && t is MonoBehaviour mbTarget)
                     {
-                        PlayerHealth targetHealth = t as PlayerHealth;
-                        if (targetHealth == null && t is MonoBehaviour mbTarget)
-                        {
-                            targetHealth = mbTarget.GetComponentInParent<PlayerHealth>() ?? mbTarget.GetComponent<PlayerHealth>();
-                        }
+                        targetHealth = mbTarget.GetComponentInParent<PlayerHealth>() ?? mbTarget.GetComponent<PlayerHealth>();
+                    }
 
-                        if (targetHealth != null)
+                    if (targetHealth != null)
+                    {
+                        var targetShield = targetHealth.GetComponent<PlayerShield>();
+                        bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
+
+                        if (!shieldBlocked)
                         {
                             if (isDirectHit)
                             {

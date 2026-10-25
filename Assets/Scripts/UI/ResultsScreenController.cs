@@ -128,14 +128,14 @@ namespace Shootopia
             if (outcomeBannerText != null)
             {
                 var bannerRt = outcomeBannerText.GetComponent<RectTransform>();
-                bannerRt.anchoredPosition = new Vector2(0f, 265f);
+                if (bannerRt != null) bannerRt.anchoredPosition = new Vector2(0f, 265f);
                 outcomeBannerText.fontSize = 38;
             }
 
             if (winnerInfoText != null)
             {
                 var winnerRt = winnerInfoText.GetComponent<RectTransform>();
-                winnerRt.anchoredPosition = new Vector2(0f, 220f);
+                if (winnerRt != null) winnerRt.anchoredPosition = new Vector2(0f, 220f);
                 winnerInfoText.fontSize = 20;
             }
 
@@ -148,20 +148,26 @@ namespace Shootopia
                 headerBarTr = headerObj.transform;
 
                 var hRt = headerObj.GetComponent<RectTransform>();
-                hRt.anchorMin = new Vector2(0.5f, 0.5f);
-                hRt.anchorMax = new Vector2(0.5f, 0.5f);
-                hRt.sizeDelta = new Vector2(880f, 36f);
-                hRt.anchoredPosition = new Vector2(0f, 175f);
+                if (hRt != null)
+                {
+                    hRt.anchorMin = new Vector2(0.5f, 0.5f);
+                    hRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    hRt.sizeDelta = new Vector2(880f, 36f);
+                    hRt.anchoredPosition = new Vector2(0f, 175f);
+                }
 
                 var hImg = headerObj.GetComponent<Image>();
-                hImg.color = ColorHeaderBg;
+                if (hImg != null) hImg.color = ColorHeaderBg;
 
                 var hlg = headerObj.GetComponent<HorizontalLayoutGroup>();
-                hlg.padding = new RectOffset(24, 24, 4, 4);
-                hlg.childAlignment = TextAnchor.MiddleLeft;
-                hlg.childControlWidth = false;
-                hlg.childControlHeight = true;
-                hlg.spacing = 10;
+                if (hlg != null)
+                {
+                    hlg.padding = new RectOffset(24, 24, 4, 4);
+                    hlg.childAlignment = TextAnchor.MiddleLeft;
+                    hlg.childControlWidth = false;
+                    hlg.childControlHeight = true;
+                    hlg.spacing = 10;
+                }
 
                 CreateHeaderCol("RankHeader", headerBarTr, "RANK", 70f, TextAlignmentOptions.MidlineLeft);
                 CreateHeaderCol("PlayerHeader", headerBarTr, "PLAYER", 360f, TextAlignmentOptions.MidlineLeft);
@@ -174,8 +180,11 @@ namespace Shootopia
             if (scrollTr != null)
             {
                 var sRt = scrollTr.GetComponent<RectTransform>();
-                sRt.sizeDelta = new Vector2(880f, 340f);
-                sRt.anchoredPosition = new Vector2(0f, -20f);
+                if (sRt != null)
+                {
+                    sRt.sizeDelta = new Vector2(880f, 340f);
+                    sRt.anchoredPosition = new Vector2(0f, -20f);
+                }
             }
 
             // Style Buttons with WaitingRoom appearance and Juice
@@ -185,19 +194,23 @@ namespace Shootopia
 
         private void CreateHeaderCol(string name, Transform parent, string text, float width, TextAlignmentOptions align)
         {
+            if (parent == null) return;
             var colObj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
             colObj.transform.SetParent(parent, false);
 
             var rt = colObj.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(width, 28f);
+            if (rt != null) rt.sizeDelta = new Vector2(width, 28f);
 
             var tmp = colObj.GetComponent<TextMeshProUGUI>();
-            tmp.text = text;
-            tmp.fontSize = 14;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.color = ColorHeaderText;
-            tmp.alignment = align;
-            if (outcomeBannerText != null) tmp.font = outcomeBannerText.font;
+            if (tmp != null)
+            {
+                tmp.text = text;
+                tmp.fontSize = 14;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.color = ColorHeaderText;
+                tmp.alignment = align;
+                if (outcomeBannerText != null) tmp.font = outcomeBannerText.font;
+            }
         }
 
         private void StyleActionButton(Button btn, Sprite buttonSprite, Vector2 size, Vector2 pos, string labelText, Color textColor)

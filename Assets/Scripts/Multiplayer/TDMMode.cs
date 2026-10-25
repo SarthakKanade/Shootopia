@@ -10,8 +10,8 @@ namespace Shootopia
     /// </summary>
     public class TDMMode : GameModeBase, IScoreProvider
     {
-        private const int KillLimit = 15;
-        private const float TimeLimit = 420f; // 7 minutes
+        public const int DefaultKillLimit = 15;
+        public const float DefaultTimeLimit = 420f; // 7 minutes
 
         // Team representation: 0 = Blue, 1 = Red
         private readonly Dictionary<ulong, int> playerTeam = new Dictionary<ulong, int>();
@@ -27,13 +27,24 @@ namespace Shootopia
         {
             if (!IsServer) return;
 
+            MatchActive.Value = true;
             playerTeam.Clear();
             PlayerKills.Clear();
             PlayerDeaths.Clear();
             BlueScore.Value = 0;
             RedScore.Value = 0;
-            MatchTimeRemaining.Value = TimeLimit;
+
+            float duration = InitialMatchDuration.Value > 0f ? InitialMatchDuration.Value : DefaultTimeLimit;
+            InitialMatchDuration.Value = duration;
+            MatchTimeRemaining.Value = duration;
+
+            if (TargetScoreLimit.Value <= 0)
+            {
+                TargetScoreLimit.Value = DefaultKillLimit;
+            }
+
             MatchInProgress.Value = true;
+            Debug.Log($"[TDMMode] Match Started! Duration: {duration}s, KillLimit: {TargetScoreLimit.Value}");
 
             // Subscribe to late-joining connections
             if (NetworkManager.Singleton != null)
@@ -138,8 +149,30 @@ namespace Shootopia
         {
             if (!IsServer || !MatchInProgress.Value) return;
 
-            // Track base scoring (increments kills/deaths in base dictionaries)
+            // Track base scoring (increments kills or penalizes -1 for self death)
             base.OnPlayerKilled(killerClientId, victimClientId);
+
+            bool isSelfDeath = (killerClientId == victimClientId);
+            if (isSelfDeath)
+            {
+                if (!playerTeam.TryGetValue(victimClientId, out int victimTeam))
+                {
+                    AssignPlayerToTeam(victimClientId);
+                    victimTeam = playerTeam[victimClientId];
+                }
+
+                if (victimTeam == 0)
+                {
+                    BlueScore.Value = Mathf.Max(0, BlueScore.Value - 1);
+                    Debug.Log($"[TDMMode] Self-death deduction (-1) for Blue Team! Blue: {BlueScore.Value}, Red: {RedScore.Value}");
+                }
+                else if (victimTeam == 1)
+                {
+                    RedScore.Value = Mathf.Max(0, RedScore.Value - 1);
+                    Debug.Log($"[TDMMode] Self-death deduction (-1) for Red Team! Blue: {BlueScore.Value}, Red: {RedScore.Value}");
+                }
+                return;
+            }
 
             // Retrieve killer's team
             if (!playerTeam.TryGetValue(killerClientId, out int killerTeam))
@@ -150,11 +183,12 @@ namespace Shootopia
             }
 
             // Add score to killer's team
+            int effectiveLimit = TargetScoreLimit.Value > 0 ? TargetScoreLimit.Value : DefaultKillLimit;
             if (killerTeam == 0)
             {
                 BlueScore.Value++;
                 Debug.Log($"[TDMMode] Blue Team scores! Blue: {BlueScore.Value}, Red: {RedScore.Value}");
-                if (BlueScore.Value >= KillLimit)
+                if (BlueScore.Value >= effectiveLimit)
                 {
                     OnMatchEnd();
                 }
@@ -163,7 +197,7 @@ namespace Shootopia
             {
                 RedScore.Value++;
                 Debug.Log($"[TDMMode] Red Team scores! Blue: {BlueScore.Value}, Red: {RedScore.Value}");
-                if (RedScore.Value >= KillLimit)
+                if (RedScore.Value >= effectiveLimit)
                 {
                     OnMatchEnd();
                 }

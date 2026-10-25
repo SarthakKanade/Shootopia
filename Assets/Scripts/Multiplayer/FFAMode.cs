@@ -10,18 +10,28 @@ namespace Shootopia
     /// </summary>
     public class FFAMode : GameModeBase, IScoreProvider
     {
-        private const int KillLimit = 10;
-        private const float TimeLimit = 300f; // 5 minutes
+        public const int DefaultKillLimit = 10;
+        public const float DefaultTimeLimit = 300f; // 5 minutes
 
         public override void OnMatchStart()
         {
             if (!IsServer) return;
 
+            MatchActive.Value = true;
             PlayerKills.Clear();
             PlayerDeaths.Clear();
-            MatchTimeRemaining.Value = TimeLimit;
+
+            float duration = InitialMatchDuration.Value > 0f ? InitialMatchDuration.Value : DefaultTimeLimit;
+            InitialMatchDuration.Value = duration;
+            MatchTimeRemaining.Value = duration;
+
+            if (TargetScoreLimit.Value <= 0)
+            {
+                TargetScoreLimit.Value = DefaultKillLimit;
+            }
+
             MatchInProgress.Value = true;
-            Debug.Log("[FFAMode] Match Started!");
+            Debug.Log($"[FFAMode] Match Started! Duration: {duration}s, KillLimit: {TargetScoreLimit.Value}");
             
             // Ensure all players are positioned at valid FFA spawn points
             if (NetworkBootstrapper.Instance != null)
@@ -37,18 +47,21 @@ namespace Shootopia
         {
             if (!IsServer || !MatchInProgress.Value) return;
 
-            // Track base scoring (increments kills/deaths in base dictionaries)
+            // Track base scoring (increments kills or penalizes -1 for self death)
             base.OnPlayerKilled(killerClientId, victimClientId);
 
-            int killerKills = PlayerKills.TryGetValue(killerClientId, out var k) ? k : 0;
+            bool isSelfDeath = (killerClientId == victimClientId);
+            ulong scoreTargetId = isSelfDeath ? victimClientId : killerClientId;
+            int currentKills = PlayerKills.TryGetValue(scoreTargetId, out var k) ? k : 0;
 
             // Replicate score change to all clients (for visual feed)
-            SyncPlayerKillsClientRpc(killerClientId, killerKills);
+            SyncPlayerKillsClientRpc(scoreTargetId, currentKills);
 
-            Debug.Log($"[FFAMode] Player {killerClientId} killed Player {victimClientId}. Total Kills: {killerKills}");
+            Debug.Log($"[FFAMode] Player {killerClientId} killed Player {victimClientId}. Target {scoreTargetId} Score: {currentKills}");
 
-            // Win condition check
-            if (killerKills >= KillLimit)
+            // Win condition check (only on legitimate kills, not suicide)
+            int effectiveLimit = TargetScoreLimit.Value > 0 ? TargetScoreLimit.Value : DefaultKillLimit;
+            if (!isSelfDeath && currentKills >= effectiveLimit)
             {
                 OnMatchEnd();
             }

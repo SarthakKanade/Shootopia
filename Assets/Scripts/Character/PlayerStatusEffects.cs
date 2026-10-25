@@ -41,12 +41,25 @@ namespace Shootopia
         /// </summary>
         public void ApplyFreeze(float duration, float slowPercent, bool isDirectHit)
         {
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
+            {
+                Debug.Log($"[PlayerStatusEffects] Shield blocked freeze on {gameObject.name}");
+                return;
+            }
+
             ApplyFreezeRpc(duration, slowPercent, isDirectHit);
         }
 
         [Rpc(SendTo.Everyone)]
         private void ApplyFreezeRpc(float duration, float slowPercent, bool isDirectHit)
         {
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
+            {
+                return;
+            }
+
             if (_freezeRoutine != null) StopCoroutine(_freezeRoutine);
             _freezeRoutine = StartCoroutine(FreezeRoutine(duration, slowPercent, isDirectHit));
         }
@@ -91,6 +104,13 @@ namespace Shootopia
         /// </summary>
         public void ApplyBurn(float duration = 5.0f, float dps = 5.0f, WeaponSO weaponUsed = null)
         {
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
+            {
+                Debug.Log($"[PlayerStatusEffects] Shield blocked burn on {gameObject.name}");
+                return;
+            }
+
             ApplyBurnRpc(duration, dps);
         }
 
@@ -114,8 +134,51 @@ namespace Shootopia
         [Rpc(SendTo.Everyone)]
         private void ApplyBurnRpc(float duration, float dps)
         {
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
+            {
+                return;
+            }
+
             if (_burnRoutine != null) StopCoroutine(_burnRoutine);
             _burnRoutine = StartCoroutine(BurnRoutine(duration, dps));
+        }
+
+        public void ClearAllEffects()
+        {
+            if (IsSpawned)
+            {
+                ClearAllEffectsRpc();
+            }
+            else
+            {
+                ClearAllEffectsInternal();
+            }
+        }
+
+        [Rpc(SendTo.Everyone)]
+        private void ClearAllEffectsRpc()
+        {
+            ClearAllEffectsInternal();
+        }
+
+        private void ClearAllEffectsInternal()
+        {
+            if (_freezeRoutine != null)
+            {
+                StopCoroutine(_freezeRoutine);
+                _freezeRoutine = null;
+            }
+            if (_burnRoutine != null)
+            {
+                StopCoroutine(_burnRoutine);
+                _burnRoutine = null;
+            }
+            _isFrozen = false;
+            _isBurning = false;
+            ClearMaterialPropertyBlock();
+            if (_motor != null) _motor.MoveSpeedMultiplier = 1f;
+            if (_animator != null) _animator.speed = 1f;
         }
 
         private IEnumerator BurnRoutine(float duration, float dps)
@@ -139,7 +202,7 @@ namespace Shootopia
 
                 if (_health != null && _health.IsDead) break;
 
-                if (IsServer && _health != null)
+                if (IsServer && _health != null && damagePerTick > 0f)
                 {
                     _health.TakeDamage(damagePerTick, DamageType.Environment, null);
                 }

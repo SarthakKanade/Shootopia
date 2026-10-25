@@ -34,7 +34,7 @@ namespace Shootopia
                 {
                     var go = new GameObject("CursorManager");
                     Instance = go.AddComponent<CursorManager>();
-                    DontDestroyOnLoad(go);
+                    if (Application.isPlaying) DontDestroyOnLoad(go);
                 }
             }
         }

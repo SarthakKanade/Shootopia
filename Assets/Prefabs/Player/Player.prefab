@@ -1845,6 +1845,7 @@ GameObject:
   - component: {fileID: 4872018251373267336}
   - component: {fileID: 2478989861564929547}
   - component: {fileID: 2478989861564929548}
+  - component: {fileID: 8432067926248955460}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -1962,7 +1963,6 @@ MonoBehaviour:
   rollDuration: 0.55
   animDamp: 0.1
   playerAudioConfig: {fileID: 11400000, guid: d8cdfa638395a4e8da3ce99cb4f256a4, type: 2}
-  footstepInterval: 0.32
 --- !u!114 &6599126753263224262
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2168,6 +2168,7 @@ MonoBehaviour:
   spawnVFXPrefab: {fileID: 0}
   deathSound: {fileID: 8300000, guid: 19568b1d6dac4ed4d886084097a1e944, type: 3}
   spawnSound: {fileID: 8300000, guid: f790d7f529634200b67ccfa75123ba3e, type: 3}
+  spawnInvincibilityDuration: 5
 --- !u!114 &4872018251373267336
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2216,6 +2217,23 @@ MonoBehaviour:
   stealthTranslucentMaterial: {fileID: 2100000, guid: 3e789f28d71b4028bc451290aa38fe11, type: 2}
   stealthActivateClip: {fileID: 0}
   stealthDeactivateClip: {fileID: 0}
+--- !u!114 &8432067926248955460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7210435080476062726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff52d4bcaf6d0493db459ee330c7d776, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Shootopia.PlayerCharacterVisuals
+  ShowTopMostFoldoutHeaderGroup: 1
+  maleBody: {fileID: 0}
+  maleHead: {fileID: 0}
+  femaleBody: {fileID: 0}
+  femaleHead: {fileID: 0}
 --- !u!1 &7229999994105598464
 GameObject:
   m_ObjectHideFlags: 0

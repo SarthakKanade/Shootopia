@@ -477,7 +477,7 @@ namespace Shootopia
 
                 int blue = tdm.ScoreBlue;
                 int red = tdm.ScoreRed;
-                const int limit = 15;
+                int limit = (tdm != null && tdm.TargetScoreLimit.Value > 0) ? tdm.TargetScoreLimit.Value : 15;
 
                 int localTeam = tdm.GetPlayerTeam(localId);
 
@@ -511,6 +511,7 @@ namespace Shootopia
                 int kills = ffa.GetPlayerKills(localId);
                 int rank = ffa.GetPlayerRank(localId);
                 int totalPlayers = NetworkManager.Singleton != null ? NetworkManager.Singleton.ConnectedClientsList.Count : 1;
+                int limit = (ffa != null && ffa.TargetScoreLimit.Value > 0) ? ffa.TargetScoreLimit.Value : 10;
 
                 if (placementText != null)
                 {
@@ -519,10 +520,10 @@ namespace Shootopia
 
                 if (scoreText != null)
                 {
-                    scoreText.text = $"<color=#00F0FF>{kills}</color> <size=12><color=#8A99B5>/ 10 KILLS</color></size>";
+                    scoreText.text = $"<color=#00F0FF>{kills}</color> <size=12><color=#8A99B5>/ {limit} KILLS</color></size>";
                 }
 
-                if (matchLimitText != null) matchLimitText.text = "FIRST TO 10";
+                if (matchLimitText != null) matchLimitText.text = $"FIRST TO {limit}";
                 if (gameModeBadgeText != null) gameModeBadgeText.text = "FREE FOR ALL";
             }
             else
@@ -1129,13 +1130,14 @@ namespace Shootopia
             }
 
             // Trigger local player banners
-            if (isLocalKiller)
+            if (isLocalKiller && !isLocalVictim)
             {
                 ShowEliminationBanner(victimName, weaponName);
             }
             else if (isLocalVictim)
             {
-                ShowDeathBanner(killerName, weaponName);
+                string displayKiller = (killerId == victimId) ? (weaponName == "Lava" ? "Lava" : "Self") : killerName;
+                ShowDeathBanner(displayKiller, weaponName);
             }
 
             // Spawn Kill Feed Item with icon & team identification

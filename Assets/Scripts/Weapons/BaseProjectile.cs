@@ -47,6 +47,8 @@ namespace Shootopia
                 if (targetHealth != null)
                 {
                     targetHealth.LastAttackerClientId = attackerId;
+                    targetHealth.TakeDamage(amount, type, _weaponData, attackerId);
+                    return;
                 }
             }
 

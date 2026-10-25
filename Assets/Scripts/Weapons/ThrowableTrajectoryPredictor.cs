@@ -23,11 +23,52 @@ namespace Shootopia
             _lineRenderer = GetComponent<LineRenderer>();
             _lineRenderer.useWorldSpace = true;
 
-            // Configure LineRenderer visuals if not pre-configured
-            _lineRenderer.startWidth = 0.08f;
-            _lineRenderer.endWidth = 0.04f;
+            // Configure URP LineRenderer materials & visuals
+            if (_lineRenderer.sharedMaterial == null || 
+                _lineRenderer.sharedMaterial.shader.name.Contains("Default") || 
+                _lineRenderer.sharedMaterial.shader.name.Contains("InternalErrorShader") ||
+                _lineRenderer.sharedMaterial.shader.name.Contains("Standard"))
+            {
+                var mat = Resources.Load<Material>("DashedLineMat");
+                if (mat != null)
+                {
+                    _lineRenderer.material = mat;
+                }
+                else
+                {
+                    var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                    if (shader != null)
+                    {
+                        var m = new Material(shader);
+                        m.color = new Color(0f, 0.95f, 1f, 0.9f);
+                        _lineRenderer.material = m;
+                    }
+                }
+            }
+
+            _lineRenderer.startWidth = 0.09f;
+            _lineRenderer.endWidth = 0.05f;
+            _lineRenderer.textureMode = LineTextureMode.Tile;
+            _lineRenderer.alignment = LineAlignment.View;
+            _lineRenderer.numCapVertices = 4;
+            _lineRenderer.numCornerVertices = 4;
+            _lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _lineRenderer.receiveShadows = false;
             _lineRenderer.positionCount = 0;
             _lineRenderer.enabled = false;
+
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { 
+                    new GradientColorKey(new Color(0.0f, 0.95f, 1.0f), 0.0f), 
+                    new GradientColorKey(new Color(0.2f, 0.6f, 1.0f), 1.0f) 
+                },
+                new GradientAlphaKey[] { 
+                    new GradientAlphaKey(0.95f, 0.0f), 
+                    new GradientAlphaKey(0.80f, 1.0f) 
+                }
+            );
+            _lineRenderer.colorGradient = gradient;
 
             if (impactMarkerPrefab != null)
             {
@@ -36,7 +77,6 @@ namespace Shootopia
             }
             else
             {
-                // Create fallback impact marker if prefab is not set
                 CreateFallbackImpactMarker();
             }
         }
@@ -46,18 +86,30 @@ namespace Shootopia
             _impactMarkerInstance = GameObject.CreatePrimitive(PrimitiveType.Quad);
             _impactMarkerInstance.name = "ImpactMarker_Fallback";
             Destroy(_impactMarkerInstance.GetComponent<Collider>());
-            _impactMarkerInstance.transform.localScale = new Vector3(0.6f, 0.6f, 0.6f);
+            _impactMarkerInstance.transform.localScale = new Vector3(0.75f, 0.75f, 0.75f);
 
             var mr = _impactMarkerInstance.GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                Shader shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-                if (shader != null)
+                var reticleMat = Resources.Load<Material>("TrajectoryImpactReticle");
+                if (reticleMat != null)
                 {
-                    Material mat = new Material(shader);
-                    mat.color = new Color(1f, 0.2f, 0.2f, 0.75f);
-                    mr.material = mat;
+                    mr.material = reticleMat;
                 }
+                else
+                {
+                    Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                    if (shader != null)
+                    {
+                        Material mat = new Material(shader);
+                        mat.SetFloat("_Surface", 1f);
+                        mat.SetFloat("_Blend", 0f);
+                        mat.color = new Color(0f, 0.95f, 1f, 0.85f);
+                        mr.material = mat;
+                    }
+                }
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
             }
             _impactMarkerInstance.SetActive(false);
         }
@@ -113,8 +165,8 @@ namespace Shootopia
                             if (_impactMarkerInstance != null)
                             {
                                 _impactMarkerInstance.SetActive(true);
-                                _impactMarkerInstance.transform.position = hit.point + hit.normal * 0.02f;
-                                _impactMarkerInstance.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                                _impactMarkerInstance.transform.position = hit.point + hit.normal * 0.025f;
+                                _impactMarkerInstance.transform.rotation = Quaternion.LookRotation(-hit.normal);
                             }
 
                             hitFound = true;

@@ -224,22 +224,31 @@ namespace Shootopia
 
             Collider[] hitColliders = Physics.OverlapSphere(poc, blastRadius);
             var processedTargets = new HashSet<IDamageable>();
+            var processedPlayers = new HashSet<PlayerHealth>();
             ulong attackerId = GetAttackerClientId();
 
             foreach (var col in hitColliders)
             {
                 if (col == null) continue;
-                if (_weaponData != null && !_weaponData.selfDamage && _owner != null && col.transform.root == _owner.transform.root)
+                bool isOwner = (_owner != null && col.transform.root == _owner.transform.root);
+                bool allowSelfDamage = (_weaponData != null && (_weaponData.selfDamage || _weaponData.isExplosive));
+                if (isOwner && !allowSelfDamage)
                     continue;
 
-                var targetDamageable = col.GetComponentInParent<IDamageable>() ?? col.GetComponent<IDamageable>();
-                if (targetDamageable == null || processedTargets.Contains(targetDamageable)) continue;
-
-                processedTargets.Add(targetDamageable);
+                IDamageable targetDamageable = null;
+                var targetHealth = col.GetComponentInParent<PlayerHealth>() ?? col.GetComponent<PlayerHealth>();
+                if (targetHealth != null)
+                {
+                    if (!processedPlayers.Add(targetHealth)) continue;
+                }
+                else
+                {
+                    targetDamageable = col.GetComponentInParent<IDamageable>() ?? col.GetComponent<IDamageable>();
+                    if (targetDamageable == null || !processedTargets.Add(targetDamageable)) continue;
+                }
 
                 if (IsOwnerProjectile())
                 {
-                    var targetHealth = col.GetComponentInParent<PlayerHealth>() ?? col.GetComponent<PlayerHealth>();
                     if (targetHealth != null) targetHealth.LastAttackerClientId = attackerId;
 
                     // Check if this target was directly struck by the projectile (head-on direct hit)
@@ -272,20 +281,25 @@ namespace Shootopia
                         targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
                     }
 
-                    // Freeze status effect
+                    // Freeze status effect (blocked if target has an active or recently-absorbed shield)
                     if (IsFreezeWeapon() && targetHealth != null)
                     {
-                        if (isDirect)
+                        var targetShield = targetHealth.GetComponent<PlayerShield>();
+                        bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
+                        if (!shieldBlocked)
                         {
-                            targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
-                        }
-                        else
-                        {
-                            float maxSlow = _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
-                            float minSlow = _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
-                            float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
-                            float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
-                            targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
+                            if (isDirect)
+                            {
+                                targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                            }
+                            else
+                            {
+                                float maxSlow = _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
+                                float minSlow = _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
+                                float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
+                                float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
+                                targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
+                            }
                         }
                     }
                 }
@@ -305,12 +319,15 @@ namespace Shootopia
                 {
                     targetHealth.LastAttackerClientId = attackerId;
 
-                    if (IsFreezeWeapon())
+                    var targetShield = targetHealth.GetComponent<PlayerShield>();
+                    bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
+
+                    if (IsFreezeWeapon() && !shieldBlocked)
                     {
                         targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
                     }
 
-                    if (IsFireWeapon())
+                    if (IsFireWeapon() && !shieldBlocked)
                     {
                         float duration = _weaponData.afterburnDuration > 0f ? _weaponData.afterburnDuration : 5.0f;
                         float dps = _weaponData.afterburnDPS > 0f ? _weaponData.afterburnDPS : 5.0f;

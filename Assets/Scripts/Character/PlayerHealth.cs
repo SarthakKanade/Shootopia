@@ -50,12 +50,14 @@ namespace Shootopia
         private Coroutine _invincibilityFlashRoutine;
         private Coroutine _hideModelRoutine;
         private GameObject _invincibilityAuraInstance;
+        private Material _invincibilitySkinMaterial;
         private PlayerStatusEffects _statusEffects;
 
         public bool IsDead => _isDead;
         public bool IsInvincible => _isInvincible;
         public bool IsFrozen => _statusEffects != null && _statusEffects.IsFrozen;
         public bool IsBurning => _statusEffects != null && _statusEffects.IsBurning;
+        public float SpawnInvincibilityDuration => spawnInvincibilityDuration;
 
         public static readonly System.Collections.Generic.List<PlayerHealth> ActivePlayers = new System.Collections.Generic.List<PlayerHealth>();
 
@@ -102,8 +104,16 @@ namespace Shootopia
                     if (sp != null) Teleport(sp.position);
                 }
 
-                // Initial match spawn invincibility (5 seconds)
-                StartInvincibilityServer(spawnInvincibilityDuration);
+                // Only grant spawn invincibility on spawn if match is already active (e.g. late join during active match) or offline sandbox
+                bool isMatchActive = (GameModeBase.Instance != null && (GameModeBase.Instance.MatchActive.Value || GameModeBase.Instance.IsInProgress))
+                                     || (NetworkedGameManager.Instance != null && 
+                                         (NetworkedGameManager.Instance.MatchStarted.Value || 
+                                          (NetworkedGameManager.Instance.ActiveGameMode != null && (NetworkedGameManager.Instance.ActiveGameMode.MatchActive.Value || NetworkedGameManager.Instance.ActiveGameMode.IsInProgress))))
+                                     || (NetworkedGameManager.Instance == null);
+                if (isMatchActive)
+                {
+                    StartInvincibilityServer(spawnInvincibilityDuration);
+                }
             }
 
             onHpChanged?.Raise(_currentHp.Value);
@@ -111,8 +121,8 @@ namespace Shootopia
 
         private void Start()
         {
-            // Offline sandbox initial spawn invincibility (5 seconds)
-            if (!IsSpawned || !NetworkManager.Singleton.IsListening)
+            // Pure offline / non-networked initial spawn invincibility (5 seconds)
+            if (!IsSpawned || (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening))
             {
                 StartInvincibilityLocal(spawnInvincibilityDuration);
             }
@@ -127,14 +137,25 @@ namespace Shootopia
                 Destroy(_invincibilityAuraInstance);
                 _invincibilityAuraInstance = null;
             }
+            if (_invincibilitySkinMaterial != null)
+            {
+                Destroy(_invincibilitySkinMaterial);
+                _invincibilitySkinMaterial = null;
+            }
         }
 
-        private void OnDestroy()
+        public override void OnDestroy()
         {
+            base.OnDestroy();
             if (_invincibilityAuraInstance != null)
             {
                 Destroy(_invincibilityAuraInstance);
                 _invincibilityAuraInstance = null;
+            }
+            if (_invincibilitySkinMaterial != null)
+            {
+                Destroy(_invincibilitySkinMaterial);
+                _invincibilitySkinMaterial = null;
             }
         }
 
@@ -180,12 +201,15 @@ namespace Shootopia
 
         public void TakeDamage(float amount, DamageType type, WeaponSO weaponUsed, ulong attackerClientId)
         {
-            if (_isDead || _isInvincible) return;
+            bool isLethalAbyss = (type == DamageType.Environment && amount >= 9000f);
+            if (_isDead || (_isInvincible && !isLethalAbyss)) return;
 
             string weaponName = weaponUsed != null ? (!string.IsNullOrEmpty(weaponUsed.weaponName) ? weaponUsed.weaponName : weaponUsed.name)
-                              : (type == DamageType.Melee ? "Melee" : "Unknown");
+                              : (type == DamageType.Melee ? "Melee" : (type == DamageType.Environment ? "Lava" : "Unknown"));
 
-            ulong resolvedAttacker = (attackerClientId != ulong.MaxValue) ? attackerClientId : LastAttackerClientId;
+            ulong resolvedAttacker = (attackerClientId != ulong.MaxValue) 
+                ? attackerClientId 
+                : (type == DamageType.Environment || NetworkManager.Singleton == null || !NetworkManager.Singleton.ConnectedClients.ContainsKey(LastAttackerClientId) ? OwnerClientId : LastAttackerClientId);
 
             if (IsSpawned)
             {
@@ -194,8 +218,16 @@ namespace Shootopia
             else
             {
                 // Offline / sandbox fallback
+                float damageToApply = amount;
+                var shield = GetComponent<PlayerShield>();
+                if (shield != null && shield.IsShieldActive)
+                {
+                    damageToApply = shield.AbsorbDamage(damageToApply);
+                    if (damageToApply <= 0f) return;
+                }
+
                 float previousHp = _currentHp.Value;
-                _currentHp.Value = Mathf.Max(_currentHp.Value - amount, 0f);
+                _currentHp.Value = Mathf.Max(_currentHp.Value - damageToApply, 0f);
                 float actual = previousHp - _currentHp.Value;
                 Vector3 fallbackPos = transform.position - transform.forward * 10f;
                 OnLocalPlayerDamagedWithPosition?.Invoke(fallbackPos, actual);
@@ -206,7 +238,8 @@ namespace Shootopia
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void TakeDamageServerRpc(float amount, DamageType type, string weaponName, ulong attackerClientId)
         {
-            if (!IsServer || _isDead || _isInvincible || _currentHp.Value <= 0f) return;
+            bool isLethalAbyss = (type == DamageType.Environment && amount >= 9000f);
+            if (!IsServer || _isDead || (_isInvincible && !isLethalAbyss) || _currentHp.Value <= 0f) return;
 
             // Inactive match or waiting room damage gating
             if (SceneManager.GetActiveScene().name == "WaitingRoom") return;
@@ -215,7 +248,8 @@ namespace Shootopia
                 ? NetworkedGameManager.Instance.ActiveGameMode 
                 : GameModeBase.Instance;
 
-            if (activeMode != null && !activeMode.MatchActive.Value) return;
+            bool isSelfOrEnvironment = (type == DamageType.Environment || attackerClientId == OwnerClientId);
+            if (!isSelfOrEnvironment && activeMode != null && !activeMode.MatchActive.Value) return;
 
             // TDM Friendly Fire prevention
             if (activeMode is TDMMode tdm)
@@ -286,10 +320,9 @@ namespace Shootopia
             _deathCount.Value++;
             _livesRemaining.Value = Mathf.Max(_livesRemaining.Value - 1, 0);
 
-            if (killerClientId != OwnerClientId)
-            {
-                NetworkedGameManager.ReportKill(killerClientId, OwnerClientId, weaponName);
-            }
+            ulong reportedKiller = (type == DamageType.Environment || killerClientId == ulong.MaxValue || killerClientId == OwnerClientId) ? OwnerClientId : killerClientId;
+            string reportedWeapon = (type == DamageType.Environment && (string.IsNullOrEmpty(weaponName) || weaponName == "Unknown")) ? "Lava" : weaponName;
+            NetworkedGameManager.ReportKill(reportedKiller, OwnerClientId, reportedWeapon);
 
             Vector3 spawnPos = new Vector3(120f, 16f, 2.5f);
             if (SpawnPointManager.Instance != null)
@@ -380,12 +413,18 @@ namespace Shootopia
                     yield break;
                 }
 
-                // In the last 1.2 seconds, pulse / blink the aura to signal it's ending
                 float remaining = duration - elapsed;
+                // In the last 1.2 seconds, blink the skin layer to signal it's ending
                 if (remaining < 1.2f && _invincibilityAuraInstance != null)
                 {
                     bool blinkVisible = (Mathf.FloorToInt(remaining * 8f) % 2) == 0;
                     _invincibilityAuraInstance.SetActive(blinkVisible);
+                }
+                else if (_invincibilitySkinMaterial != null)
+                {
+                    // Gentle, translucent breathing energy sheen across the skin layer
+                    float pulse = 0.70f + Mathf.Sin(elapsed * 5.0f) * 0.20f;
+                    _invincibilitySkinMaterial.SetColor("_EmissionColor", new Color(1.0f, 0.72f, 0.20f) * pulse);
                 }
 
                 elapsed += Time.deltaTime;
@@ -397,41 +436,92 @@ namespace Shootopia
             _invincibilityRoutine = null;
         }
 
+        private Material GetOrCreateInvincibilityMaterial()
+        {
+            if (_invincibilitySkinMaterial == null)
+            {
+                Shader s = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                _invincibilitySkinMaterial = new Material(s);
+                _invincibilitySkinMaterial.name = "InvincibilitySkinMat_Runtime";
+                _invincibilitySkinMaterial.SetFloat("_Surface", 1.0f); // Transparent
+                _invincibilitySkinMaterial.SetFloat("_Blend", 0.0f);   // 0 = Alpha blend for translucent see-through
+                _invincibilitySkinMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                _invincibilitySkinMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                _invincibilitySkinMaterial.SetInt("_ZWrite", 0);
+                _invincibilitySkinMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                _invincibilitySkinMaterial.EnableKeyword("_EMISSION");
+                _invincibilitySkinMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 100;
+                // Soft translucent amber-gold sheen (highly see-through, letting character clothes/textures show clearly)
+                _invincibilitySkinMaterial.SetColor("_BaseColor", new Color(1.0f, 0.82f, 0.25f, 0.20f));
+                _invincibilitySkinMaterial.SetColor("_EmissionColor", new Color(1.0f, 0.72f, 0.20f) * 0.75f);
+            }
+            return _invincibilitySkinMaterial;
+        }
+
         private void ShowInvincibilityAura(bool show)
         {
             if (show)
             {
-                if (_invincibilityAuraInstance == null)
+                if (_invincibilityAuraInstance == null || _invincibilityAuraInstance.transform.childCount == 0)
                 {
-                    _invincibilityAuraInstance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                    _invincibilityAuraInstance.name = "SpawnInvincibilityAura";
-                    _invincibilityAuraInstance.transform.SetParent(transform, false);
-                    _invincibilityAuraInstance.transform.localPosition = new Vector3(0f, 1.0f, 0f);
-                    _invincibilityAuraInstance.transform.localScale = new Vector3(1.85f, 2.2f, 1.85f);
-
-                    // Strictly remove collider so it never blocks shots or player raycasts
-                    var col = _invincibilityAuraInstance.GetComponent<Collider>();
-                    if (col != null) Destroy(col);
-
-                    var rend = _invincibilityAuraInstance.GetComponent<Renderer>();
-                    if (rend != null)
+                    if (_invincibilityAuraInstance != null)
                     {
-                        var mat = Resources.Load<Material>("SpawnInvincibility_Mat");
-                        if (mat != null)
-                        {
-                            rend.material = new Material(mat);
-                        }
-                        else
-                        {
-                            Shader s = Shader.Find("Shootopia/ForcefieldBarrier") ?? Shader.Find("Universal Render Pipeline/Lit");
-                            var runtimeMat = new Material(s);
-                            runtimeMat.SetColor("_BaseColor", new Color(1.0f, 0.45f, 0.05f, 0.4f));
-                            runtimeMat.SetColor("_RimColor", new Color(1.0f, 0.75f, 0.2f, 1f));
-                            runtimeMat.SetFloat("_Alpha", 0.75f);
-                            rend.material = runtimeMat;
-                        }
+                        Destroy(_invincibilityAuraInstance);
+                    }
+
+                    // Body-hugging translucent skin overlay across the player's active model itself (COD / PUBG spawn protection style)
+                    _invincibilityAuraInstance = new GameObject("SpawnInvincibilitySkinLayer");
+                    _invincibilityAuraInstance.transform.SetParent(transform, false);
+                    _invincibilityAuraInstance.transform.localPosition = Vector3.zero;
+                    _invincibilityAuraInstance.transform.localRotation = Quaternion.identity;
+                    _invincibilityAuraInstance.transform.localScale = Vector3.one;
+
+                    var mat = GetOrCreateInvincibilityMaterial();
+
+                    // 1. SkinnedMeshRenderers (body, head, limbs) - strictly matching only the currently ACTIVE model (Vanguard or Valkyrie)
+                    var smrs = GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                    foreach (var smr in smrs)
+                    {
+                        if (smr == null || smr.transform.IsChildOf(_invincibilityAuraInstance.transform)) continue;
+                        if (!smr.gameObject.activeInHierarchy || !smr.enabled) continue; // Skip inactive character variants
+
+                        var overlayObj = new GameObject($"{smr.gameObject.name}_SkinOverlay");
+                        overlayObj.transform.SetParent(_invincibilityAuraInstance.transform, false);
+
+                        var overlaySmr = overlayObj.AddComponent<SkinnedMeshRenderer>();
+                        overlaySmr.sharedMesh = smr.sharedMesh;
+                        overlaySmr.bones = smr.bones;
+                        overlaySmr.rootBone = smr.rootBone;
+                        overlaySmr.material = mat;
+                        overlaySmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        overlaySmr.receiveShadows = false;
+                    }
+
+                    // 2. MeshRenderers (helmets, attachments, props if any)
+                    var mrs = GetComponentsInChildren<MeshRenderer>(true);
+                    foreach (var mr in mrs)
+                    {
+                        if (mr == null || mr.transform.IsChildOf(_invincibilityAuraInstance.transform)) continue;
+                        if (!mr.gameObject.activeInHierarchy || !mr.enabled) continue;
+                        var mf = mr.GetComponent<MeshFilter>();
+                        if (mf == null || mf.sharedMesh == null) continue;
+
+                        var overlayObj = new GameObject($"{mr.gameObject.name}_SkinOverlay");
+                        overlayObj.transform.SetParent(mr.transform, false);
+                        overlayObj.transform.localPosition = Vector3.zero;
+                        overlayObj.transform.localRotation = Quaternion.identity;
+                        overlayObj.transform.localScale = Vector3.one;
+
+                        var overlayFilter = overlayObj.AddComponent<MeshFilter>();
+                        overlayFilter.sharedMesh = mf.sharedMesh;
+
+                        var overlayRend = overlayObj.AddComponent<MeshRenderer>();
+                        overlayRend.material = mat;
+                        overlayRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        overlayRend.receiveShadows = false;
                     }
                 }
+
                 _invincibilityAuraInstance.SetActive(true);
             }
             else
@@ -661,11 +751,32 @@ namespace Shootopia
             var invis = GetComponent<PlayerInvisibility>();
             if (invis != null) invis.ResetInvisibility();
 
-            ResetPlayerClientRpc(position, rotation.HasValue ? rotation.Value : transform.rotation);
+            bool isMatchActive = (GameModeBase.Instance != null && (GameModeBase.Instance.MatchActive.Value || GameModeBase.Instance.IsInProgress))
+                                 || (NetworkedGameManager.Instance != null && 
+                                     (NetworkedGameManager.Instance.MatchStarted.Value || 
+                                      (NetworkedGameManager.Instance.ActiveGameMode != null && (NetworkedGameManager.Instance.ActiveGameMode.MatchActive.Value || NetworkedGameManager.Instance.ActiveGameMode.IsInProgress))))
+                                 || (NetworkedGameManager.Instance == null);
+
+            if (isMatchActive)
+            {
+                StartInvincibilityServer(spawnInvincibilityDuration);
+            }
+            else
+            {
+                if (_invincibilityRoutine != null)
+                {
+                    StopCoroutine(_invincibilityRoutine);
+                    _invincibilityRoutine = null;
+                }
+                _isInvincible = false;
+                ShowInvincibilityAura(false);
+            }
+
+            ResetPlayerClientRpc(position, rotation.HasValue ? rotation.Value : transform.rotation, isMatchActive);
         }
 
         [ClientRpc]
-        private void ResetPlayerClientRpc(Vector3 position, Quaternion rotation)
+        private void ResetPlayerClientRpc(Vector3 position, Quaternion rotation, bool grantInvincibility = false)
         {
             _isDead = false;
             SetCharacterPosition(position);
@@ -692,6 +803,21 @@ namespace Shootopia
 
             var invis = GetComponent<PlayerInvisibility>();
             if (invis != null && !IsServer) invis.ResetInvisibility();
+
+            if (grantInvincibility)
+            {
+                StartInvincibilityLocal(spawnInvincibilityDuration);
+            }
+            else
+            {
+                if (_invincibilityRoutine != null)
+                {
+                    StopCoroutine(_invincibilityRoutine);
+                    _invincibilityRoutine = null;
+                }
+                _isInvincible = false;
+                ShowInvincibilityAura(false);
+            }
         }
 
         #endregion
@@ -700,12 +826,26 @@ namespace Shootopia
 
         public void ApplyFreezeEffect(float duration, float slowPercent, bool isDirectHit)
         {
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
+            {
+                Debug.Log($"[PlayerHealth] Freeze effect blocked by active or recently-absorbed shield on {gameObject.name}");
+                return;
+            }
+
             if (_statusEffects == null) _statusEffects = GetComponent<PlayerStatusEffects>() ?? gameObject.AddComponent<PlayerStatusEffects>();
             _statusEffects.ApplyFreeze(duration, slowPercent, isDirectHit);
         }
 
         public void ApplyBurnEffect(float duration = 5.0f, float dps = 5.0f, WeaponSO weaponUsed = null)
         {
+            var shield = GetComponent<PlayerShield>();
+            if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
+            {
+                Debug.Log($"[PlayerHealth] Burn effect blocked by active or recently-absorbed shield on {gameObject.name}");
+                return;
+            }
+
             if (_statusEffects == null) _statusEffects = GetComponent<PlayerStatusEffects>() ?? gameObject.AddComponent<PlayerStatusEffects>();
             _statusEffects.ApplyBurn(duration, dps, weaponUsed);
         }

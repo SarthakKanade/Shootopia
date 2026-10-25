@@ -308,51 +308,58 @@ namespace Shootopia
 
             Collider[] hits = Physics.OverlapSphere(poc, radius);
             var damagedTargets = new System.Collections.Generic.HashSet<IDamageable>();
+            var damagedPlayers = new System.Collections.Generic.HashSet<PlayerHealth>();
 
             foreach (Collider c in hits)
             {
                 if (c == null) continue;
-                var t = c.GetComponentInParent<IDamageable>() ?? c.GetComponent<IDamageable>();
-                if (t != null)
+                var targetHealth = c.GetComponentInParent<PlayerHealth>() ?? c.GetComponent<PlayerHealth>();
+                var targetDamageable = c.GetComponentInParent<IDamageable>() ?? c.GetComponent<IDamageable>();
+                if (targetDamageable == null) continue;
+
+                if (targetHealth != null)
                 {
-                    if (!damagedTargets.Add(t)) continue;
+                    if (!damagedPlayers.Add(targetHealth)) continue;
+                }
+                else
+                {
+                    if (!damagedTargets.Add(targetDamageable)) continue;
+                }
 
-                    bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
-                    if (isServerOrOffline)
+                bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
+                if (isServerOrOffline)
+                {
+                    if (targetHealth != null)
                     {
-                        var targetHealth = c.GetComponentInParent<PlayerHealth>() ?? c.GetComponent<PlayerHealth>();
-                        if (targetHealth != null)
-                        {
-                            targetHealth.LastAttackerClientId = (ulong)_ownerID;
-                        }
+                        targetHealth.LastAttackerClientId = (ulong)_ownerID;
+                    }
 
-                        Vector3 closestPt;
-                        try { closestPt = c.ClosestPoint(poc); }
-                        catch { closestPt = c.bounds.ClosestPoint(poc); }
+                    Vector3 closestPt;
+                    try { closestPt = c.ClosestPoint(poc); }
+                    catch { closestPt = c.bounds.ClosestPoint(poc); }
 
-                        float dist = Vector3.Distance(poc, closestPt);
+                    float dist = Vector3.Distance(poc, closestPt);
 
-                        // If target tripped the mine (within trigger radius), guarantee max 100 damage kill; smooth falloff to minDmg towards blast radius
-                        float calculatedDamage;
-                        if (dist <= triggerRadius)
-                        {
-                            calculatedDamage = maxDmg;
-                        }
-                        else
-                        {
-                            float normDist = Mathf.Clamp01((dist - triggerRadius) / Mathf.Max(0.1f, radius - triggerRadius));
-                            calculatedDamage = Mathf.Lerp(maxDmg, minDmg, normDist);
-                        }
-                        calculatedDamage = Mathf.Clamp(calculatedDamage, minDmg, maxDmg);
+                    // If target tripped the mine (within trigger radius), guarantee max 100 damage kill; smooth falloff to minDmg towards blast radius
+                    float calculatedDamage;
+                    if (dist <= triggerRadius)
+                    {
+                        calculatedDamage = maxDmg;
+                    }
+                    else
+                    {
+                        float normDist = Mathf.Clamp01((dist - triggerRadius) / Mathf.Max(0.1f, radius - triggerRadius));
+                        calculatedDamage = Mathf.Lerp(maxDmg, minDmg, normDist);
+                    }
+                    calculatedDamage = Mathf.Clamp(calculatedDamage, minDmg, maxDmg);
 
-                        if (targetHealth != null)
-                        {
-                            targetHealth.TakeDamage(calculatedDamage, DamageType.Explosion, _data, (ulong)_ownerID);
-                        }
-                        else
-                        {
-                            t.TakeDamage(calculatedDamage, DamageType.Explosion, _data);
-                        }
+                    if (targetHealth != null)
+                    {
+                        targetHealth.TakeDamage(calculatedDamage, DamageType.Explosion, _data, (ulong)_ownerID);
+                    }
+                    else
+                    {
+                        targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _data);
                     }
                 }
             }

@@ -95,7 +95,7 @@ namespace Shootopia
             // Set background styling
             if (backgroundImage != null)
             {
-                if (isLocalKiller)
+                if (isLocalKiller && !isLocalVictim)
                     backgroundImage.color = localKillBgColor;
                 else if (isLocalVictim)
                     backgroundImage.color = localDeathBgColor;

@@ -71,23 +71,28 @@ namespace Shootopia
 
                         Collider[] hits = Physics.OverlapSphere(transform.position, _radius, mask, QueryTriggerInteraction.Ignore);
                         var damagedEntities = new HashSet<IDamageable>();
+                        var damagedPlayers = new HashSet<PlayerHealth>();
 
                         for (int i = 0; i < hits.Length; i++)
                         {
                             var hit = hits[i];
                             if (hit == null) continue;
 
-                            var damageable = hit.GetComponentInParent<IDamageable>() ?? hit.GetComponent<IDamageable>();
-                            if (damageable != null && damagedEntities.Add(damageable))
+                            var ph = hit.GetComponentInParent<PlayerHealth>() ?? hit.GetComponent<PlayerHealth>();
+                            IDamageable damageable = null;
+                            if (ph != null)
                             {
-                                var ph = hit.GetComponentInParent<PlayerHealth>() ?? hit.GetComponent<PlayerHealth>();
-                                if (ph != null)
-                                {
-                                    ph.LastAttackerClientId = (ulong)_ownerID;
-                                }
-
-                                damageable.TakeDamage(damagePerTick, DamageType.Environment, _data);
+                                if (!damagedPlayers.Add(ph)) continue;
+                                ph.LastAttackerClientId = (ulong)_ownerID;
+                                damageable = ph;
                             }
+                            else
+                            {
+                                damageable = hit.GetComponentInParent<IDamageable>() ?? hit.GetComponent<IDamageable>();
+                                if (damageable == null || !damagedEntities.Add(damageable)) continue;
+                            }
+
+                            damageable.TakeDamage(damagePerTick, DamageType.Environment, _data);
                         }
                     }
                 }
