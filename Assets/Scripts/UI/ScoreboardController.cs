@@ -253,10 +253,11 @@ namespace Shootopia
                 hlg.childControlHeight = true;
                 hlg.spacing = 10;
 
-                CreateHeaderCol("RankHeader", headerObj.transform, "RANK", 70f, TextAlignmentOptions.MidlineLeft);
-                CreateHeaderCol("PlayerHeader", headerObj.transform, "PLAYER", 360f, TextAlignmentOptions.MidlineLeft);
-                CreateHeaderCol("KDHeader", headerObj.transform, "KILLS / DEATHS", 220f, TextAlignmentOptions.Center);
-                CreateHeaderCol("ScoreHeader", headerObj.transform, "SCORE", 160f, TextAlignmentOptions.MidlineRight);
+                CreateHeaderCol("RankHeader", headerObj.transform, "RANK", 65f, TextAlignmentOptions.MidlineLeft);
+                CreateHeaderCol("PlayerHeader", headerObj.transform, "PLAYER", 320f, TextAlignmentOptions.MidlineLeft);
+                CreateHeaderCol("KDHeader", headerObj.transform, "KILLS / DEATHS", 195f, TextAlignmentOptions.Center);
+                CreateHeaderCol("ScoreHeader", headerObj.transform, "SCORE", 135f, TextAlignmentOptions.MidlineRight);
+                CreateHeaderCol("PingHeader", headerObj.transform, "PING", 95f, TextAlignmentOptions.MidlineRight);
             }
 
             // Scroll View for live score rows
@@ -388,6 +389,7 @@ namespace Shootopia
                     int deaths = (activeMode != null) ? activeMode.GetPlayerDeaths(id) : 0;
                     int score = kills * 100 - deaths * 25;
                     if (score < 0) score = 0;
+                    int ping = NetworkPingUtility.GetCurrentPing(id);
 
                     playerEntries.Add(new ScoreRowData
                     {
@@ -396,6 +398,7 @@ namespace Shootopia
                         Kills = kills,
                         Deaths = deaths,
                         Score = score,
+                        Ping = ping,
                         IsLocal = (id == localClientId)
                     });
                 }
@@ -418,6 +421,7 @@ namespace Shootopia
         private void CreateScoreboardRow(int rank, ScoreRowData entry)
         {
             if (rowsContainer == null) return;
+            bool isHost = entry.IsLocal && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost;
 
             if (rowPrefab != null)
             {
@@ -431,6 +435,16 @@ namespace Shootopia
                     texts[1].text = entry.PlayerName;
                     texts[2].text = $"{entry.Kills} K / {entry.Deaths} D";
                     texts[3].text = $"{entry.Score} PTS";
+                }
+
+                if (texts.Length >= 5)
+                {
+                    texts[4].text = NetworkPingUtility.FormatPingString(entry.Ping, isHost);
+                    texts[4].color = NetworkPingUtility.GetPingColor(entry.Ping);
+                }
+                else
+                {
+                    CreatePingCol(rowObj.transform, entry.Ping, isHost, 95f);
                 }
 
                 if (entry.IsLocal && bgImg != null)
@@ -457,10 +471,31 @@ namespace Shootopia
                 hlg.childControlHeight = true;
                 hlg.spacing = 10;
 
-                CreateHeaderCol("Rank", rowObj.transform, $"#{rank}", 70f, TextAlignmentOptions.MidlineLeft);
-                CreateHeaderCol("Player", rowObj.transform, entry.PlayerName, 360f, TextAlignmentOptions.MidlineLeft);
-                CreateHeaderCol("KD", rowObj.transform, $"{entry.Kills} K / {entry.Deaths} D", 220f, TextAlignmentOptions.Center);
-                CreateHeaderCol("Score", rowObj.transform, $"{entry.Score} PTS", 160f, TextAlignmentOptions.MidlineRight);
+                CreateHeaderCol("Rank", rowObj.transform, $"#{rank}", 65f, TextAlignmentOptions.MidlineLeft);
+                CreateHeaderCol("Player", rowObj.transform, entry.PlayerName, 320f, TextAlignmentOptions.MidlineLeft);
+                CreateHeaderCol("KD", rowObj.transform, $"{entry.Kills} K / {entry.Deaths} D", 195f, TextAlignmentOptions.Center);
+                CreateHeaderCol("Score", rowObj.transform, $"{entry.Score} PTS", 135f, TextAlignmentOptions.MidlineRight);
+                CreatePingCol(rowObj.transform, entry.Ping, isHost, 95f);
+            }
+        }
+
+        private void CreatePingCol(Transform parent, int ping, bool isHost, float width)
+        {
+            var colObj = new GameObject("Ping", typeof(RectTransform), typeof(TextMeshProUGUI));
+            colObj.transform.SetParent(parent, false);
+
+            var rt = colObj.GetComponent<RectTransform>();
+            if (rt != null) rt.sizeDelta = new Vector2(width, 28f);
+
+            var tmp = colObj.GetComponent<TextMeshProUGUI>();
+            if (tmp != null)
+            {
+                tmp.text = NetworkPingUtility.FormatPingString(ping, isHost);
+                tmp.fontSize = 14;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.color = NetworkPingUtility.GetPingColor(ping);
+                tmp.alignment = TextAlignmentOptions.MidlineRight;
+                if (modeTitleText != null) tmp.font = modeTitleText.font;
             }
         }
 
@@ -471,6 +506,7 @@ namespace Shootopia
             public int Kills;
             public int Deaths;
             public int Score;
+            public int Ping;
             public bool IsLocal;
         }
     }

@@ -26,6 +26,7 @@ namespace Shootopia
         [Header("Networked State")]
         private readonly NetworkVariable<bool> _isShieldActive = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private readonly NetworkVariable<float> _currentShieldHp = new NetworkVariable<float>(50f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private readonly NetworkVariable<float> _shieldTimeRemaining = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         private bool _localShieldActive = false;
         private float _localShieldHp = 50f;
@@ -35,6 +36,8 @@ namespace Shootopia
         public bool IsShieldActive => IsSpawned ? _isShieldActive.Value : _localShieldActive;
         public float CurrentShieldHp => IsSpawned ? _currentShieldHp.Value : _localShieldHp;
         public float MaxShieldHp => maxShieldHp;
+        public float ShieldTimeRemaining => IsSpawned ? _shieldTimeRemaining.Value : Mathf.Max(0f, maxShieldDuration - _shieldTimer);
+        public float MaxShieldDuration => maxShieldDuration;
 
         /// <summary>
         /// True if shield is actively up, OR if the shield absorbed damage / shattered within the current or previous frame (or within 0.35s).
@@ -157,6 +160,7 @@ namespace Shootopia
             if (IsServer && _isShieldActive.Value)
             {
                 _shieldTimer += Time.deltaTime;
+                _shieldTimeRemaining.Value = Mathf.Max(0f, maxShieldDuration - _shieldTimer);
                 if (_shieldTimer >= maxShieldDuration || _currentShieldHp.Value <= 0f)
                 {
                     DeactivateShieldInternal();
@@ -207,6 +211,7 @@ namespace Shootopia
             if (!IsServer) return;
             _currentShieldHp.Value = customShieldHp;
             _shieldTimer = 0f;
+            _shieldTimeRemaining.Value = maxShieldDuration;
             _isShieldActive.Value = true;
             GetComponent<PlayerStatusEffects>()?.ClearAllEffects();
             Debug.Log($"[PlayerShield] Custom shield granted for Player {OwnerClientId} ({customShieldHp} HP, 15s duration)");
@@ -216,6 +221,7 @@ namespace Shootopia
         {
             _currentShieldHp.Value = maxShieldHp;
             _shieldTimer = 0f;
+            _shieldTimeRemaining.Value = maxShieldDuration;
             _isShieldActive.Value = true;
             GetComponent<PlayerStatusEffects>()?.ClearAllEffects();
             Debug.Log($"[PlayerShield] Shield activated for Player {OwnerClientId} ({maxShieldHp} HP, {maxShieldDuration}s duration)");
@@ -227,6 +233,7 @@ namespace Shootopia
             _lastDamageAbsorptionTime = Time.time;
             _isShieldActive.Value = false;
             _shieldTimer = 0f;
+            _shieldTimeRemaining.Value = 0f;
             Debug.Log($"[PlayerShield] Shield deactivated/shattered for Player {OwnerClientId}");
         }
 

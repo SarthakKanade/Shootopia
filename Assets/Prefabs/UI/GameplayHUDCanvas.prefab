@@ -2581,6 +2581,24 @@ MonoBehaviour:
   killSound: {fileID: 8300000, guid: 042c7dc6b5c9e48259c599c1fc9bb0d4, type: 3}
   headshotKillSound: {fileID: 8300000, guid: 042c7dc6b5c9e48259c599c1fc9bb0d4, type: 3}
   deathSound: {fileID: 8300000, guid: 7e338f9689beb4e4ebc19ad8116ee3f0, type: 3}
+  powerUpRoot: {fileID: 0}
+  shieldBarRoot: {fileID: 0}
+  shieldFill: {fileID: 0}
+  shieldText: {fileID: 0}
+  shieldCanvasGroup: {fileID: 0}
+  invisibilityBarRoot: {fileID: 0}
+  invisibilityFill: {fileID: 0}
+  invisibilityText: {fileID: 0}
+  invisibilityCanvasGroup: {fileID: 0}
+  lowHealthVignetteGroup: {fileID: 0}
+  lowHealthHeartbeatClip: {fileID: 0}
+  respawnClip: {fileID: 0}
+  respawnCountdownText: {fileID: 0}
+  respawnProgressBarFill: {fileID: 0}
+  respawnCountdownRoot: {fileID: 0}
+  pingBadgeRoot: {fileID: 0}
+  pingText: {fileID: 0}
+  pingIndicatorDot: {fileID: 0}
 --- !u!114 &3382362698007907193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5049,22 +5067,28 @@ MonoBehaviour:
   settingsCanvasGroup: {fileID: 4461102114401422170}
   btnCloseSettings: {fileID: 5985857723280147096}
   sliderMasterVol: {fileID: 357852390992745559}
-  sliderMusicVol: {fileID: 5964353332345294131}
+  sliderMusicVol: {fileID: 0}
   sliderSFXVol: {fileID: 357852390992745559}
   sliderMouseSens: {fileID: 0}
-  labelMasterVol: {fileID: 0}
+  labelMasterVol: {fileID: 7965571923801807372}
   labelMusicVol: {fileID: 0}
   labelSFXVol: {fileID: 0}
   labelMouseSens: {fileID: 944847760301007673}
+  sliderFOV: {fileID: 5964353332345294131}
+  labelFOV: {fileID: 3188424345207238516}
   toggleInvertY: {fileID: 0}
   toggleFullscreen: {fileID: 0}
   switchInvertY: {fileID: 8050211899130858488}
   switchFullscreen: {fileID: 6280061838458626433}
   btnMinusSens: {fileID: 4731121476309009316}
   btnPlusSens: {fileID: 3014099225134223269}
-  btnActionLeave: {fileID: 6382778598087111521}
+  btnActionLeave: {fileID: 6325254120585095961}
   btnActionReset: {fileID: 934464251665788875}
   btnActionResume: {fileID: 9064842444628100696}
+  btnActionControls: {fileID: 0}
+  modalControls: {fileID: 0}
+  controlsCanvasGroup: {fileID: 0}
+  btnCloseControls: {fileID: 0}
   dropdownControlMode: {fileID: 0}
   sliderTouchSens: {fileID: 0}
   labelTouchSens: {fileID: 0}
@@ -5082,8 +5106,10 @@ MonoBehaviour:
   switchJoystickMode: {fileID: 96960917787829440}
   btnTabGeneral: {fileID: 8307544651951138973}
   btnTabTouch: {fileID: 6149750650498543717}
+  btnTabControls: {fileID: 0}
   tabContentGeneral: {fileID: 8952813227351101770}
   tabContentTouch: {fileID: 8486424031912571194}
+  tabContentControls: {fileID: 0}
 --- !u!1 &3955459648569928254
 GameObject:
   m_ObjectHideFlags: 0
@@ -10480,6 +10506,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+--- !u!114 &3188424345207238516 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1414926683880334473, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
+  m_PrefabInstance: {fileID: 4583920455263472637}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!114 &4074769317393405911 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 509230310232513578, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
@@ -10551,9 +10588,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 975366c5cd445478aa3285d5e2de62c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.SpaceGUISwitch
---- !u!114 &6382778598087111521 stripped
+--- !u!114 &6325254120585095961 stripped
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7424593069616593052, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
+  m_CorrespondingSourceObject: {fileID: 7519474544544620772, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
   m_PrefabInstance: {fileID: 4583920455263472637}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
@@ -10573,6 +10610,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &7965571923801807372 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5842925908509872625, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
+  m_PrefabInstance: {fileID: 4583920455263472637}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!114 &8050211899130858488 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5775094991507488773, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}

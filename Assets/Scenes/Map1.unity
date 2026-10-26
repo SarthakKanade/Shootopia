@@ -3402,13 +3402,15 @@ MonoBehaviour:
   settingsCanvasGroup: {fileID: 1424545617}
   btnCloseSettings: {fileID: 1424545615}
   sliderMasterVol: {fileID: 1424545614}
-  sliderMusicVol: {fileID: 1424545613}
+  sliderMusicVol: {fileID: 0}
   sliderSFXVol: {fileID: 0}
   sliderMouseSens: {fileID: 0}
-  labelMasterVol: {fileID: 0}
+  labelMasterVol: {fileID: 1113434071}
   labelMusicVol: {fileID: 0}
   labelSFXVol: {fileID: 0}
   labelMouseSens: {fileID: 1424545612}
+  sliderFOV: {fileID: 1424545613}
+  labelFOV: {fileID: 1113434070}
   toggleInvertY: {fileID: 0}
   toggleFullscreen: {fileID: 0}
   switchInvertY: {fileID: 1424545609}
@@ -3418,6 +3420,10 @@ MonoBehaviour:
   btnActionLeave: {fileID: 1424545607}
   btnActionReset: {fileID: 1424545606}
   btnActionResume: {fileID: 1424545605}
+  btnActionControls: {fileID: 0}
+  modalControls: {fileID: 0}
+  controlsCanvasGroup: {fileID: 0}
+  btnCloseControls: {fileID: 0}
   dropdownControlMode: {fileID: 0}
   sliderTouchSens: {fileID: 0}
   labelTouchSens: {fileID: 0}
@@ -3435,8 +3441,10 @@ MonoBehaviour:
   switchJoystickMode: {fileID: 1993478508}
   btnTabGeneral: {fileID: 677122110}
   btnTabTouch: {fileID: 677122109}
+  btnTabControls: {fileID: 0}
   tabContentGeneral: {fileID: 677122108}
   tabContentTouch: {fileID: 1993478516}
+  tabContentControls: {fileID: 0}
 --- !u!1001 &254556926
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18309,6 +18317,28 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 800, y: 620}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1113434070 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1414926683880334473, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
+  m_PrefabInstance: {fileID: 1424545603}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+--- !u!114 &1113434071 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5842925908509872625, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
+  m_PrefabInstance: {fileID: 1424545603}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
 --- !u!1001 &1122474916
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23494,7 +23524,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
 --- !u!114 &1424545607 stripped
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3704977152462513206, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
+  m_CorrespondingSourceObject: {fileID: 7519474544544620772, guid: ebefc15e42d0e4b958cb4cde2ffcd1c0, type: 3}
   m_PrefabInstance: {fileID: 1424545603}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
@@ -33858,6 +33888,24 @@ MonoBehaviour:
   killSound: {fileID: 8300000, guid: 042c7dc6b5c9e48259c599c1fc9bb0d4, type: 3}
   headshotKillSound: {fileID: 8300000, guid: 042c7dc6b5c9e48259c599c1fc9bb0d4, type: 3}
   deathSound: {fileID: 8300000, guid: 7e338f9689beb4e4ebc19ad8116ee3f0, type: 3}
+  powerUpRoot: {fileID: 0}
+  shieldBarRoot: {fileID: 0}
+  shieldFill: {fileID: 0}
+  shieldText: {fileID: 0}
+  shieldCanvasGroup: {fileID: 0}
+  invisibilityBarRoot: {fileID: 0}
+  invisibilityFill: {fileID: 0}
+  invisibilityText: {fileID: 0}
+  invisibilityCanvasGroup: {fileID: 0}
+  lowHealthVignetteGroup: {fileID: 0}
+  lowHealthHeartbeatClip: {fileID: 0}
+  respawnClip: {fileID: 0}
+  respawnCountdownText: {fileID: 0}
+  respawnProgressBarFill: {fileID: 0}
+  respawnCountdownRoot: {fileID: 0}
+  pingBadgeRoot: {fileID: 0}
+  pingText: {fileID: 0}
+  pingIndicatorDot: {fileID: 0}
 --- !u!114 &2064779313
 MonoBehaviour:
   m_ObjectHideFlags: 0

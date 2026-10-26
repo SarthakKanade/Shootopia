@@ -80,6 +80,11 @@ namespace Shootopia
         // ADS gate — when true, we stop applying FOV/distance/offset so WeaponADSHandler has full control.
         private bool _adsActive;
 
+        public const string PREFS_KEY_FOV = "Shootopia_CameraFOV";
+        public const float MIN_FOV = 60f;
+        public const float MAX_FOV = 105f;
+        public const float DEFAULT_FOV = 75f;
+
         protected override void Awake()
         {
             base.Awake();
@@ -94,8 +99,39 @@ namespace Shootopia
             _cmCamera = GetComponent<CinemachineCamera>();
             _tpFollow = GetComponentInChildren<CinemachineThirdPersonFollow>(true);
 
+            // Load saved user FOV preference (defaulting to 75)
+            float savedFOV = PlayerPrefs.GetFloat(PREFS_KEY_FOV, DEFAULT_FOV);
+            if (Mathf.Approximately(savedFOV, 80f) && !PlayerPrefs.HasKey("Shootopia_UserSetFOV"))
+            {
+                savedFOV = DEFAULT_FOV;
+            }
+            ApplyUserFOV(savedFOV);
+
             // Initialise to walking view
             SnapToWalkingView();
+        }
+
+        /// <summary>
+        /// Updates the user's base Field of View preference (clamped 60° - 105°) and immediately applies it.
+        /// </summary>
+        public void SetUserFOV(float fov)
+        {
+            fov = Mathf.Clamp(fov, MIN_FOV, MAX_FOV);
+            ApplyUserFOV(fov);
+            PlayerPrefs.SetFloat(PREFS_KEY_FOV, fov);
+            PlayerPrefs.SetInt("Shootopia_UserSetFOV", 1);
+            PlayerPrefs.Save();
+        }
+
+        private void ApplyUserFOV(float fov)
+        {
+            walkingFOV = fov;
+            combatFOV = Mathf.Max(60f, fov - 3f);
+            if (_cmCamera != null && !_adsActive)
+            {
+                _cmCamera.Lens.FieldOfView = IsInCombatView ? combatFOV : walkingFOV;
+                ActiveFOV = _cmCamera.Lens.FieldOfView;
+            }
         }
 
         protected override void OnDestroy()

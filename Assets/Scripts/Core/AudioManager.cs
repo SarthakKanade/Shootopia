@@ -99,6 +99,8 @@ namespace Shootopia
         private float _currentLowPassCutoff = 22000f;
         private bool _isSustainedDucking = false;
         private float _sustainedDuckLevel = 0.55f;
+        private bool _isLowHealthMuffled = false;
+        private float _lowHealthCutoff = 1000f;
 
         private void Awake()
         {
@@ -146,6 +148,12 @@ namespace Shootopia
                 targetCutoff = duckLowPassCutoff;
             }
 
+            if (_isLowHealthMuffled)
+            {
+                targetCutoff = Mathf.Min(targetCutoff, _lowHealthCutoff);
+                targetDuck = Mathf.Min(targetDuck, 0.45f);
+            }
+
             // Smooth envelope interpolation: fast attack, smooth musical release
             float duckSpeed = (targetDuck < _currentDuckMultiplier)
                 ? (1f / Mathf.Max(duckAttackTime, 0.01f))
@@ -170,6 +178,15 @@ namespace Shootopia
                 float nominalMusic = _masterVolume * (_musicVolume * musicHeadroomScale);
                 _musicSource.volume = nominalMusic * _currentDuckMultiplier;
             }
+        }
+
+        /// <summary>
+        /// Applies low-pass muffling to background audio during critical low-health states (<30% HP).
+        /// </summary>
+        public void SetLowHealthMuffled(bool active, float cutoffFrequency = 1000f)
+        {
+            _isLowHealthMuffled = active;
+            _lowHealthCutoff = Mathf.Clamp(cutoffFrequency, 400f, 22000f);
         }
 
         /// <summary>

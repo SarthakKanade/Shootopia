@@ -40,6 +40,8 @@ namespace Shootopia
 
         public static event Action<bool> OnLocalPlayerHitConfirmed;
         public static event Action<Vector3, float> OnLocalPlayerDamagedWithPosition;
+        public static event Action<float> OnLocalPlayerDied;
+        public static event Action OnLocalPlayerRespawned;
 
         [Header("Spawn Protection")]
         [SerializeField] private float spawnInvincibilityDuration = 5.0f;
@@ -567,10 +569,14 @@ namespace Shootopia
             var nameplate = GetComponentInChildren<PlayerNameplate>(true);
             if (nameplate != null) nameplate.SetDeathHidden(true);
 
-            if (IsOwner && AudioManager.Instance != null)
+            if (IsOwner)
             {
-                AudioClip deathClip = (playerAudioConfig != null && playerAudioConfig.deathClip != null) ? playerAudioConfig.deathClip : deathSound;
-                if (deathClip != null) AudioManager.Instance.PlaySFX2D(deathClip, 1f, isCombatPriority: true);
+                OnLocalPlayerDied?.Invoke(3.0f);
+                if (AudioManager.Instance != null)
+                {
+                    AudioClip deathClip = (playerAudioConfig != null && playerAudioConfig.deathClip != null) ? playerAudioConfig.deathClip : deathSound;
+                    if (deathClip != null) AudioManager.Instance.PlaySFX2D(deathClip, 1f, isCombatPriority: true);
+                }
             }
 
             var anim = GetComponentInChildren<Animator>(true);
@@ -656,6 +662,7 @@ namespace Shootopia
             if (IsOwner)
             {
                 SetPlayerControlsEnabled(true);
+                OnLocalPlayerRespawned?.Invoke();
             }
         }
 

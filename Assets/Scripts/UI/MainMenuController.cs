@@ -147,10 +147,17 @@ namespace Shootopia
         [SerializeField] private Button btnCloseSettings;
         [SerializeField] private Slider sliderMasterVol, sliderMusicVol, sliderSFXVol, sliderMouseSens;
         [SerializeField] private TextMeshProUGUI labelMasterVol, labelMusicVol, labelSFXVol, labelMouseSens;
+        [SerializeField] private Slider sliderFOV;
+        [SerializeField] private TextMeshProUGUI labelFOV;
         [SerializeField] private Toggle toggleInvertY, toggleFullscreen;
         [SerializeField] private SpaceGUISwitch switchInvertY, switchFullscreen;
         [SerializeField] private Button btnMinusSens, btnPlusSens;
         [SerializeField] private Button btnActionReset, btnActionControls, btnActionApply;
+
+        [Header("Modal: Controls Reference Sheet")]
+        [SerializeField] private GameObject modalControls;
+        [SerializeField] private CanvasGroup controlsGroup;
+        [SerializeField] private Button btnCloseControls;
 
         [Header("Modal: Edit Profile")]
         [SerializeField] private GameObject modalEditProfile;
@@ -384,6 +391,7 @@ namespace Shootopia
             if (sliderMusicVol != null) sliderMusicVol.onValueChanged.AddListener(OnMusicVolChanged);
             if (sliderSFXVol != null) sliderSFXVol.onValueChanged.AddListener(OnSFXVolChanged);
             if (sliderMouseSens != null) sliderMouseSens.onValueChanged.AddListener(OnMouseSensChanged);
+            if (sliderFOV != null) sliderFOV.onValueChanged.AddListener(OnFOVChanged);
             if (toggleInvertY != null) toggleInvertY.onValueChanged.AddListener(OnInvertYChanged);
             if (toggleFullscreen != null) toggleFullscreen.onValueChanged.AddListener(OnFullscreenChanged);
 
@@ -392,8 +400,11 @@ namespace Shootopia
             if (btnMinusSens != null) btnMinusSens.onClick.AddListener(() => AdjustSensitivity(-0.2f));
             if (btnPlusSens != null) btnPlusSens.onClick.AddListener(() => AdjustSensitivity(+0.2f));
             if (btnActionReset != null) btnActionReset.onClick.AddListener(ResetSettingsToDefaults);
-            if (btnActionControls != null) btnActionControls.onClick.AddListener(CloseTopModal);
+            if (btnActionControls != null) btnActionControls.onClick.AddListener(OpenControlsModal);
             if (btnActionApply != null) btnActionApply.onClick.AddListener(CloseTopModal);
+
+            // Controls Reference Modal
+            if (btnCloseControls != null) btnCloseControls.onClick.AddListener(CloseTopModal);
 
             // Edit Profile Modal
             if (btnCloseProfile != null) btnCloseProfile.onClick.AddListener(CloseTopModal);
@@ -926,18 +937,126 @@ namespace Shootopia
                 AvatarStageController.Instance.SetSkin(_selectedSkin);
             }
 
+            // Remove Touch and Controls heading tab buttons from top header
+            Transform tabBar = modalSettings != null ? modalSettings.transform.Find("Tab_Bar") : null;
+            if (tabBar != null)
+            {
+                Transform touchTab = tabBar.Find("BtnTabTouch");
+                if (touchTab != null) touchTab.gameObject.SetActive(false);
+
+                Transform controlsTab = tabBar.Find("BtnTabControls");
+                if (controlsTab != null) controlsTab.gameObject.SetActive(false);
+
+                Transform generalTab = tabBar.Find("BtnTabGeneral");
+                if (generalTab != null)
+                {
+                    var rt = generalTab.GetComponent<RectTransform>();
+                    if (rt != null) rt.anchoredPosition = new Vector2(0f, 0f);
+                    var txt = generalTab.GetComponentInChildren<TextMeshProUGUI>();
+                    if (txt != null) txt.text = "SETTINGS";
+                }
+            }
+
+            Transform touchContent = modalSettings != null ? modalSettings.transform.Find("TabContent_Touch") : null;
+            if (touchContent != null) touchContent.gameObject.SetActive(false);
+            Transform controlsContent = modalSettings != null ? modalSettings.transform.Find("TabContent_Controls") : null;
+            if (controlsContent != null) controlsContent.gameObject.SetActive(false);
+            Transform generalContent = modalSettings != null ? modalSettings.transform.Find("TabContent_General") : null;
+            if (generalContent != null) generalContent.gameObject.SetActive(true);
+
+            // Clean up any accidental leave buttons from modalSettings in MainMenu
+            if (modalSettings != null)
+            {
+                Transform leaveTop = modalSettings.transform.Find("BtnActionLeaveTopLeft");
+                if (leaveTop != null) leaveTop.gameObject.SetActive(false);
+                Transform oldLeaveCorner = modalSettings.transform.Find("BtnActionLeaveCorner");
+                if (oldLeaveCorner != null) Destroy(oldLeaveCorner.gameObject);
+
+                Transform bottomContainer = modalSettings.transform.Find("Bottom_UI_Container");
+                if (bottomContainer != null)
+                {
+                    Transform oldBottomLeave = bottomContainer.Find("BtnActionLeaveCorner") ?? bottomContainer.Find("BtnActionLeaveTopLeft");
+                    if (oldBottomLeave != null) Destroy(oldBottomLeave.gameObject);
+
+                    Transform btn1 = bottomContainer.Find("BtnAction1");
+                    Transform btn2 = bottomContainer.Find("BtnAction2");
+                    Transform btn3 = bottomContainer.Find("BtnAction3");
+
+                    if (btn1 != null)
+                    {
+                        btnActionReset = btn1.GetComponent<Button>();
+                        var txt = btn1.GetComponentInChildren<TextMeshProUGUI>();
+                        if (txt != null) txt.text = "RESET";
+                        if (btnActionReset != null)
+                        {
+                            btnActionReset.onClick.RemoveAllListeners();
+                            btnActionReset.onClick.AddListener(ResetSettingsToDefaults);
+                        }
+                    }
+
+                    if (btn2 != null)
+                    {
+                        btnActionControls = btn2.GetComponent<Button>();
+                        var txt = btn2.GetComponentInChildren<TextMeshProUGUI>();
+                        if (txt != null) txt.text = "CONTROLS";
+                        if (btnActionControls != null)
+                        {
+                            btnActionControls.onClick.RemoveAllListeners();
+                            btnActionControls.onClick.AddListener(OpenControlsModal);
+                        }
+                    }
+
+                    if (btn3 != null)
+                    {
+                        btnActionApply = btn3.GetComponent<Button>();
+                        var txt = btn3.GetComponentInChildren<TextMeshProUGUI>();
+                        if (txt != null) txt.text = "APPLY";
+                        if (btnActionApply != null)
+                        {
+                            btnActionApply.onClick.RemoveAllListeners();
+                            btnActionApply.onClick.AddListener(CloseTopModal);
+                        }
+                    }
+                }
+            }
+
+            if (modalSettings != null)
+            {
+                if (sliderMasterVol == null) sliderMasterVol = modalSettings.transform.Find("TabContent_General/Slider_Container/Sound_Slider/Slider")?.GetComponent<Slider>();
+                if (labelMasterVol == null) labelMasterVol = modalSettings.transform.Find("TabContent_General/Slider_Container/Sound_Slider/Val_TXT")?.GetComponent<TextMeshProUGUI>();
+                if (sliderFOV == null) sliderFOV = modalSettings.transform.Find("TabContent_General/Slider_Container/Row_FOV/Slider")?.GetComponent<Slider>();
+                if (labelFOV == null) labelFOV = modalSettings.transform.Find("TabContent_General/Slider_Container/Row_FOV/Val_TXT")?.GetComponent<TextMeshProUGUI>();
+            }
+
             float master = PlayerPrefs.GetFloat("AudioManager_MasterVolume", 1.0f);
             float music = PlayerPrefs.GetFloat("AudioManager_MusicVolume", 0.65f);
             float sfx = PlayerPrefs.GetFloat("AudioManager_SFXVolume", 1.0f);
             float sens = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
-            bool invertY = PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY;
+            float fov = PlayerPrefs.GetFloat(ThirdPersonCameraController.PREFS_KEY_FOV, ThirdPersonCameraController.DEFAULT_FOV);
+            if (Mathf.Approximately(fov, 80f) && !PlayerPrefs.HasKey("Shootopia_UserSetFOV"))
+            {
+                fov = ThirdPersonCameraController.DEFAULT_FOV;
+            }
+            bool invertY = (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY)
+                        || (PlayerPrefs.GetInt("Shootopia_InvertY", 0) == 1);
             bool fullscreen = Screen.fullScreen;
 
             if (sliderMasterVol != null) { sliderMasterVol.value = master; OnMasterVolChanged(master); }
-            if (sliderMusicVol != null) { sliderMusicVol.value = music; OnMusicVolChanged(music); }
+            if (sliderMusicVol != null && sliderMusicVol != sliderFOV) { sliderMusicVol.value = music; OnMusicVolChanged(music); }
             if (sliderSFXVol != null) { sliderSFXVol.value = sfx; OnSFXVolChanged(sfx); }
             if (sliderMouseSens != null) { sliderMouseSens.value = sens; OnMouseSensChanged(sens); }
             if (labelMouseSens != null) labelMouseSens.text = $"{sens:0.0}x";
+
+            if (sliderFOV != null)
+            {
+                sliderFOV.minValue = ThirdPersonCameraController.MIN_FOV;
+                sliderFOV.maxValue = ThirdPersonCameraController.MAX_FOV;
+                sliderFOV.wholeNumbers = true;
+                sliderFOV.value = fov;
+                sliderFOV.onValueChanged.RemoveListener(OnFOVChanged);
+                sliderFOV.onValueChanged.AddListener(OnFOVChanged);
+                if (labelFOV != null) labelFOV.text = $"{Mathf.RoundToInt(fov)}\u00B0";
+            }
 
             if (toggleInvertY != null) toggleInvertY.isOn = invertY;
             if (toggleFullscreen != null) toggleFullscreen.isOn = fullscreen;
@@ -972,6 +1091,18 @@ namespace Shootopia
             if (labelMouseSens != null) labelMouseSens.text = $"{val:0.0}x";
         }
 
+        private void OnFOVChanged(float val)
+        {
+            if (labelFOV != null) labelFOV.text = $"{Mathf.RoundToInt(val)}\u00B0";
+            PlayerPrefs.SetFloat(ThirdPersonCameraController.PREFS_KEY_FOV, val);
+            PlayerPrefs.SetInt("Shootopia_UserSetFOV", 1);
+            PlayerPrefs.Save();
+            if (ThirdPersonCameraController.Instance != null)
+            {
+                ThirdPersonCameraController.Instance.SetUserFOV(val);
+            }
+        }
+
         private void AdjustSensitivity(float delta)
         {
             float current = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
@@ -987,13 +1118,141 @@ namespace Shootopia
             if (sliderSFXVol != null) sliderSFXVol.value = 1.0f;
             OnMouseSensChanged(1.0f);
             if (sliderMouseSens != null) sliderMouseSens.value = 1.0f;
+            if (sliderFOV != null) sliderFOV.value = ThirdPersonCameraController.DEFAULT_FOV;
+            OnFOVChanged(ThirdPersonCameraController.DEFAULT_FOV);
             if (switchInvertY != null) switchInvertY.SetState(false, true);
             if (switchFullscreen != null) switchFullscreen.SetState(true, true);
+        }
+
+        public void OpenControlsModal()
+        {
+            EnsureControlsModalUI();
+            if (modalControls != null)
+            {
+                OpenModal(modalControls, controlsGroup);
+            }
+        }
+
+        private void EnsureControlsModalUI()
+        {
+            if (modalControls != null) return;
+
+            Transform canvasTr = modalSettings != null ? modalSettings.transform.parent : transform;
+            Transform existing = canvasTr.Find("ModalControlsSheet");
+            if (existing != null)
+            {
+                modalControls = existing.gameObject;
+                controlsGroup = modalControls.GetComponent<CanvasGroup>();
+                btnCloseControls = modalControls.GetComponentInChildren<Button>();
+                return;
+            }
+
+            var modalObj = new GameObject("ModalControlsSheet", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            modalObj.transform.SetParent(canvasTr, false);
+            modalObj.transform.SetAsLastSibling();
+
+            var mRt = modalObj.GetComponent<RectTransform>();
+            mRt.anchorMin = new Vector2(0.5f, 0.5f);
+            mRt.anchorMax = new Vector2(0.5f, 0.5f);
+            mRt.sizeDelta = new Vector2(1060f, 660f);
+            mRt.anchoredPosition = Vector2.zero;
+
+            var mImg = modalObj.GetComponent<Image>();
+            mImg.color = new Color(0.18f, 0.72f, 1.0f, 0.45f);
+
+            controlsGroup = modalObj.GetComponent<CanvasGroup>();
+
+            var backdropObj = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
+            backdropObj.transform.SetParent(modalObj.transform, false);
+            var bRt = backdropObj.GetComponent<RectTransform>();
+            bRt.anchorMin = Vector2.zero;
+            bRt.anchorMax = Vector2.one;
+            bRt.sizeDelta = new Vector2(-16f, -16f);
+            bRt.anchoredPosition = Vector2.zero;
+            var bImg = backdropObj.GetComponent<Image>();
+            bImg.color = new Color(0.04f, 0.07f, 0.14f, 0.96f);
+            bImg.raycastTarget = false;
+
+            var titleObj = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
+            titleObj.transform.SetParent(modalObj.transform, false);
+            var tRt = titleObj.GetComponent<RectTransform>();
+            tRt.anchorMin = new Vector2(0.5f, 1f);
+            tRt.anchorMax = new Vector2(0.5f, 1f);
+            tRt.pivot = new Vector2(0.5f, 1f);
+            tRt.sizeDelta = new Vector2(980f, 40f);
+            tRt.anchoredPosition = new Vector2(0f, -22f);
+
+            var tTmp = titleObj.GetComponent<TextMeshProUGUI>();
+            tTmp.text = "CONTROLS & KEYBINDINGS";
+            tTmp.fontSize = 28;
+            tTmp.fontStyle = FontStyles.Bold;
+            tTmp.color = new Color(0.92f, 0.97f, 1f, 1f);
+            tTmp.alignment = TextAlignmentOptions.Center;
+
+            var subObj = new GameObject("Subtitle", typeof(RectTransform), typeof(TextMeshProUGUI));
+            subObj.transform.SetParent(modalObj.transform, false);
+            var sRt = subObj.GetComponent<RectTransform>();
+            sRt.anchorMin = new Vector2(0.5f, 1f);
+            sRt.anchorMax = new Vector2(0.5f, 1f);
+            sRt.pivot = new Vector2(0.5f, 1f);
+            sRt.sizeDelta = new Vector2(980f, 24f);
+            sRt.anchoredPosition = new Vector2(0f, -60f);
+
+            var sTmp = subObj.GetComponent<TextMeshProUGUI>();
+            sTmp.text = "FULL INPUT SPECIFICATION • KEYBOARD / MOUSE & GAMEPAD";
+            sTmp.fontSize = 14;
+            sTmp.fontStyle = FontStyles.Normal;
+            sTmp.color = new Color(0.6f, 0.78f, 0.95f, 1f);
+            sTmp.alignment = TextAlignmentOptions.Center;
+
+            var sheetContainer = new GameObject("SheetContainer", typeof(RectTransform));
+            sheetContainer.transform.SetParent(modalObj.transform, false);
+            var scRt = sheetContainer.GetComponent<RectTransform>();
+            scRt.anchorMin = new Vector2(0.5f, 0.5f);
+            scRt.anchorMax = new Vector2(0.5f, 0.5f);
+            scRt.sizeDelta = new Vector2(1000f, 480f);
+            scRt.anchoredPosition = new Vector2(0f, -10f);
+
+            PauseMenuController.BuildControlsSheetView(sheetContainer.transform, tTmp.font);
+
+            var closeBtnObj = new GameObject("BtnCloseControls", typeof(RectTransform), typeof(Image), typeof(Button), typeof(UIJuice));
+            closeBtnObj.transform.SetParent(modalObj.transform, false);
+            var cbRt = closeBtnObj.GetComponent<RectTransform>();
+            cbRt.anchorMin = new Vector2(0.5f, 0f);
+            cbRt.anchorMax = new Vector2(0.5f, 0f);
+            cbRt.pivot = new Vector2(0.5f, 0f);
+            cbRt.sizeDelta = new Vector2(220f, 48f);
+            cbRt.anchoredPosition = new Vector2(0f, 20f);
+
+            var cbImg = closeBtnObj.GetComponent<Image>();
+            cbImg.color = new Color(0.08f, 0.12f, 0.22f, 0.95f);
+
+            btnCloseControls = closeBtnObj.GetComponent<Button>();
+            btnCloseControls.onClick.AddListener(CloseTopModal);
+
+            var cbTxtObj = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            cbTxtObj.transform.SetParent(closeBtnObj.transform, false);
+            var cbtRt = cbTxtObj.GetComponent<RectTransform>();
+            cbtRt.anchorMin = Vector2.zero;
+            cbtRt.anchorMax = Vector2.one;
+            cbtRt.sizeDelta = Vector2.zero;
+
+            var cbtTmp = cbTxtObj.GetComponent<TextMeshProUGUI>();
+            cbtTmp.text = "BACK TO SETTINGS";
+            cbtTmp.fontSize = 16;
+            cbtTmp.fontStyle = FontStyles.Bold;
+            cbtTmp.color = new Color(0.2f, 0.85f, 1.0f, 1f);
+            cbtTmp.alignment = TextAlignmentOptions.Center;
+
+            modalControls = modalObj;
+            modalControls.SetActive(false);
         }
 
         private void OnInvertYChanged(bool val)
         {
             if (PlayerProfileManager.Instance != null) PlayerProfileManager.Instance.SetInvertY(val);
+            PlayerPrefs.SetInt("Shootopia_InvertY", val ? 1 : 0);
+            PlayerPrefs.Save();
             if (toggleInvertY != null) toggleInvertY.isOn = val;
             if (switchInvertY != null && switchInvertY.IsOn != val) switchInvertY.SetState(val, false);
         }
@@ -1010,6 +1269,10 @@ namespace Shootopia
         public void OpenModal(GameObject modal, CanvasGroup group = null)
         {
             if (modal == null) return;
+            if (modal == modalSettings)
+            {
+                InitSettingsValues();
+            }
             _modalStack.Push(modal);
             UIJuice.PopIn(modal.GetComponent<RectTransform>(), group);
         }

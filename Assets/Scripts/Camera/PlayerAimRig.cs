@@ -44,7 +44,8 @@ namespace Shootopia
 
             Vector2 look = input.LookDelta;
             float mouseSens = (PlayerProfileManager.Instance != null) ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
-            bool invertY = (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY);
+            bool invertY = (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY)
+                        || (PlayerPrefs.GetInt("Shootopia_InvertY", 0) == 1);
 
             // On desktop KBM, apply profile mouse sensitivity; mobile touch already scales per-axis deltas
             float sensMult = DeviceProfileManager.IsTouchActive ? 1.0f : mouseSens;

@@ -67,7 +67,9 @@ namespace Shootopia
             Vector2 delta = eventData.position - _lastPointerPosition;
             _lastPointerPosition = eventData.position;
 
-            bool shouldInvert = invertPitch || (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY);
+            bool shouldInvert = invertPitch 
+                             || (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY)
+                             || (PlayerPrefs.GetInt("Shootopia_InvertY", 0) == 1);
             if (shouldInvert) delta.y = -delta.y;
 
             EnsureLocalWeapon();

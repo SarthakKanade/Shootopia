@@ -28,8 +28,15 @@ namespace Shootopia
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server);
 
+        private readonly NetworkVariable<float> _invisibilityTimeRemaining = new NetworkVariable<float>(
+            0f,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+
         public bool IsInvisible => _isInvisible.Value;
         public float Duration => defaultDuration;
+        public float InvisibilityTimeRemaining => IsSpawned ? _invisibilityTimeRemaining.Value : Mathf.Max(0f, _activeDuration - _durationTimer);
+        public float InvisibilityTotalDuration => _activeDuration;
 
         private float _activeDuration = 10f;
         private float _durationTimer = 0f;
@@ -110,6 +117,7 @@ namespace Shootopia
                 }
 
                 _durationTimer += Time.deltaTime;
+                _invisibilityTimeRemaining.Value = Mathf.Max(0f, _activeDuration - _durationTimer);
                 if (_durationTimer >= _activeDuration)
                 {
                     DeactivateInvisibilityInternal();
@@ -147,6 +155,7 @@ namespace Shootopia
 
             _activeDuration = duration > 0f ? duration : defaultDuration;
             _durationTimer = 0f;
+            _invisibilityTimeRemaining.Value = _activeDuration;
             _isInvisible.Value = true;
             Debug.Log($"[PlayerInvisibility] Activated for Player {OwnerClientId} (duration: {_activeDuration}s)");
         }
@@ -156,6 +165,7 @@ namespace Shootopia
             if (!IsServer) return;
             _isInvisible.Value = false;
             _durationTimer = 0f;
+            _invisibilityTimeRemaining.Value = 0f;
             Debug.Log($"[PlayerInvisibility] Deactivated for Player {OwnerClientId}");
         }
 
