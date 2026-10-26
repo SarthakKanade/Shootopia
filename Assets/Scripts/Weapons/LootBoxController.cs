@@ -177,6 +177,17 @@ namespace Shootopia
                 _groundPosition = transform.position;
             }
 
+            if (lootTable != null && lootTable.Entries != null)
+            {
+                foreach (var entry in lootTable.Entries)
+                {
+                    if (entry != null && entry.weaponAttach != null)
+                    {
+                        WeaponController.RegisterAttach(entry.weaponAttach);
+                    }
+                }
+            }
+
             // For offline testing / sandbox scenes without active Netcode server
             if (!IsSpawned || !NetworkManager.Singleton.IsListening)
             {
@@ -380,6 +391,7 @@ namespace Shootopia
             {
                 if (weaponCtrl != null && entry.weaponAttach != null)
                 {
+                    WeaponController.RegisterAttach(entry.weaponAttach);
                     weaponCtrl.ReplaceCurrentWeapon(entry.weaponAttach);
                     Debug.Log($"[LootBoxController] Player acquired {entry.displayName ?? entry.weaponAttach.name} from {chestType}!");
                 }

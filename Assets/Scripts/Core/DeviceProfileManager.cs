@@ -172,6 +172,7 @@ namespace Shootopia
 
         private void OnApplicationFocus(bool hasFocus)
         {
+#if !UNITY_WEBGL
             if (!hasFocus)
             {
                 // Throttle background frame rate to 30 FPS to minimize host CPU/GPU load while tabbed out
@@ -181,6 +182,12 @@ namespace Shootopia
             {
                 ApplyPlatformPerformanceSettings();
             }
+#else
+            if (hasFocus)
+            {
+                ApplyPlatformPerformanceSettings();
+            }
+#endif
         }
 
         private void OnApplicationQuit()
@@ -369,10 +376,16 @@ namespace Shootopia
             }
             else
             {
+#if UNITY_WEBGL
+                // WebGL: Let browser handle requestAnimationFrame pacing smoothly without artificial VSync lockups
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 60;
+#else
                 // Desktop: Enable VSync and clamp frame rate to screen refresh rate (avoids uncapped 500+ FPS host load)
                 QualitySettings.vSyncCount = 1;
                 double refreshRate = Screen.currentResolution.refreshRateRatio.value;
                 Application.targetFrameRate = refreshRate >= 115 ? 120 : (refreshRate >= 85 ? 90 : 60);
+#endif
             }
         }
 

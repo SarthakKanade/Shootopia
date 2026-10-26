@@ -173,15 +173,28 @@ namespace Shootopia
 
         private IAimProvider Aim => motor != null ? motor.Aim : null;
 
+        public static void RegisterAttach(WeaponAttachSO attach)
+        {
+            if (attach == null || string.IsNullOrEmpty(attach.name)) return;
+            if (_attachCache == null) _attachCache = new Dictionary<string, WeaponAttachSO>(System.StringComparer.OrdinalIgnoreCase);
+            _attachCache[attach.name] = attach;
+        }
+
         public static WeaponAttachSO GetAttachByName(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
 
             if (_attachCache == null)
             {
-                _attachCache = new Dictionary<string, WeaponAttachSO>();
-                var allAttaches = Resources.LoadAll<WeaponAttachSO>("");
+                _attachCache = new Dictionary<string, WeaponAttachSO>(System.StringComparer.OrdinalIgnoreCase);
+                var allAttaches = Resources.LoadAll<WeaponAttachSO>("Weapons");
                 foreach (var a in allAttaches)
+                {
+                    if (a != null && !string.IsNullOrEmpty(a.name) && !_attachCache.ContainsKey(a.name))
+                        _attachCache[a.name] = a;
+                }
+                var rootAttaches = Resources.LoadAll<WeaponAttachSO>("");
+                foreach (var a in rootAttaches)
                 {
                     if (a != null && !string.IsNullOrEmpty(a.name) && !_attachCache.ContainsKey(a.name))
                         _attachCache[a.name] = a;
@@ -213,6 +226,13 @@ namespace Shootopia
             _neckTransform = FindChild(transform, "neck_01");
 
             Transform modelRoot = motor != null ? motor.ModelRoot : transform;
+            if (loadout != null)
+            {
+                foreach (var a in loadout)
+                {
+                    if (a != null) RegisterAttach(a);
+                }
+            }
             if (_headTransform != null)
             {
                 _initialHeadLocalRotation = _headTransform.localRotation;
@@ -1013,7 +1033,11 @@ namespace Shootopia
 
         public void ReplaceCurrentWeapon(WeaponAttachSO attach)
         {
-            if (attach != null) EquipNetworkedWeapon(attach.name);
+            if (attach != null)
+            {
+                RegisterAttach(attach);
+                EquipNetworkedWeapon(attach.name);
+            }
         }
 
         public void Equip(int index)

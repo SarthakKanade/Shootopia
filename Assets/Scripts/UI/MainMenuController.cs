@@ -937,33 +937,6 @@ namespace Shootopia
                 AvatarStageController.Instance.SetSkin(_selectedSkin);
             }
 
-            // Remove Touch and Controls heading tab buttons from top header
-            Transform tabBar = modalSettings != null ? modalSettings.transform.Find("Tab_Bar") : null;
-            if (tabBar != null)
-            {
-                Transform touchTab = tabBar.Find("BtnTabTouch");
-                if (touchTab != null) touchTab.gameObject.SetActive(false);
-
-                Transform controlsTab = tabBar.Find("BtnTabControls");
-                if (controlsTab != null) controlsTab.gameObject.SetActive(false);
-
-                Transform generalTab = tabBar.Find("BtnTabGeneral");
-                if (generalTab != null)
-                {
-                    var rt = generalTab.GetComponent<RectTransform>();
-                    if (rt != null) rt.anchoredPosition = new Vector2(0f, 0f);
-                    var txt = generalTab.GetComponentInChildren<TextMeshProUGUI>();
-                    if (txt != null) txt.text = "SETTINGS";
-                }
-            }
-
-            Transform touchContent = modalSettings != null ? modalSettings.transform.Find("TabContent_Touch") : null;
-            if (touchContent != null) touchContent.gameObject.SetActive(false);
-            Transform controlsContent = modalSettings != null ? modalSettings.transform.Find("TabContent_Controls") : null;
-            if (controlsContent != null) controlsContent.gameObject.SetActive(false);
-            Transform generalContent = modalSettings != null ? modalSettings.transform.Find("TabContent_General") : null;
-            if (generalContent != null) generalContent.gameObject.SetActive(true);
-
             // Clean up any accidental leave buttons from modalSettings in MainMenu
             if (modalSettings != null)
             {

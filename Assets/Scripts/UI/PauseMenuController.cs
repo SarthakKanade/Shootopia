@@ -131,30 +131,6 @@ namespace Shootopia
 
         private void InitSettings()
         {
-            // Remove Touch and Controls heading tab buttons from top header
-            Transform tabBar = settingsSubPanel != null ? settingsSubPanel.transform.Find("Tab_Bar") : null;
-            if (tabBar != null)
-            {
-                Transform touchTab = tabBar.Find("BtnTabTouch");
-                if (touchTab != null) touchTab.gameObject.SetActive(false);
-
-                Transform controlsTab = tabBar.Find("BtnTabControls");
-                if (controlsTab != null) controlsTab.gameObject.SetActive(false);
-
-                Transform generalTab = tabBar.Find("BtnTabGeneral");
-                if (generalTab != null)
-                {
-                    var rt = generalTab.GetComponent<RectTransform>();
-                    if (rt != null) rt.anchoredPosition = new Vector2(0f, 0f);
-                    var txt = generalTab.GetComponentInChildren<TextMeshProUGUI>();
-                    if (txt != null) txt.text = "SETTINGS";
-                }
-            }
-
-            if (tabContentTouch != null) tabContentTouch.SetActive(false);
-            if (tabContentControls != null) tabContentControls.SetActive(false);
-            if (tabContentGeneral != null) tabContentGeneral.SetActive(true);
-
             // Wire Bottom Bar buttons to match Main Menu: RESET, CONTROLS, RESUME
             Transform bottomContainer = settingsSubPanel != null ? settingsSubPanel.transform.Find("Bottom_UI_Container") : null;
             if (bottomContainer != null)
