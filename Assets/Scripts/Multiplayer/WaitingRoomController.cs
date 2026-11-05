@@ -385,7 +385,9 @@ namespace Shootopia
             if (_matchStarted) return;
 
             var session = SessionManager.Instance != null ? SessionManager.Instance.GetCurrentSession() : null;
-            bool isHost = session != null && session.IsHost;
+            bool isHost = (session != null && session.IsHost) ||
+                          (SessionManager.Instance != null && SessionManager.Instance.IsHost) ||
+                          (NetworkManager.Singleton != null && (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer));
 
             // Room Name
             if (roomNameLabel != null)
@@ -506,7 +508,7 @@ namespace Shootopia
             if (readyStates == null || readyStates.Count <= 1) return true;
 
             var session = SessionManager.Instance.GetCurrentSession();
-            string hostId = session != null ? session.Host : "";
+            string hostId = (session != null && !string.IsNullOrEmpty(session.Host)) ? session.Host : (NetworkManager.Singleton != null ? NetworkManager.ServerClientId.ToString() : "0");
             foreach (var p in readyStates)
             {
                 bool isHost = (p.playerId == hostId);
@@ -535,8 +537,8 @@ namespace Shootopia
             var readyStates = SessionManager.Instance != null ? SessionManager.Instance.GetPlayerReadyStates() : null;
             if (readyStates == null || readyStates.Count == 0) return;
 
-            string localPlayerId = (session != null && session.CurrentPlayer != null) ? session.CurrentPlayer.Id : "";
-            string hostId = session != null ? session.Host : "";
+            string localPlayerId = (session != null && session.CurrentPlayer != null) ? session.CurrentPlayer.Id : (NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId.ToString() : "0");
+            string hostId = (session != null && !string.IsNullOrEmpty(session.Host)) ? session.Host : (NetworkManager.Singleton != null ? NetworkManager.ServerClientId.ToString() : "0");
             int readyCount = 0;
             int alphaCount = 0;
             int omegaCount = 0;

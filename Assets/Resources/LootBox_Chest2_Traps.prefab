@@ -61,6 +61,7 @@ GameObject:
   - component: {fileID: 5624266342417974107}
   - component: {fileID: 43338196524141140}
   - component: {fileID: 1471739111263972257}
+  - component: {fileID: 2962661033703584300}
   m_Layer: 0
   m_Name: LootBox_Chest2_Traps
   m_TagString: Untagged
@@ -158,6 +159,27 @@ MonoBehaviour:
   chestMeshObject: {fileID: 1791619422275529116}
   healthBoxAttach: {fileID: 11400000, guid: 8b94421a7c7aa4bd985a2cd3a612f6db, type: 2}
   shieldAttach: {fileID: 11400000, guid: dc21ae42783e74ca197e0f90cb3f343b, type: 2}
+--- !u!65 &2962661033703584300
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3249151452987198751}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.9, y: 0.6, z: 0.9}
+  m_Center: {x: 0, y: 0.3, z: 0}
 --- !u!1001 &5000971065815305461
 PrefabInstance:
   m_ObjectHideFlags: 0

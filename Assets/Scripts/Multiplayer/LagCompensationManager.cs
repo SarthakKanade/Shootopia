@@ -16,16 +16,17 @@ namespace Shootopia
 
     /// <summary>
     /// Global snapshot of all active players at a specific network timestamp.
+    /// Pre-allocated and reused to achieve 0-allocation server tick tracking.
     /// </summary>
     public class WorldLagSnapshot
     {
         public float Timestamp;
-        public Dictionary<ulong, ColliderSnapshot> PlayerTransforms = new Dictionary<ulong, ColliderSnapshot>();
+        public readonly Dictionary<ulong, ColliderSnapshot> PlayerTransforms = new Dictionary<ulong, ColliderSnapshot>(16);
     }
 
     /// <summary>
     /// Server-side lag compensation (hitbox history buffer + server rewind).
-    /// Runs on the Host (IsServer). Stores 1000ms of historical player positions.
+    /// Runs on the Host (IsServer). Stores 1000ms of historical player positions using a zero-allocation ring buffer.
     /// When a client fires hitscan, rewinds colliders to the exact moment the client aimed,
     /// performs Physics.Raycast, and restores colliders to the present.
     /// </summary>
@@ -34,8 +35,14 @@ namespace Shootopia
         private static LagCompensationManager _instance;
         public static LagCompensationManager Instance => _instance;
 
-        private const float HistoryDurationSeconds = 1.0f;
-        private readonly List<WorldLagSnapshot> _history = new List<WorldLagSnapshot>(70);
+        private const int BufferCapacity = 64; // At 30-50 ticks/sec, 64 entries holds > 1200ms
+        private readonly WorldLagSnapshot[] _ringBuffer = new WorldLagSnapshot[BufferCapacity];
+        private int _headIndex = 0;
+        private int _count = 0;
+
+        // Reusable collections for rewinding to guarantee 0 GC allocations during raycasts
+        private readonly Dictionary<Transform, ColliderSnapshot> _presentTransforms = new Dictionary<Transform, ColliderSnapshot>(16);
+        private readonly List<Transform> _rewoundTransforms = new List<Transform>(16);
 
         private void Awake()
         {
@@ -45,6 +52,11 @@ namespace Shootopia
                 return;
             }
             _instance = this;
+
+            for (int i = 0; i < BufferCapacity; i++)
+            {
+                _ringBuffer[i] = new WorldLagSnapshot();
+            }
         }
 
         private void FixedUpdate()
@@ -58,12 +70,15 @@ namespace Shootopia
         }
 
         /// <summary>
-        /// Records the current positions and rotations of all active players in the match.
+        /// Records the current positions and rotations of all active players into the preallocated ring buffer.
+        /// Zero heap allocation per tick.
         /// </summary>
         private void RecordSnapshot()
         {
             float now = Time.time;
-            var snapshot = new WorldLagSnapshot { Timestamp = now };
+            var snapshot = _ringBuffer[_headIndex];
+            snapshot.Timestamp = now;
+            snapshot.PlayerTransforms.Clear();
 
             if (PlayerHealth.ActivePlayers != null)
             {
@@ -78,13 +93,10 @@ namespace Shootopia
                 }
             }
 
-            _history.Add(snapshot);
-
-            // Prune snapshots older than HistoryDurationSeconds
-            float expireThreshold = now - HistoryDurationSeconds;
-            while (_history.Count > 0 && _history[0].Timestamp < expireThreshold)
+            _headIndex = (_headIndex + 1) % BufferCapacity;
+            if (_count < BufferCapacity)
             {
-                _history.RemoveAt(0);
+                _count++;
             }
         }
 
@@ -103,22 +115,19 @@ namespace Shootopia
         {
             hit = default;
 
-            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer || _history.Count == 0)
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer || _count == 0)
             {
-                // Fallback to standard present-time raycast
                 return Physics.Raycast(origin, direction, out hit, maxRange, mask);
             }
 
-            // Find the closest historical snapshot
             WorldLagSnapshot targetSnapshot = FindClosestSnapshot(targetTimestamp);
             if (targetSnapshot == null)
             {
                 return Physics.Raycast(origin, direction, out hit, maxRange, mask);
             }
 
-            // Save present transforms
-            var presentTransforms = new Dictionary<Transform, ColliderSnapshot>();
-            var rewoundTransforms = new List<Transform>();
+            _presentTransforms.Clear();
+            _rewoundTransforms.Clear();
 
             try
             {
@@ -127,37 +136,34 @@ namespace Shootopia
                     foreach (var player in PlayerHealth.ActivePlayers)
                     {
                         if (player == null || player.NetworkObject == null || !player.NetworkObject.IsSpawned) continue;
-                        if (player.NetworkObjectId == shooterNetworkObjectId) continue; // Don't rewind shooter
+                        if (player.NetworkObjectId == shooterNetworkObjectId) continue;
 
                         if (targetSnapshot.PlayerTransforms.TryGetValue(player.NetworkObjectId, out var histData))
                         {
                             var tr = player.transform;
-                            presentTransforms[tr] = new ColliderSnapshot { Position = tr.position, Rotation = tr.rotation };
+                            _presentTransforms[tr] = new ColliderSnapshot { Position = tr.position, Rotation = tr.rotation };
 
-                            // Temporarily move to historical position
                             tr.position = histData.Position;
                             tr.rotation = histData.Rotation;
-                            rewoundTransforms.Add(tr);
+                            _rewoundTransforms.Add(tr);
                         }
                     }
                 }
 
-                if (rewoundTransforms.Count > 0)
+                if (_rewoundTransforms.Count > 0)
                 {
                     Physics.SyncTransforms();
                 }
 
-                // Perform the raycast in the historical state
                 return Physics.Raycast(origin, direction, out hit, maxRange, mask);
             }
             finally
             {
-                // Guarantee full restoration to present state
-                if (rewoundTransforms.Count > 0)
+                if (_rewoundTransforms.Count > 0)
                 {
-                    foreach (var tr in rewoundTransforms)
+                    foreach (var tr in _rewoundTransforms)
                     {
-                        if (tr != null && presentTransforms.TryGetValue(tr, out var cur))
+                        if (tr != null && _presentTransforms.TryGetValue(tr, out var cur))
                         {
                             tr.position = cur.Position;
                             tr.rotation = cur.Rotation;
@@ -165,23 +171,26 @@ namespace Shootopia
                     }
                     Physics.SyncTransforms();
                 }
+                _presentTransforms.Clear();
+                _rewoundTransforms.Clear();
             }
         }
 
         private WorldLagSnapshot FindClosestSnapshot(float timestamp)
         {
-            if (_history.Count == 0) return null;
+            if (_count == 0) return null;
 
-            WorldLagSnapshot best = _history[0];
-            float bestDiff = Mathf.Abs(best.Timestamp - timestamp);
+            WorldLagSnapshot best = null;
+            float bestDiff = float.MaxValue;
 
-            for (int i = 1; i < _history.Count; i++)
+            for (int i = 0; i < _count; i++)
             {
-                float diff = Mathf.Abs(_history[i].Timestamp - timestamp);
+                var snap = _ringBuffer[i];
+                float diff = Mathf.Abs(snap.Timestamp - timestamp);
                 if (diff < bestDiff)
                 {
                     bestDiff = diff;
-                    best = _history[i];
+                    best = snap;
                 }
             }
 
@@ -189,4 +198,3 @@ namespace Shootopia
         }
     }
 }
-

@@ -86,6 +86,12 @@ namespace Shootopia
             if (animator == null) animator = GetComponentInChildren<Animator>(true);
             if (aimProviderBehaviour is IAimProvider ap) Aim = ap;
 
+            var childCollider = GetComponentInChildren<CapsuleCollider>();
+            if (childCollider != null && Controller != null)
+            {
+                Physics.IgnoreCollision(Controller, childCollider, true);
+            }
+
             _factory = new StateFactory(this);
             CurrentState = _factory.Grounded();
             CurrentState.EnterState();

@@ -36,6 +36,9 @@ namespace Shootopia
 
             _instance = this;
 
+            // Maintain 1-tick interpolation buffer so opponents smoothly glide across network packet delays without jitter
+            Unity.Netcode.Components.NetworkTransform.InterpolationBufferTickOffset = 1;
+
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 

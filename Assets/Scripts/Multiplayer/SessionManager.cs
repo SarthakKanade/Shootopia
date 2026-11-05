@@ -365,8 +365,33 @@ namespace Shootopia
                     { "ScoreLimit", new SessionProperty(ConfiguredScoreLimit.ToString(), VisibilityPropertyOptions.Public, PropertyIndex.String5) }
                 };
 
-                // WithRelayNetwork automatically configures UTP transport and initiates NGO Host
-                options.WithRelayNetwork();
+                // Optimal lowest-latency Relay region selection (defaults to closest Indian/Asian datacenter)
+                string relayRegion = "asia-south1";
+                try
+                {
+                    var regionsTask = Unity.Services.Relay.RelayService.Instance.ListRegionsAsync();
+                    if (await Task.WhenAny(regionsTask, Task.Delay(1200)) == regionsTask && !regionsTask.IsFaulted)
+                    {
+                        var regions = regionsTask.Result;
+                        if (regions != null && regions.Count > 0)
+                        {
+                            var best = regions.Find(r => r.Id.StartsWith("asia-south") || r.Id.StartsWith("in-mum"));
+                            if (best != null) relayRegion = best.Id;
+                            else
+                            {
+                                var se = regions.Find(r => r.Id.StartsWith("asia"));
+                                if (se != null) relayRegion = se.Id;
+                            }
+                        }
+                    }
+                }
+                catch (Exception regEx)
+                {
+                    Debug.LogWarning($"[SessionManager] Regional Relay query skipped, defaulting to asia-south1: {regEx.Message}");
+                }
+
+                Debug.Log($"[SessionManager] Allocating Relay session with optimal region: '{relayRegion}'");
+                options.WithRelayNetwork(relayRegion);
 
                 _currentSession = await MultiplayerService.Instance.CreateSessionAsync(options);
                 SubscribeToSessionEvents(_currentSession);
