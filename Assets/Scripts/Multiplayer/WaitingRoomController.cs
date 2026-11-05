@@ -33,6 +33,7 @@ namespace Shootopia
         public string GameplaySceneName => gameplaySceneName;
 
         [Header("Centered Modal Window")]
+        [SerializeField] private GameObject dimBackdrop;
         [SerializeField] private GameObject lobbyModalDiv;
         [SerializeField] private CanvasGroup lobbyCanvasGroup;
         [SerializeField] private GameObject warmupHudBadge;
@@ -104,6 +105,11 @@ namespace Shootopia
         private void Awake()
         {
             Instance = this;
+            if (dimBackdrop == null)
+            {
+                var dt = transform.Find("DimBackdrop");
+                if (dt != null) dimBackdrop = dt.gameObject;
+            }
         }
 
         private void Start()
@@ -179,6 +185,8 @@ namespace Shootopia
                 CursorManager.PopUnlock("WaitingRoom");
                 IsLobbyMenuOpen = false;
             }
+
+            if (dimBackdrop != null) dimBackdrop.SetActive(false);
 
             if (SessionManager.Instance != null)
             {
@@ -296,6 +304,7 @@ namespace Shootopia
             if (visible)
             {
                 CursorManager.PushUnlock("WaitingRoom");
+                if (dimBackdrop != null) dimBackdrop.SetActive(true);
                 if (lobbyModalDiv != null) lobbyModalDiv.SetActive(true);
                 if (lobbyCanvasGroup != null)
                 {
@@ -308,6 +317,7 @@ namespace Shootopia
             else
             {
                 CursorManager.PopUnlock("WaitingRoom");
+                if (dimBackdrop != null) dimBackdrop.SetActive(false);
                 if (lobbyModalDiv != null) lobbyModalDiv.SetActive(false);
                 if (lobbyCanvasGroup != null)
                 {
@@ -747,6 +757,7 @@ namespace Shootopia
             _isGameOverMode = false;
             IsLobbyMenuOpen = false;
             CursorManager.PopUnlock("WaitingRoom");
+            if (dimBackdrop != null) dimBackdrop.SetActive(false);
             if (lobbyModalDiv != null) lobbyModalDiv.SetActive(false);
             if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
             // Keep gameObject active so event listeners, audio, and GameOver triggers remain alive.
