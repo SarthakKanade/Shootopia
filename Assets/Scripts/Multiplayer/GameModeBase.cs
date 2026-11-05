@@ -58,7 +58,22 @@ namespace Shootopia
             InitialMatchDuration.Value = durationSeconds > 0 ? durationSeconds : 300f;
             TargetScoreLimit.Value = scoreLimit > 0 ? scoreLimit : 10;
             MatchTimeRemaining.Value = InitialMatchDuration.Value;
+            MatchInProgress.Value = false;
+            MatchActive.Value = false;
+            PreMatchCountdown.Value = -1;
             Debug.Log($"[GameModeBase] Configured match rules: Duration={InitialMatchDuration.Value}s ({InitialMatchDuration.Value / 60f:F1}m), ScoreLimit={TargetScoreLimit.Value}");
+        }
+
+        public virtual void ResetMatchState()
+        {
+            if (!IsServer) return;
+            MatchInProgress.Value = false;
+            MatchActive.Value = false;
+            PreMatchCountdown.Value = -1;
+            MatchTimeRemaining.Value = InitialMatchDuration.Value > 0 ? InitialMatchDuration.Value : 300f;
+            PlayerKills.Clear();
+            PlayerDeaths.Clear();
+            Debug.Log("[GameModeBase] Reset match state: MatchInProgress=false, MatchActive=false.");
         }
 
         protected readonly Dictionary<ulong, int> PlayerKills = new Dictionary<ulong, int>();
@@ -77,9 +92,13 @@ namespace Shootopia
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
-            if (IsServer && NetworkManager.Singleton != null)
+            if (IsServer)
             {
-                NetworkManager.Singleton.OnClientConnectedCallback += OnBaseClientConnected;
+                ResetMatchState();
+                if (NetworkManager.Singleton != null)
+                {
+                    NetworkManager.Singleton.OnClientConnectedCallback += OnBaseClientConnected;
+                }
             }
         }
 

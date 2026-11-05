@@ -67,6 +67,9 @@ namespace Shootopia
         [SerializeField] private TMP_InputField inputMaxPlayers;
         [SerializeField] private Toggle togglePublicRoom;
         [SerializeField] private Toggle toggleLanRoom;
+
+        private TextMeshProUGUI _publicRoomLabel;
+        private TextMeshProUGUI _lanRoomLabel;
         [SerializeField] private Button btnConfirmCreate;
 
         [Header("Custom Rooms: Match Rules")]
@@ -280,6 +283,7 @@ namespace Shootopia
             }
             UpdateScoreLimitDisplay();
 
+            EnsureLanRoomToggleInitialized();
             await MultiplayerAutoInitializer.EnsureInitializedAsync();
         }
 
@@ -489,7 +493,8 @@ namespace Shootopia
 
             try
             {
-                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                EnsureLanRoomToggleInitialized();
+            await MultiplayerAutoInitializer.EnsureInitializedAsync();
 
                 if (SessionManager.Instance != null)
                 {
@@ -568,7 +573,11 @@ namespace Shootopia
                 if (img != null) img.color = !isCreateTab ? new Color(1f, 0.9f, 0.4f, 1f) : new Color(0.6f, 0.6f, 0.7f, 0.8f);
             }
 
-            if (!isCreateTab)
+            if (isCreateTab)
+            {
+                EnsureLanRoomToggleInitialized();
+            }
+            else
             {
                 RefreshRoomListAsync();
             }
@@ -751,7 +760,8 @@ namespace Shootopia
                     return;
                 }
 
-                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                EnsureLanRoomToggleInitialized();
+            await MultiplayerAutoInitializer.EnsureInitializedAsync();
                 await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode, _selectedCreateMap, matchDurationSeconds, scoreLimit);
             }
             catch (Exception ex)
@@ -789,7 +799,8 @@ namespace Shootopia
                 }
 
                 // Fallback to UGS Relay / Internet
-                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                EnsureLanRoomToggleInitialized();
+            await MultiplayerAutoInitializer.EnsureInitializedAsync();
                 await SessionManager.Instance.JoinByCode(code);
             }
             catch (Exception ex)
@@ -815,7 +826,8 @@ namespace Shootopia
 
             try
             {
-                await MultiplayerAutoInitializer.EnsureInitializedAsync();
+                EnsureLanRoomToggleInitialized();
+            await MultiplayerAutoInitializer.EnsureInitializedAsync();
                 if (SessionManager.Instance != null)
                 {
                     _cachedSessions = await SessionManager.Instance.GetPublicSessions();
@@ -886,7 +898,12 @@ namespace Shootopia
                 scoreStr = $" • {scoreGoal}pts";
             }
 
-            if (texts.Length > 0) texts[0].text = roomName;
+            if (texts.Length > 0)
+            {
+                texts[0].text = roomName.StartsWith("LAN", StringComparison.OrdinalIgnoreCase)
+                    ? $"<color=#00E676>[LAN]</color> {roomName}"
+                    : roomName;
+            }
             if (texts.Length > 1) texts[1].text = $"{mode} • {mapDisplay}{durationStr}{scoreStr} • MAX {maxPlayers}P{(isInProgress ? " • [IN MATCH]" : "")}";
 
             if (joinBtn != null)
@@ -1385,6 +1402,143 @@ namespace Shootopia
             if (img != null)
             {
                 img.color = isActive ? new Color(1f, 0.9f, 0.4f, 1f) : new Color(0.7f, 0.7f, 0.8f, 0.85f);
+            }
+        }
+
+        private void EnsureLanRoomToggleInitialized()
+        {
+            if (togglePublicRoom == null || togglePublicRoom.transform.parent == null) return;
+
+            GameObject publicRow = togglePublicRoom.transform.parent.gameObject;
+            Transform container = publicRow.transform.parent; // TabContent_Create
+            if (container == null) return;
+
+            var vlg = container.GetComponent<VerticalLayoutGroup>();
+            if (vlg != null)
+            {
+                vlg.spacing = 10f;
+                vlg.childForceExpandHeight = false;
+            }
+
+            publicRow.name = "Row_PublicRoom";
+            var pubHlg = publicRow.GetComponent<HorizontalLayoutGroup>();
+            if (pubHlg != null)
+            {
+                pubHlg.spacing = 14f;
+                pubHlg.childAlignment = TextAnchor.MiddleLeft;
+                pubHlg.childForceExpandWidth = false;
+                pubHlg.childForceExpandHeight = false;
+                pubHlg.childControlWidth = false;
+                pubHlg.childControlHeight = false;
+            }
+
+            if (_publicRoomLabel == null)
+            {
+                _publicRoomLabel = publicRow.GetComponentInChildren<TextMeshProUGUI>();
+            }
+
+            if (_publicRoomLabel != null)
+            {
+                _publicRoomLabel.text = "PUBLIC ARENA (VISIBLE IN BROWSER)";
+                _publicRoomLabel.fontSize = 14f;
+                _publicRoomLabel.margin = Vector4.zero;
+                _publicRoomLabel.alignment = TextAlignmentOptions.MidlineLeft;
+            }
+
+            // Find or instantiate Row 2: LAN Room
+            GameObject lanRow = null;
+            Transform existingLanRow = container.Find("Row_LanRoom");
+            if (existingLanRow != null)
+            {
+                lanRow = existingLanRow.gameObject;
+            }
+            else
+            {
+                lanRow = Instantiate(publicRow, container);
+                lanRow.name = "Row_LanRoom";
+            }
+
+            lanRow.transform.SetSiblingIndex(publicRow.transform.GetSiblingIndex() + 1);
+
+            toggleLanRoom = lanRow.GetComponentInChildren<Toggle>();
+            if (toggleLanRoom != null)
+            {
+                toggleLanRoom.name = "Toggle_Lan";
+                toggleLanRoom.onValueChanged.RemoveAllListeners();
+                toggleLanRoom.SetIsOnWithoutNotify(false);
+                toggleLanRoom.onValueChanged.AddListener(OnLanRoomToggleChanged);
+            }
+
+            _lanRoomLabel = lanRow.GetComponentInChildren<TextMeshProUGUI>();
+            if (_lanRoomLabel != null)
+            {
+                _lanRoomLabel.name = "Label_Lan";
+                _lanRoomLabel.text = "LAN ROOM (LOCAL WI-FI)";
+                _lanRoomLabel.fontSize = 14f;
+                _lanRoomLabel.margin = Vector4.zero;
+                _lanRoomLabel.alignment = TextAlignmentOptions.MidlineLeft;
+            }
+
+            if (togglePublicRoom != null)
+            {
+                togglePublicRoom.SetIsOnWithoutNotify(true);
+            }
+
+            OnLanRoomToggleChanged(false);
+        }
+
+        private void OnLanRoomToggleChanged(bool isLan)
+        {
+            if (togglePublicRoom != null)
+            {
+                togglePublicRoom.interactable = !isLan;
+                var graphics = togglePublicRoom.GetComponentsInChildren<Graphic>(true);
+                foreach (var g in graphics)
+                {
+                    var c = g.color;
+                    c.a = isLan ? 0.35f : 1.0f;
+                    g.color = c;
+                }
+            }
+
+            if (_publicRoomLabel != null)
+            {
+                var c = _publicRoomLabel.color;
+                c.a = isLan ? 0.35f : 1.0f;
+                _publicRoomLabel.color = c;
+            }
+
+            if (inputCreateRoomName != null)
+            {
+                string text = inputCreateRoomName.text ?? string.Empty;
+                if (isLan)
+                {
+                    if (!text.StartsWith("LAN_", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (text.StartsWith("LAN", StringComparison.OrdinalIgnoreCase))
+                        {
+                            text = "LAN_" + text.Substring(3).TrimStart('_', ' ');
+                        }
+                        else if (string.IsNullOrWhiteSpace(text))
+                        {
+                            string hostName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                            text = $"LAN_{hostName}'s Arena";
+                        }
+                        else
+                        {
+                            text = "LAN_" + text;
+                        }
+                        inputCreateRoomName.text = text;
+                    }
+                    inputCreateRoomName.caretPosition = inputCreateRoomName.text.Length;
+                }
+                else
+                {
+                    if (text.StartsWith("LAN_", StringComparison.OrdinalIgnoreCase))
+                    {
+                        inputCreateRoomName.text = text.Substring(4);
+                    }
+                }
             }
         }
 

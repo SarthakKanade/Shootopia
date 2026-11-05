@@ -1373,9 +1373,14 @@ namespace Shootopia
             pingBadgeRoot = badgeObj;
         }
 
+        private float _fpsAccumulator = 60f;
+
         private void UpdatePingBadge()
         {
-            if (Time.unscaledTime - _lastPingUpdateTime < 0.5f) return;
+            float currentFps = 1f / Mathf.Max(0.0001f, Time.unscaledDeltaTime);
+            _fpsAccumulator = Mathf.Lerp(_fpsAccumulator, currentFps, 0.08f);
+
+            if (Time.unscaledTime - _lastPingUpdateTime < 0.25f) return;
             _lastPingUpdateTime = Time.unscaledTime;
 
             if (pingText == null) return;
@@ -1388,11 +1393,13 @@ namespace Shootopia
 
             if (pingBadgeRoot != null && !pingBadgeRoot.activeSelf) pingBadgeRoot.SetActive(true);
 
+            int fps = Mathf.Clamp(Mathf.RoundToInt(_fpsAccumulator), 1, 999);
             bool isHost = NetworkManager.Singleton.IsHost;
             int ping = NetworkPingUtility.GetCurrentPing(NetworkManager.Singleton.LocalClientId);
             Color pingColor = NetworkPingUtility.GetPingColor(ping);
 
-            pingText.text = NetworkPingUtility.FormatPingString(ping, isHost);
+            string pingFormatted = NetworkPingUtility.FormatPingString(ping, isHost);
+            pingText.text = $"{fps} FPS  •  {pingFormatted}";
             pingText.color = pingColor;
 
             if (pingIndicatorDot != null)

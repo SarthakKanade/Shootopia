@@ -131,7 +131,8 @@ namespace Shootopia
                 activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
             }
 
-            bool isHost = SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null && SessionManager.Instance.GetCurrentSession().IsHost;
+            bool isHost = (SessionManager.Instance != null && SessionManager.Instance.IsHost) ||
+                          (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
 
             bool isAlreadyStarted = false;
             if (!isHost)
@@ -226,7 +227,13 @@ namespace Shootopia
             if (_isGameOverMode) return;
             if (_matchStarted) return;
 
-            // Check if match started on network
+            bool isHost = (SessionManager.Instance != null && SessionManager.Instance.IsHost) ||
+                          (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
+
+            // Host only closes Waiting Room on explicit StartMatch action, never automatically in Update
+            if (isHost) return;
+
+            // Check if match started on network for joining clients
             var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
             if (activeMode == null)
             {
@@ -407,7 +414,11 @@ namespace Shootopia
             }
 
             // Room Code
-            string code = SessionManager.Instance != null ? SessionManager.Instance.GetJoinCode() : "------";
+            string code = SessionManager.Instance != null ? SessionManager.Instance.GetJoinCode() : "";
+            if (string.IsNullOrEmpty(code) && PlayerPrefs.HasKey("Shootopia_CurrentRoomCode"))
+            {
+                code = PlayerPrefs.GetString("Shootopia_CurrentRoomCode");
+            }
             if (string.IsNullOrEmpty(code)) code = "------";
             if (roomCodeDisplay != null)
             {
@@ -1181,12 +1192,12 @@ namespace Shootopia
         {
             LoadingScreenManager.ShowOverlay("RETURNING TO MAIN MENU...");
 
-            if (SessionManager.Instance != null && SessionManager.Instance.GetCurrentSession() != null)
+            if (SessionManager.Instance != null)
             {
                 try { await SessionManager.Instance.LeaveSession(); } catch { }
             }
 
-            // Ensure we return to MainMenu even if UGS leave threw an exception or session was null
+            // Ensure we return to MainMenu even if leave threw an exception or session was null
             if (SceneManager.GetActiveScene().name != "MainMenu")
             {
                 if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)

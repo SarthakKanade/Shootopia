@@ -338,28 +338,14 @@ namespace Shootopia
 
         private void ApplyPlatformPerformanceSettings()
         {
+            // Lower device load and thermal throttling by capping target frame rate to a stable 60 FPS
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
+
             bool isMobileExperience = Application.isMobilePlatform || _effectiveMode == InputControlMode.MobileTouch;
 
             if (isMobileExperience)
             {
-                // Disable VSync so Application.targetFrameRate takes priority
-                QualitySettings.vSyncCount = 0;
-
-                // Query display refresh rate capability (e.g. 90Hz / 120Hz ProMotion screens)
-                double refreshRate = Screen.currentResolution.refreshRateRatio.value;
-                if (refreshRate >= 115)
-                {
-                    Application.targetFrameRate = 120;
-                }
-                else if (refreshRate >= 85)
-                {
-                    Application.targetFrameRate = 90;
-                }
-                else
-                {
-                    Application.targetFrameRate = 60;
-                }
-
                 // Strictly lock runtime orientation to Landscape only
                 Screen.orientation = ScreenOrientation.AutoRotation;
                 Screen.autorotateToPortrait = false;
@@ -373,19 +359,6 @@ namespace Shootopia
                     QualitySettings.SetQualityLevel(0, true);
                     Debug.Log("[DeviceProfileManager] Switched Quality Level to Mobile (0)");
                 }
-            }
-            else
-            {
-#if UNITY_WEBGL
-                // WebGL: Let browser handle requestAnimationFrame pacing smoothly without artificial VSync lockups
-                QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = 60;
-#else
-                // Desktop: Enable VSync and clamp frame rate to screen refresh rate (avoids uncapped 500+ FPS host load)
-                QualitySettings.vSyncCount = 1;
-                double refreshRate = Screen.currentResolution.refreshRateRatio.value;
-                Application.targetFrameRate = refreshRate >= 115 ? 120 : (refreshRate >= 85 ? 90 : 60);
-#endif
             }
         }
 

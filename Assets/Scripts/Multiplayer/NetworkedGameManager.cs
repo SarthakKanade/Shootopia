@@ -156,8 +156,7 @@ namespace Shootopia
                 MatchStarted.Value = false;
                 if (_activeGameMode != null)
                 {
-                    _activeGameMode.MatchActive.Value = false;
-                    _activeGameMode.PreMatchCountdown.Value = -1;
+                    _activeGameMode.ResetMatchState();
                 }
                 Debug.Log("[NetworkedGameManager] Waiting in Warmup Lobby until host starts match.");
                 return;
