@@ -66,6 +66,7 @@ namespace Shootopia
         [SerializeField] private TextMeshProUGUI labelMaxPlayersUnit;
         [SerializeField] private TMP_InputField inputMaxPlayers;
         [SerializeField] private Toggle togglePublicRoom;
+        [SerializeField] private Toggle toggleLanRoom;
         [SerializeField] private Button btnConfirmCreate;
 
         [Header("Custom Rooms: Match Rules")]
@@ -737,12 +738,19 @@ namespace Shootopia
             int matchDurationSeconds = _createDurationMinutes * 60;
             int scoreLimit = _createScoreLimit;
             bool isPublic = togglePublicRoom == null || togglePublicRoom.isOn;
+            bool isLan = (toggleLanRoom != null && toggleLanRoom.isOn) || roomName.StartsWith("LAN", StringComparison.OrdinalIgnoreCase);
 
             CloseTopModal();
-            ShowBusy(true, "INITIALIZING ARENA...");
+            ShowBusy(true, isLan ? "STARTING LOCAL WI-FI ARENA..." : "INITIALIZING ARENA...");
 
             try
             {
+                if (isLan)
+                {
+                    await SessionManager.Instance.StartLanSession(roomName, maxPlayers, _selectedCreateMode, _selectedCreateMap, matchDurationSeconds, scoreLimit);
+                    return;
+                }
+
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
                 await SessionManager.Instance.CreateSession(roomName, isPublic, maxPlayers, _selectedCreateMode, _selectedCreateMap, matchDurationSeconds, scoreLimit);
             }
@@ -771,6 +779,16 @@ namespace Shootopia
 
             try
             {
+                // First check local Wi-Fi subnet for direct UDP LAN Host
+                var lanInfo = await LanDiscoveryManager.FindRoomByCodeAsync(code, timeoutMs: 1500);
+                if (lanInfo != null)
+                {
+                    ShowBusy(true, $"CONNECTING TO LOCAL WI-FI ARENA ({lanInfo.HostIP})...");
+                    await SessionManager.Instance.JoinLanSessionByCode(code);
+                    return;
+                }
+
+                // Fallback to UGS Relay / Internet
                 await MultiplayerAutoInitializer.EnsureInitializedAsync();
                 await SessionManager.Instance.JoinByCode(code);
             }

@@ -415,8 +415,19 @@ namespace Shootopia
             }
 
             // Player Count
-            int count = session != null && session.Players != null ? session.Players.Count : 1;
-            int max = session != null ? session.MaxPlayers : 8;
+            int count = 1;
+            int max = 8;
+            if (session != null && session.Players != null)
+            {
+                count = session.Players.Count;
+                max = session.MaxPlayers;
+            }
+            else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+            {
+                count = NetworkManager.Singleton.ConnectedClients.Count;
+                max = 8;
+            }
+
             if (roomPlayerCountLabel != null)
             {
                 roomPlayerCountLabel.text = $"{count}/{max} PLAYERS";

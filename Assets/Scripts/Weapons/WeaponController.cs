@@ -791,7 +791,7 @@ namespace Shootopia
 
             if (IsOwner)
             {
-                FireWeaponServerRpc(origin, dir, data.name);
+                FireWeaponServerRpc(origin, dir, data.name, Time.time);
                 CameraShakeManager.Instance?.ShakeWeaponFire(data);
                 MobileHapticsManager.TriggerShotFired();
             }
@@ -910,7 +910,7 @@ namespace Shootopia
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        private void FireWeaponServerRpc(Vector3 firePoint, Vector3 aimDir, string weaponName)
+        private void FireWeaponServerRpc(Vector3 firePoint, Vector3 aimDir, string weaponName, float clientTimestamp = 0f)
         {
             if (!IsServer) return;
 
@@ -918,7 +918,20 @@ namespace Shootopia
             if (attach == null || attach.gameplayData == null || attach.gameplayData.projectilePrefab != null) return;
             var data = attach.gameplayData;
 
-            if (Physics.Raycast(firePoint, aimDir, out RaycastHit hit, hitRange, hitMask, QueryTriggerInteraction.Ignore))
+            bool hasHit = false;
+            RaycastHit hit;
+
+            if (LagCompensationManager.Instance != null && clientTimestamp > 0.001f)
+            {
+                hasHit = LagCompensationManager.Instance.RaycastLagCompensated(
+                    clientTimestamp, firePoint, aimDir, hitRange, hitMask, NetworkObjectId, out hit);
+            }
+            else
+            {
+                hasHit = Physics.Raycast(firePoint, aimDir, out hit, hitRange, hitMask, QueryTriggerInteraction.Ignore);
+            }
+
+            if (hasHit)
             {
                 if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
                 {

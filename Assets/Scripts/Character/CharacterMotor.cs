@@ -119,7 +119,7 @@ namespace Shootopia
             // Only the owning client drives FSM, input, and animator triggers.
             if (!IsOwner)
             {
-                ModelRoot.rotation = _modelRotation.Value;
+                ModelRoot.rotation = Quaternion.Slerp(ModelRoot.rotation, _modelRotation.Value, Mathf.Min(1f, 15f * dt));
                 return;
             }
             if (input == null) return;
@@ -221,6 +221,12 @@ namespace Shootopia
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
+
+            if (!IsOwner && Controller != null)
+            {
+                // Disable CharacterController on remote proxies to eliminate PhysX overhead and interpolation jitter
+                Controller.enabled = false;
+            }
 
             if (IsOwner)
             {

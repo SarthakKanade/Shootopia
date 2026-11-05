@@ -38,8 +38,11 @@ namespace Shootopia
         public UnityEvent OnPlayerReadyChanged;
         public UnityEvent OnSessionUpdated;
 
-        public bool IsHost => _currentSession != null && _currentSession.IsHost;
+        public bool IsHost => (IsLanSession && NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost) || (_currentSession != null && _currentSession.IsHost);
         public ISession CurrentSession => _currentSession;
+
+        public bool IsLanSession { get; private set; } = false;
+        public string CurrentRoomCode { get; private set; } = "";
 
         public static int ConfiguredMatchDuration { get; private set; } = 300;
         public static int ConfiguredScoreLimit { get; private set; } = 10;
@@ -109,6 +112,10 @@ namespace Shootopia
 
         public async Task EnsurePreviousSessionCleanedUpAsync()
         {
+            LanDiscoveryManager.StopBroadcasting();
+            IsLanSession = false;
+            CurrentRoomCode = "";
+
             if (_currentSession != null)
             {
                 try
@@ -149,6 +156,171 @@ namespace Shootopia
                 {
                     await Task.Yield();
                 }
+            }
+        }
+
+        private static string GenerateRoomCode()
+        {
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            var random = new System.Random();
+            char[] code = new char[6];
+            for (int i = 0; i < 6; i++) code[i] = chars[random.Next(chars.Length)];
+            return new string(code);
+        }
+
+        /// <summary>
+        /// Starts a direct UDP LAN session on the local Wi-Fi network without requiring internet / UGS Relay.
+        /// Ping is typically 0-5ms.
+        /// </summary>
+        public async Task StartLanSession(string sessionName, int maxPlayers, string gameMode, string mapName = "Map1", int matchDurationSeconds = 300, int scoreLimit = 10)
+        {
+            if (_isProcessingSession)
+            {
+                Debug.LogWarning("[SessionManager] Operation in progress. Request ignored.");
+                return;
+            }
+
+            _isProcessingSession = true;
+            ConfiguredMatchDuration = matchDurationSeconds > 0 ? matchDurationSeconds : 300;
+            ConfiguredScoreLimit = scoreLimit > 0 ? scoreLimit : 10;
+
+            try
+            {
+                await EnsurePreviousSessionCleanedUpAsync();
+                EnsureConnectionApprovalSetup();
+
+                string roomCode = GenerateRoomCode();
+                CurrentRoomCode = roomCode;
+                IsLanSession = true;
+
+                PlayerPrefs.SetString("Shootopia_CurrentRoomCode", roomCode);
+                PlayerPrefs.SetInt("Shootopia_IsLanSession", 1);
+                PlayerPrefs.Save();
+
+                if (NetworkManager.Singleton != null)
+                {
+                    var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+                    if (transport != null)
+                    {
+                        transport.UseWebSockets = false;
+                        transport.SetConnectionData("0.0.0.0", 7777, "0.0.0.0");
+                    }
+
+                    // Configure 60 Hz tick simulation for crisp competitive gameplay
+                    NetworkManager.Singleton.NetworkConfig.TickRate = 60;
+
+                    // Ensure LagCompensationManager is active on Host
+                    if (GetComponent<LagCompensationManager>() == null)
+                    {
+                        gameObject.AddComponent<LagCompensationManager>();
+                    }
+
+                    bool started = NetworkManager.Singleton.StartHost();
+                    if (!started)
+                    {
+                        throw new Exception("NetworkManager failed to start LAN Host.");
+                    }
+                }
+
+                // Start Wi-Fi UDP beacon on port 47777 so joining clients can locate this host by code
+                LanDiscoveryManager.StartBroadcasting(roomCode, 7777, sessionName, mapName, gameMode, maxPlayers);
+
+                Debug.Log($"[SessionManager] LAN Host started successfully. Room Code: {roomCode}");
+                OnSessionCreated?.Invoke();
+
+                string targetMap = !string.IsNullOrEmpty(mapName) ? mapName : "Map1";
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer && NetworkManager.Singleton.SceneManager != null)
+                {
+                    NetworkManager.Singleton.SceneManager.LoadScene(targetMap, LoadSceneMode.Single);
+                }
+                else
+                {
+                    LoadingScreenManager.LoadScene(targetMap, "DEPLOYING TO ARENA...");
+                }
+            }
+            catch (Exception ex)
+            {
+                string errMsg = $"StartLanSession failed: {ex.Message}";
+                Debug.LogError($"[SessionManager] {errMsg}");
+                LoadingScreenManager.HideOverlay();
+                OnSessionError?.Invoke(errMsg);
+                throw;
+            }
+            finally
+            {
+                _isProcessingSession = false;
+            }
+        }
+
+        /// <summary>
+        /// Joins a LAN game across the local Wi-Fi network by resolving the 6-character room code.
+        /// </summary>
+        public async Task JoinLanSessionByCode(string joinCode)
+        {
+            if (_isProcessingSession)
+            {
+                Debug.LogWarning("[SessionManager] Operation in progress. Request ignored.");
+                return;
+            }
+
+            _isProcessingSession = true;
+
+            try
+            {
+                await EnsurePreviousSessionCleanedUpAsync();
+
+                string cleanCode = joinCode.Trim().ToUpper();
+                if (cleanCode.StartsWith("LAN_")) cleanCode = cleanCode.Substring(4);
+
+                LoadingScreenManager.ShowOverlay($"SEARCHING LOCAL WI-FI FOR CODE [{cleanCode}]...");
+                Debug.Log($"[SessionManager] Probing LAN for room code [{cleanCode}]...");
+
+                var lanInfo = await LanDiscoveryManager.FindRoomByCodeAsync(cleanCode, timeoutMs: 3000);
+                if (lanInfo == null)
+                {
+                    throw new Exception($"Could not find a LAN host with code [{cleanCode}] on this Wi-Fi network. Ensure you and the host are connected to the same Wi-Fi.");
+                }
+
+                LoadingScreenManager.ShowOverlay($"CONNECTING TO LAN HOST ({lanInfo.HostIP}:{lanInfo.HostPort})...");
+
+                if (NetworkManager.Singleton != null)
+                {
+                    var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+                    if (transport != null)
+                    {
+                        transport.UseWebSockets = false;
+                        transport.SetConnectionData(lanInfo.HostIP, lanInfo.HostPort);
+                    }
+
+                    NetworkManager.Singleton.NetworkConfig.TickRate = 60;
+
+                    bool started = NetworkManager.Singleton.StartClient();
+                    if (!started)
+                    {
+                        throw new Exception("NetworkManager failed to connect to LAN Host.");
+                    }
+                }
+
+                IsLanSession = true;
+                CurrentRoomCode = cleanCode;
+                PlayerPrefs.SetString("Shootopia_CurrentRoomCode", cleanCode);
+                PlayerPrefs.SetInt("Shootopia_IsLanSession", 1);
+                PlayerPrefs.Save();
+
+                Debug.Log($"[SessionManager] Connected to LAN Host at {lanInfo.HostIP}:{lanInfo.HostPort} for room [{cleanCode}].");
+                OnSessionJoined?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                string errMsg = $"JoinLanSession failed: {ex.Message}";
+                Debug.LogError($"[SessionManager] {errMsg}");
+                LoadingScreenManager.HideOverlay();
+                OnSessionError?.Invoke(errMsg);
+                throw;
+            }
+            finally
+            {
+                _isProcessingSession = false;
             }
         }
 
@@ -453,7 +625,28 @@ namespace Shootopia
         public List<PlayerReadyState> GetPlayerReadyStates()
         {
             var states = new List<PlayerReadyState>();
-            if (_currentSession == null || _currentSession.Players == null) return states;
+            if (_currentSession == null || _currentSession.Players == null)
+            {
+                // In LAN mode or local testing, resolve players from NetworkManager connected clients
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
+                {
+                    int fallbackIdx = 0;
+                    foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                    {
+                        ulong cid = client.ClientId;
+                        bool isHostClient = cid == NetworkManager.ServerClientId;
+                        string name = PlayerNameRegistry.GetName(cid);
+                        if (string.IsNullOrEmpty(name))
+                        {
+                            name = isHostClient && PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : $"Agent_{cid}";
+                        }
+                        int teamIdx = fallbackIdx % 2;
+                        states.Add(new PlayerReadyState(cid.ToString(), true, name, teamIdx));
+                        fallbackIdx++;
+                    }
+                }
+                return states;
+            }
 
             int fallbackIndex = 0;
             foreach (var player in _currentSession.Players)
@@ -526,7 +719,7 @@ namespace Shootopia
             OnSessionUpdated?.Invoke();
         }
 
-        public string GetJoinCode() => _currentSession != null ? _currentSession.Code : string.Empty;
+        public string GetJoinCode() => !string.IsNullOrEmpty(CurrentRoomCode) ? CurrentRoomCode : (_currentSession != null ? _currentSession.Code : string.Empty);
         public ISession GetCurrentSession() => _currentSession;
 
         public string GetSessionMapName()
