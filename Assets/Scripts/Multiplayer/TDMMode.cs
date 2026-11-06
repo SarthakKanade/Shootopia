@@ -149,8 +149,12 @@ namespace Shootopia
                 var readyStates = SessionManager.Instance.GetPlayerReadyStates();
                 if (readyStates != null)
                 {
-                    var match = readyStates.Find(r => r.clientId == clientId || r.playerId == clientId.ToString());
-                    if (!string.IsNullOrEmpty(match.playerId) || match.clientId == clientId)
+                    string targetName = PlayerNameRegistry.GetName(clientId);
+                    var match = readyStates.Find(r => 
+                        r.playerId == clientId.ToString() || 
+                        (!string.IsNullOrEmpty(targetName) && r.displayName == targetName));
+
+                    if (!string.IsNullOrEmpty(match.playerId))
                     {
                         assignedTeam = Mathf.Clamp(match.teamIndex, 0, 1);
                     }
