@@ -310,10 +310,12 @@ namespace Shootopia
         {
             if (!IsOwnerProjectile()) return;
 
-            if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+            var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>() ?? hit.collider.GetComponent<PlayerHealth>();
+            var damageable = hit.collider.GetComponentInParent<IDamageable>() ?? hit.collider.GetComponent<IDamageable>();
+
+            if (targetHealth != null || damageable != null)
             {
                 ulong attackerId = GetAttackerClientId();
-                var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>() ?? hit.collider.GetComponent<PlayerHealth>();
 
                 if (targetHealth != null)
                 {

@@ -251,7 +251,9 @@ namespace Shootopia
                 : GameModeBase.Instance;
 
             bool isSelfOrEnvironment = (type == DamageType.Environment || attackerClientId == OwnerClientId);
-            if (!isSelfOrEnvironment && activeMode != null && !activeMode.MatchActive.Value) return;
+            bool isMatchActive = (activeMode != null && activeMode.MatchActive.Value) || 
+                                 (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.MatchStarted.Value);
+            if (!isSelfOrEnvironment && !isMatchActive) return;
 
             // TDM Friendly Fire prevention
             if (activeMode is TDMMode tdm)

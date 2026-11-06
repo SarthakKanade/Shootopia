@@ -25,7 +25,8 @@ public class Weapon : MonoBehaviour
         {
             Instantiate(weaponSO.HitVFXPrefab, hit.point, Quaternion.identity);
             
-            if (hit.collider.TryGetComponent(out IDamageable damageable))
+            var damageable = hit.collider.GetComponentInParent<IDamageable>() ?? hit.collider.GetComponent<IDamageable>();
+            if (damageable != null)
             {
                 damageable.TakeDamage(weaponSO.Damage, DamageType.Player, weaponSO);
             }

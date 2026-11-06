@@ -396,10 +396,10 @@ namespace Shootopia
             }
 
             // Mode & Map
-            string mode = "FFA";
+            string mode = SessionManager.Instance != null ? SessionManager.Instance.GetSessionGameMode() : "FFA";
             if (session != null && session.Properties != null && session.Properties.TryGetValue("GameMode", out var modeProp))
             {
-                mode = modeProp.Value.ToUpper();
+                if (!string.IsNullOrEmpty(modeProp.Value)) mode = modeProp.Value.ToUpper();
             }
 
             bool isTeamMode = (mode == "TDM" || mode.Contains("TEAM"));

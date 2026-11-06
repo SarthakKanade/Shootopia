@@ -25,7 +25,8 @@ namespace Shootopia
 
         private void OnTriggerEnter(Collider col)
         {
-            if (col.TryGetComponent(out IDamageable t))
+            var t = col.GetComponentInParent<IDamageable>() ?? col.GetComponent<IDamageable>();
+            if (t != null)
             {
                 DealDamage(t, 18f, DamageType.Bullet, col);
                 if (hitSparkVFX != null)

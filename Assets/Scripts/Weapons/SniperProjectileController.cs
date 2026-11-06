@@ -36,11 +36,12 @@ namespace Shootopia
             // Don't collide with owner or its children
             if (other.transform.root == _owner.transform.root) return;
             
+            var damageable = other.GetComponentInParent<IDamageable>() ?? other.GetComponent<IDamageable>();
             // If it's a trigger, only proceed if it's damageable
-            if (other.isTrigger && !other.TryGetComponent(out IDamageable _)) return;
+            if (other.isTrigger && damageable == null) return;
 
             // Check for IDamageable
-            if (other.TryGetComponent(out IDamageable damageable))
+            if (damageable != null)
             {
                 DealDamage(damageable, _damage, DamageType.Bullet, other);
             }

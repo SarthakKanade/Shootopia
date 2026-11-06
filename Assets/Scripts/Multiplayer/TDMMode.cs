@@ -28,7 +28,6 @@ namespace Shootopia
             if (!IsServer) return;
 
             MatchActive.Value = true;
-            playerTeam.Clear();
             PlayerKills.Clear();
             PlayerDeaths.Clear();
             BlueScore.Value = 0;
@@ -51,7 +50,7 @@ namespace Shootopia
             {
                 NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
                 
-                // Assign all currently connected players
+                // Assign any unassigned connected players
                 foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
                 {
                     AssignPlayerToTeam(client.ClientId);
@@ -93,6 +92,22 @@ namespace Shootopia
             BroadcastTimeRemainingClientRpc(MatchTimeRemaining.Value);
         }
 
+        /// <summary>
+        /// Pre-assigns connected players to their selected teams before initial spawning in PreMatchSequence.
+        /// </summary>
+        public void InitializeTeamsBeforeSpawn()
+        {
+            if (!IsServer) return;
+
+            if (NetworkManager.Singleton != null)
+            {
+                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                {
+                    AssignPlayerToTeam(client.ClientId);
+                }
+            }
+        }
+
         public override void OnNetworkDespawn()
         {
             base.OnNetworkDespawn();
@@ -126,23 +141,42 @@ namespace Shootopia
                 return;
             }
 
-            // Count current teams to auto-balance
-            int blueCount = 0;
-            int redCount = 0;
-            foreach (var kvp in playerTeam)
+            int assignedTeam = -1;
+
+            // 1. Honor player's chosen team from Waiting Room lobby
+            if (SessionManager.Instance != null)
             {
-                if (kvp.Value == 0) blueCount++;
-                else if (kvp.Value == 1) redCount++;
+                var readyStates = SessionManager.Instance.GetPlayerReadyStates();
+                if (readyStates != null)
+                {
+                    var match = readyStates.Find(r => r.clientId == clientId || r.playerId == clientId.ToString());
+                    if (!string.IsNullOrEmpty(match.playerId) || match.clientId == clientId)
+                    {
+                        assignedTeam = Mathf.Clamp(match.teamIndex, 0, 1);
+                    }
+                }
             }
 
-            // Assign to the smaller team
-            int assignedTeam = blueCount <= redCount ? 0 : 1;
+            // 2. Fallback: Count current teams to auto-balance
+            if (assignedTeam < 0)
+            {
+                int blueCount = 0;
+                int redCount = 0;
+                foreach (var kvp in playerTeam)
+                {
+                    if (kvp.Value == 0) blueCount++;
+                    else if (kvp.Value == 1) redCount++;
+                }
+
+                assignedTeam = blueCount <= redCount ? 0 : 1;
+            }
+
             playerTeam[clientId] = assignedTeam;
 
             // Broadcast assignment to all clients
             SyncPlayerTeamClientRpc(clientId, assignedTeam);
 
-            Debug.Log($"[TDMMode] Assigned Player {clientId} to {(assignedTeam == 0 ? "Blue" : "Red")} team (Blue: {blueCount}, Red: {redCount})");
+            Debug.Log($"[TDMMode] Assigned Player {clientId} to {(assignedTeam == 0 ? "Blue" : "Red")} team.");
         }
 
         public override void OnPlayerKilled(ulong killerClientId, ulong victimClientId)

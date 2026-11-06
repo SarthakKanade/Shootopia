@@ -933,13 +933,22 @@ namespace Shootopia
 
             if (hasHit)
             {
-                if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+                var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>() ?? hit.collider.GetComponent<PlayerHealth>();
+                var damageable = hit.collider.GetComponentInParent<IDamageable>() ?? hit.collider.GetComponent<IDamageable>();
+
+                if (targetHealth != null || damageable != null)
                 {
-                    var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>() ?? hit.collider.GetComponent<PlayerHealth>();
                     bool wasAlive = targetHealth != null && targetHealth.GetCurrentHp() > 0f;
 
-                    if (targetHealth != null) targetHealth.LastAttackerClientId = OwnerClientId;
-                    damageable.TakeDamage(data.Damage, DamageType.Bullet, data);
+                    if (targetHealth != null)
+                    {
+                        targetHealth.LastAttackerClientId = OwnerClientId;
+                        targetHealth.TakeDamage(data.Damage, DamageType.Bullet, data, OwnerClientId);
+                    }
+                    else if (damageable != null)
+                    {
+                        damageable.TakeDamage(data.Damage, DamageType.Bullet, data);
+                    }
 
                     if (wasAlive && targetHealth != null && targetHealth.GetCurrentHp() <= 0f)
                     {

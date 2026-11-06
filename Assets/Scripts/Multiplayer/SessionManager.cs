@@ -46,6 +46,7 @@ namespace Shootopia
 
         public static int ConfiguredMatchDuration { get; private set; } = 300;
         public static int ConfiguredScoreLimit { get; private set; } = 10;
+        public static string ConfiguredGameMode { get; private set; } = "FFA";
 
         private ISession _currentSession;
         private bool _isProcessingSession = false;
@@ -183,6 +184,10 @@ namespace Shootopia
             _isProcessingSession = true;
             ConfiguredMatchDuration = matchDurationSeconds > 0 ? matchDurationSeconds : 300;
             ConfiguredScoreLimit = scoreLimit > 0 ? scoreLimit : 10;
+            string normMode = (gameMode != null && (gameMode.ToUpper().Contains("TDM") || gameMode.ToUpper().Contains("TEAM"))) ? "TDM" : "FFA";
+            ConfiguredGameMode = normMode;
+            PlayerPrefs.SetString("Shootopia_ConfiguredGameMode", normMode);
+            PlayerPrefs.Save();
 
             try
             {
@@ -303,6 +308,12 @@ namespace Shootopia
 
                 IsLanSession = true;
                 CurrentRoomCode = cleanCode;
+                if (lanInfo != null && !string.IsNullOrEmpty(lanInfo.GameMode))
+                {
+                    string normMode = (lanInfo.GameMode.ToUpper().Contains("TDM") || lanInfo.GameMode.ToUpper().Contains("TEAM")) ? "TDM" : "FFA";
+                    ConfiguredGameMode = normMode;
+                    PlayerPrefs.SetString("Shootopia_ConfiguredGameMode", normMode);
+                }
                 PlayerPrefs.SetString("Shootopia_CurrentRoomCode", cleanCode);
                 PlayerPrefs.SetInt("Shootopia_IsLanSession", 1);
                 PlayerPrefs.Save();
@@ -338,6 +349,10 @@ namespace Shootopia
             _isProcessingSession = true;
             ConfiguredMatchDuration = matchDurationSeconds > 0 ? matchDurationSeconds : 300;
             ConfiguredScoreLimit = scoreLimit > 0 ? scoreLimit : 10;
+            string normMode = (gameMode != null && (gameMode.ToUpper().Contains("TDM") || gameMode.ToUpper().Contains("TEAM"))) ? "TDM" : "FFA";
+            ConfiguredGameMode = normMode;
+            PlayerPrefs.SetString("Shootopia_ConfiguredGameMode", normMode);
+            PlayerPrefs.Save();
 
             try
             {
@@ -470,6 +485,14 @@ namespace Shootopia
                     await _currentSession.SaveCurrentPlayerDataAsync();
                 }
 
+                if (_currentSession.Properties != null && _currentSession.Properties.TryGetValue("GameMode", out var gmProp) && !string.IsNullOrEmpty(gmProp.Value))
+                {
+                    string normMode = (gmProp.Value.ToUpper().Contains("TDM") || gmProp.Value.ToUpper().Contains("TEAM")) ? "TDM" : "FFA";
+                    ConfiguredGameMode = normMode;
+                    PlayerPrefs.SetString("Shootopia_ConfiguredGameMode", normMode);
+                    PlayerPrefs.Save();
+                }
+
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
                 OnSessionJoined?.Invoke();
             }
@@ -523,6 +546,14 @@ namespace Shootopia
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
                     _currentSession.CurrentPlayer.SetProperty("IsReady", new PlayerProperty("false", VisibilityPropertyOptions.Public));
                     await _currentSession.SaveCurrentPlayerDataAsync();
+                }
+
+                if (_currentSession.Properties != null && _currentSession.Properties.TryGetValue("GameMode", out var gmProp) && !string.IsNullOrEmpty(gmProp.Value))
+                {
+                    string normMode = (gmProp.Value.ToUpper().Contains("TDM") || gmProp.Value.ToUpper().Contains("TEAM")) ? "TDM" : "FFA";
+                    ConfiguredGameMode = normMode;
+                    PlayerPrefs.SetString("Shootopia_ConfiguredGameMode", normMode);
+                    PlayerPrefs.Save();
                 }
 
                 Debug.Log($"[SessionManager] Successfully joined session. Session ID: {_currentSession.Id}");
@@ -772,6 +803,27 @@ namespace Shootopia
                 if (int.TryParse(prop.Value, out int val) && val > 0) return val;
             }
             return ConfiguredScoreLimit > 0 ? ConfiguredScoreLimit : 10;
+        }
+
+        public string GetSessionGameMode()
+        {
+            if (_currentSession != null && _currentSession.Properties != null && _currentSession.Properties.TryGetValue("GameMode", out var prop))
+            {
+                if (!string.IsNullOrEmpty(prop.Value))
+                {
+                    return (prop.Value.ToUpper().Contains("TDM") || prop.Value.ToUpper().Contains("TEAM")) ? "TDM" : "FFA";
+                }
+            }
+            if (!string.IsNullOrEmpty(ConfiguredGameMode))
+            {
+                return (ConfiguredGameMode.ToUpper().Contains("TDM") || ConfiguredGameMode.ToUpper().Contains("TEAM")) ? "TDM" : "FFA";
+            }
+            if (PlayerPrefs.HasKey("Shootopia_ConfiguredGameMode"))
+            {
+                string saved = PlayerPrefs.GetString("Shootopia_ConfiguredGameMode");
+                return (saved.ToUpper().Contains("TDM") || saved.ToUpper().Contains("TEAM")) ? "TDM" : "FFA";
+            }
+            return "FFA";
         }
 
         public async Task UpdateSessionMatchRulesAsync(int durationSeconds, int scoreLimit)

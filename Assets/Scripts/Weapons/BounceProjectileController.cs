@@ -41,7 +41,8 @@ namespace Shootopia
             if (col.gameObject == _owner) return;
 
             // Check for IDamageable
-            if (col.gameObject.TryGetComponent(out IDamageable damageable))
+            var damageable = col.gameObject.GetComponentInParent<IDamageable>() ?? col.gameObject.GetComponent<IDamageable>();
+            if (damageable != null)
             {
                 DealDamage(damageable, _damage, DamageType.Bullet, col.collider);
 

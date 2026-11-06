@@ -41,16 +41,16 @@ namespace Shootopia
                 gameObject.AddComponent<NetworkNotificationUI>();
             }
 
-            if (_activeGameMode == null)
+            string initMode = "FFA";
+            if (SessionManager.Instance != null)
             {
-                var ffa = GetComponent<FFAMode>();
-                _activeGameMode = ffa != null ? (GameModeBase)ffa : GetComponent<TDMMode>();
+                initMode = SessionManager.Instance.GetSessionGameMode();
             }
-
-            if (_activeGameMode != null)
+            else if (PlayerPrefs.HasKey("Shootopia_ConfiguredGameMode"))
             {
-                GameModeBase.SetActiveInstance(_activeGameMode);
+                initMode = PlayerPrefs.GetString("Shootopia_ConfiguredGameMode");
             }
+            ApplyActiveGameMode(initMode);
         }
 
         private void Start()
@@ -114,23 +114,9 @@ namespace Shootopia
 
             if (IsServer)
             {
-                string selectedMode = "FFA"; // Default fallback
-                if (SessionManager.Instance != null)
-                {
-                    var session = SessionManager.Instance.GetCurrentSession();
-                    if (session != null && session.Properties != null && session.Properties.TryGetValue("GameMode", out var prop))
-                    {
-                        selectedMode = prop.Value;
-                    }
-                }
-
-                int configuredDuration = 300;
-                int configuredScoreLimit = 10;
-                if (SessionManager.Instance != null)
-                {
-                    configuredDuration = SessionManager.Instance.GetSessionMatchDuration();
-                    configuredScoreLimit = SessionManager.Instance.GetSessionScoreLimit();
-                }
+                string selectedMode = SessionManager.Instance != null ? SessionManager.Instance.GetSessionGameMode() : "FFA";
+                int configuredDuration = SessionManager.Instance != null ? SessionManager.Instance.GetSessionMatchDuration() : 300;
+                int configuredScoreLimit = SessionManager.Instance != null ? SessionManager.Instance.GetSessionScoreLimit() : 10;
 
                 Debug.Log($"[NetworkedGameManager] Initializing match. Selected mode: {selectedMode}, Duration: {configuredDuration}s, ScoreLimit: {configuredScoreLimit}");
                 ActiveModeName.Value = selectedMode;
@@ -163,7 +149,19 @@ namespace Shootopia
             }
             else
             {
-                ApplyActiveGameMode(ActiveModeName.Value.ToString());
+                string mode = ActiveModeName.Value.ToString();
+                if (string.IsNullOrEmpty(mode) || mode.Equals("FFA", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    if (SessionManager.Instance != null)
+                    {
+                        string sessMode = SessionManager.Instance.GetSessionGameMode();
+                        if (!string.IsNullOrEmpty(sessMode) && !sessMode.Equals("FFA", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            mode = sessMode;
+                        }
+                    }
+                }
+                ApplyActiveGameMode(mode);
                 if (MatchStarted.Value || (_activeGameMode != null && _activeGameMode.MatchActive.Value))
                 {
                     CloseLobbyUI();
@@ -350,7 +348,12 @@ namespace Shootopia
             var ffa = GetComponent<FFAMode>();
             var tdm = GetComponent<TDMMode>();
 
-            if (selectedMode.Equals("TDM", System.StringComparison.OrdinalIgnoreCase))
+            bool isTDM = !string.IsNullOrEmpty(selectedMode) && 
+                         (selectedMode.Equals("TDM", System.StringComparison.OrdinalIgnoreCase) || 
+                          selectedMode.ToUpper().Contains("TEAM") || 
+                          selectedMode.ToUpper().Contains("TDM"));
+
+            if (isTDM)
             {
                 if (tdm != null)
                 {
@@ -394,10 +397,16 @@ namespace Shootopia
 
         private System.Collections.IEnumerator PreMatchSequence()
         {
-            if (_activeGameMode == null)
+            string targetMode = ActiveModeName.Value.ToString();
+            if (string.IsNullOrEmpty(targetMode) || targetMode.Equals("FFA", System.StringComparison.OrdinalIgnoreCase))
             {
-                ApplyActiveGameMode(ActiveModeName.Value.ToString());
+                if (SessionManager.Instance != null)
+                {
+                    targetMode = SessionManager.Instance.GetSessionGameMode();
+                }
             }
+            ApplyActiveGameMode(targetMode);
+
             if (_activeGameMode == null)
             {
                 Debug.LogError("[NetworkedGameManager] PreMatchSequence cannot start: _activeGameMode is null!");
@@ -456,6 +465,12 @@ namespace Shootopia
             if (waitTimer >= maxWaitTime)
             {
                 Debug.LogWarning("[NetworkedGameManager] Pre-match wait timeout reached before all expected players spawned.");
+            }
+
+            // Guarantee all players are assigned to their chosen lobby teams before spawning
+            if (_activeGameMode is TDMMode tdmMode)
+            {
+                tdmMode.InitializeTeamsBeforeSpawn();
             }
 
             // Guarantee all players are positioned at their match spawn points
