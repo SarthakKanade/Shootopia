@@ -90,9 +90,16 @@ namespace Shootopia
 
             // 2. Log system message to kill feed
             string systemMsg = $"{playerName} disconnected";
-            if (GameModeBase.Instance != null)
+            if (GameModeBase.Instance != null && GameModeBase.Instance.IsSpawned && NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
             {
-                GameModeBase.Instance.BroadcastSystemMessageClientRpc(systemMsg);
+                try
+                {
+                    GameModeBase.Instance.BroadcastSystemMessageClientRpc(systemMsg);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.Log($"[DisconnectHandler] Note on disconnect broadcast: {ex.Message}");
+                }
             }
             else
             {
@@ -103,7 +110,8 @@ namespace Shootopia
             PlayerNameRegistry.Unregister(clientId);
 
             // 4. Clean up network player object safely if still active
-            if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClients != null &&
+                NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
             {
                 if (client.PlayerObject != null && client.PlayerObject.IsSpawned)
                 {

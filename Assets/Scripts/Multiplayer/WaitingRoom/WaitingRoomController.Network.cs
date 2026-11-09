@@ -7,18 +7,37 @@ namespace Shootopia
     {
         private void RegisterCustomMessaging()
         {
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            if (NetworkManager.Singleton != null)
             {
-                NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_MatchStarted", OnMatchStartedDirectMessage);
+                NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnectionChanged;
+                NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnectionChanged;
+                NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientConnectionChanged;
+                NetworkManager.Singleton.OnClientDisconnectCallback += OnClientConnectionChanged;
+
+                if (NetworkManager.Singleton.CustomMessagingManager != null)
+                {
+                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_MatchStarted", OnMatchStartedDirectMessage);
+                }
             }
         }
 
         private void UnregisterCustomMessaging()
         {
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            if (NetworkManager.Singleton != null)
             {
-                NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_MatchStarted");
+                NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnectionChanged;
+                NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientConnectionChanged;
+
+                if (NetworkManager.Singleton.CustomMessagingManager != null)
+                {
+                    NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_MatchStarted");
+                }
             }
+        }
+
+        private void OnClientConnectionChanged(ulong clientId)
+        {
+            RefreshLobbyUI();
         }
 
         private void OnMatchStartedDirectMessage(ulong senderClientId, FastBufferReader reader)

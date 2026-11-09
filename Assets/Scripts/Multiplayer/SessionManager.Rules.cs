@@ -63,7 +63,7 @@ namespace Shootopia
             var list = new List<PlayerReadyState>();
             if (IsLanSession)
             {
-                if (NetworkManager.Singleton != null)
+                if (NetworkManager.Singleton?.ConnectedClientsList != null)
                 {
                     foreach (var c in NetworkManager.Singleton.ConnectedClientsList)
                     {

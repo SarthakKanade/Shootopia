@@ -43,10 +43,19 @@ namespace Shootopia
 
         public static string GetName(ulong clientId)
         {
-            if (Instance != null && Instance._names.TryGetValue(clientId, out string name))
+            if (Instance != null && Instance._names.TryGetValue(clientId, out string name) && !string.IsNullOrWhiteSpace(name))
             {
                 return name;
             }
+
+            if (Unity.Netcode.NetworkManager.Singleton != null && 
+                Unity.Netcode.NetworkManager.Singleton.LocalClientId == clientId && 
+                PlayerProfileManager.Instance != null && 
+                !string.IsNullOrWhiteSpace(PlayerProfileManager.Instance.DisplayName))
+            {
+                return PlayerProfileManager.Instance.DisplayName;
+            }
+
             return "Player " + clientId;
         }
     }

@@ -114,7 +114,26 @@ namespace Shootopia
             }
         }
 
-        public void SpawnAdditionalChests(int countToSpawn)
+        private int GetNextBalancedChestIndex()
+        {
+            int c0 = 0, c1 = 0, c2 = 0;
+            for (int i = 0; i < _activeChests.Count; i++)
+            {
+                var chest = _activeChests[i];
+                if (chest == null) continue;
+                var ctrl = chest.GetComponent<LootBoxController>();
+                if (ctrl == null) continue;
+                if (ctrl.ChestType == LootChestType.Chest1_Defense) c0++;
+                else if (ctrl.ChestType == LootChestType.Chest2_TrapsAndStarters) c1++;
+                else if (ctrl.ChestType == LootChestType.Chest3_AdvancedWeapons) c2++;
+            }
+
+            if (c0 <= c1 && c0 <= c2) return 0;
+            if (c1 <= c2) return 1;
+            return 2;
+        }
+
+        private void SpawnChestBatch(int countToSpawn)
         {
             if (countToSpawn <= 0) return;
             if (chest1DefensePrefab == null) LoadDefaultPrefabs();
@@ -127,10 +146,15 @@ namespace Shootopia
             int spawned = 0;
             for (int i = 0; i < available.Count && spawned < countToSpawn; i++)
             {
-                int idx = Random.Range(0, 3);
+                int idx = GetNextBalancedChestIndex();
                 SpawnChestInstance(prefabs[idx], available[i].position, names[idx]);
                 spawned++;
             }
+        }
+
+        public void SpawnAdditionalChests(int countToSpawn)
+        {
+            SpawnChestBatch(countToSpawn);
         }
 
         public void SpawnAllChests()
@@ -147,20 +171,9 @@ namespace Shootopia
             }
             _activeChests.Clear();
 
-            if (chest1DefensePrefab == null) LoadDefaultPrefabs();
-            if (spawnPoints.Count == 0) GatherSceneSpawnPoints();
-
             var available = GetAvailableSpawnPoints();
             int targetCount = CalculateTargetChestCount(GetCurrentPlayerCount(), available.Count);
-
-            GameObject[] prefabs = { chest1DefensePrefab, chest2TrapsPrefab, chest3AdvancedPrefab };
-            string[] names = { "SM_LootBox_01_Defense", "SM_LootBox_02_TrapsStarters", "SM_LootBox_03_AdvancedWeapons" };
-
-            for (int i = 0; i < targetCount && i < available.Count; i++)
-            {
-                int idx = Random.Range(0, 3);
-                SpawnChestInstance(prefabs[idx], available[i].position, names[idx]);
-            }
+            SpawnChestBatch(targetCount);
         }
 
         private void SpawnChestInstance(GameObject prefab, Vector3 position, string name)

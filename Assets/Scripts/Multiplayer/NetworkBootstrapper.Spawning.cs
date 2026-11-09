@@ -138,7 +138,18 @@ public void SpawnAllConnectedPlayers(bool cleanRespawn = false)
             string displayName = ResolveDisplayName(clientId);
             if (string.IsNullOrEmpty(displayName))
             {
-                displayName = $"Agent_{clientId}";
+                displayName = PlayerNameRegistry.GetName(clientId);
+            }
+            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {clientId}")
+            {
+                if (NetworkManager.Singleton != null && clientId == NetworkManager.Singleton.LocalClientId && PlayerProfileManager.Instance != null)
+                {
+                    displayName = PlayerProfileManager.Instance.DisplayName;
+                }
+                else
+                {
+                    displayName = $"Agent_{clientId}";
+                }
             }
 
             var nameDisplay = playerObject.GetComponent<PlayerNameDisplay>();

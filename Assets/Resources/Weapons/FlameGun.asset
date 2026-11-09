@@ -47,8 +47,8 @@ MonoBehaviour:
   freezeDuration: 0
   maxSlowPercent: 0
   minSlowPercent: 0
-  afterburnDPS: 20
-  afterburnDuration: 3.5
+  afterburnDPS: 10
+  afterburnDuration: 2.5
   pullRadius: 0
   pullForce: 0
   voidDuration: 0

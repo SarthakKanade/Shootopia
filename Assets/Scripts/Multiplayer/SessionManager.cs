@@ -91,6 +91,22 @@ namespace Shootopia
 
         private void ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
         {
+            if (request.Payload != null && request.Payload.Length > 0)
+            {
+                try
+                {
+                    string clientName = System.Text.Encoding.UTF8.GetString(request.Payload);
+                    if (!string.IsNullOrWhiteSpace(clientName))
+                    {
+                        PlayerNameRegistry.Register(request.ClientNetworkId, clientName.Trim());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[SessionManager] Connection payload parse note: {ex.Message}");
+                }
+            }
+
             response.Approved = true;
             response.CreatePlayerObject = false;
             response.Pending = false;

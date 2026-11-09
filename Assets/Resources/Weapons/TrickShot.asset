@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Shootopia.WeaponSO
   weaponPrefab: {fileID: 6313891058665893736, guid: b6019e9692a9542bbb06b38e14231fb1, type: 3}
   weaponName: Trick Shot Gun
-  Damage: 35
+  Damage: 50
   FireRate: 0.9
   HitVFXPrefab: {fileID: 0}
   playerHitVFXPrefab: {fileID: 3710540494006657454, guid: 97a04c7e403b4d6bb7710fd08863650b, type: 3}

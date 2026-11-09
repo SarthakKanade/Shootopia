@@ -54,6 +54,9 @@ namespace Shootopia
 
                     if (GetComponent<LagCompensationManager>() == null) gameObject.AddComponent<LagCompensationManager>();
 
+                    string hostName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Host";
+                    PlayerNameRegistry.Register(NetworkManager.ServerClientId, hostName);
+
                     if (!NetworkManager.Singleton.StartHost()) throw new Exception("NetworkManager failed to start LAN Host.");
                 }
 
@@ -62,13 +65,9 @@ namespace Shootopia
 
                 string targetMap = !string.IsNullOrEmpty(mapName) ? mapName : "Map1";
                 if (NetworkManager.Singleton?.IsServer == true && NetworkManager.Singleton.SceneManager != null)
-                {
                     NetworkManager.Singleton.SceneManager.LoadScene(targetMap, LoadSceneMode.Single);
-                }
                 else
-                {
                     LoadingScreenManager.LoadScene(targetMap, "DEPLOYING TO ARENA...");
-                }
             }
             catch (Exception ex)
             {
@@ -108,6 +107,10 @@ namespace Shootopia
                         transport.UseWebSockets = false;
                         transport.SetConnectionData(lanInfo.HostIP, lanInfo.HostPort);
                     }
+
+                    string clientName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                    NetworkManager.Singleton.NetworkConfig.ConnectionData = System.Text.Encoding.UTF8.GetBytes(clientName);
+
                     if (!NetworkManager.Singleton.StartClient()) throw new Exception("NetworkManager failed to connect to LAN Host.");
                 }
 
@@ -120,9 +123,7 @@ namespace Shootopia
                     PlayerPrefs.SetString("Shootopia_ConfiguredGameMode", normMode);
                 }
 
-                PlayerPrefs.SetString("Shootopia_CurrentRoomCode", cleanCode);
-                PlayerPrefs.SetInt("Shootopia_IsLanSession", 1);
-                PlayerPrefs.Save();
+                PlayerPrefs.SetString("Shootopia_CurrentRoomCode", cleanCode); PlayerPrefs.SetInt("Shootopia_IsLanSession", 1); PlayerPrefs.Save();
 
                 OnSessionJoined?.Invoke();
             }

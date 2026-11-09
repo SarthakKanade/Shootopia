@@ -178,6 +178,7 @@ private void CopyRoomCode()
                     lobbyCanvasGroup.interactable = true;
                 }
                 if (warmupHudBadge != null) warmupHudBadge.SetActive(false);
+                RefreshLobbyUI();
             }
             else
             {

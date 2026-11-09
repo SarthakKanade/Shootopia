@@ -120,10 +120,19 @@ namespace Shootopia
             var keyboard = Keyboard.current;
             var gamepad = Gamepad.current;
 
+            bool isWaitingRoomWarmup = WaitingRoomController.Instance != null && !WaitingRoomController.Instance.IsMatchStarted;
+
             bool togglePressed = false;
             if (keyboard != null)
             {
-                togglePressed = keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame || keyboard.tabKey.wasPressedThisFrame;
+                bool tabPressed = keyboard.tabKey.wasPressedThisFrame;
+                if (tabPressed && isWaitingRoomWarmup)
+                {
+                    // Tab is reserved for WaitingRoom lobby modal during warmup
+                    return;
+                }
+
+                togglePressed = keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame || tabPressed;
             }
             if (gamepad != null)
             {

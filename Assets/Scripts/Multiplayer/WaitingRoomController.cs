@@ -208,26 +208,27 @@ namespace Shootopia
             bool isHost = (SessionManager.Instance != null && SessionManager.Instance.IsHost) ||
                           (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost);
 
-            if (isHost) return;
-
-            var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
-            if (activeMode == null)
+            if (!isHost)
             {
-                activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
-            }
+                var activeMode = NetworkedGameManager.Instance != null ? NetworkedGameManager.Instance.ActiveGameMode : GameModeBase.Instance;
+                if (activeMode == null)
+                {
+                    activeMode = (GameModeBase)FindAnyObjectByType<FFAMode>() ?? (GameModeBase)FindAnyObjectByType<TDMMode>();
+                }
 
-            bool isNetworkMatchStarted = false;
-            try
-            {
-                isNetworkMatchStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.IsSpawned && NetworkedGameManager.Instance.MatchStarted.Value) ||
-                                         (activeMode != null && activeMode.IsSpawned && (activeMode.MatchActive.Value || activeMode.IsInProgress));
-            }
-            catch { }
+                bool isNetworkMatchStarted = false;
+                try
+                {
+                    isNetworkMatchStarted = (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.IsSpawned && NetworkedGameManager.Instance.MatchStarted.Value) ||
+                                             (activeMode != null && activeMode.IsSpawned && (activeMode.MatchActive.Value || activeMode.IsInProgress));
+                }
+                catch { }
 
-            if (isNetworkMatchStarted)
-            {
-                OnMatchStarted();
-                return;
+                if (isNetworkMatchStarted)
+                {
+                    OnMatchStarted();
+                    return;
+                }
             }
 
             if (Keyboard.current != null)
