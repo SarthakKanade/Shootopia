@@ -150,13 +150,9 @@ namespace Shootopia
                         {
                             var d = a.gameplayData;
                             if (d.projectilePrefab != null) GlobalPoolManager.Instance.Prewarm(d.projectilePrefab, 15);
-                            if (d.HitVFXPrefab != null) GlobalPoolManager.Instance.Prewarm(d.HitVFXPrefab, 10);
-                            if (d.playerHitVFXPrefab != null) GlobalPoolManager.Instance.Prewarm(d.playerHitVFXPrefab, 10);
                         }
                     }
                 }
-                if (GlobalPoolManager.Instance != null && fallbackHitscanImpactVFX != null)
-                    GlobalPoolManager.Instance.Prewarm(fallbackHitscanImpactVFX, 10);
             }
 
             if (_headTransform != null) _initialHeadRotationRelModel = Quaternion.Inverse(modelRoot.rotation) * _headTransform.rotation;

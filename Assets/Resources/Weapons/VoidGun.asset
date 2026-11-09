@@ -52,9 +52,9 @@ MonoBehaviour:
   afterburnDuration: 0
   pullRadius: 6
   pullForce: 5
-  voidDuration: 7
-  damageAtCentre: 30
-  damageAtEdge: 8
+  voidDuration: 5
+  damageAtCentre: 60
+  damageAtEdge: 3
   maxBounces: 0
   projectileLifetime: 0
   previewDistance: 0

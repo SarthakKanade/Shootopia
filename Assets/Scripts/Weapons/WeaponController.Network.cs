@@ -70,8 +70,7 @@ namespace Shootopia
                 GameObject hitVFX = data.HitVFXPrefab ?? fallbackHitscanImpactVFX;
                 if (hitVFX != null)
                 {
-                    var vfx = GlobalPoolManager.Instance != null ? GlobalPoolManager.Instance.Spawn(hitVFX, hit.point, Quaternion.LookRotation(hit.normal)) : Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
-                    if (vfx != null && vfx.GetComponent<PooledParticleEffect>() == null) vfx.AddComponent<PooledParticleEffect>();
+                    Instantiate(hitVFX, hit.point, Quaternion.LookRotation(hit.normal));
                 }
                 if (hitscanImpactSound != null) AudioSource.PlayClipAtPoint(hitscanImpactSound, hit.point, 0.6f);
             }
@@ -150,6 +149,15 @@ namespace Shootopia
 
         [Rpc(SendTo.NotMe)]
         private void CancelChargeRpc(bool exitCombatStance = true) => CancelChargeLocal(exitCombatStance);
+
+        [Rpc(SendTo.NotMe)]
+        private void StartTrapAimRpc() => StartTrapAimLocal();
+
+        [Rpc(SendTo.NotMe)]
+        private void ExecuteTrapThrowRpc() => ExecuteTrapThrowLocal();
+
+        [Rpc(SendTo.NotMe)]
+        private void CancelTrapAimRpc() => CancelTrapAimLocal();
 
         public void EquipNetworkedWeapon(string attachName)
         {

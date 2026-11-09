@@ -84,9 +84,15 @@ namespace Shootopia
             if (_cachedAudioListener == null) _cachedAudioListener = FindAnyObjectByType<AudioListener>();
             if (_cachedAudioListener != null)
             {
-                _listenerLowPassFilter = _cachedAudioListener.GetComponent<AudioLowPassFilter>() ?? _cachedAudioListener.gameObject.AddComponent<AudioLowPassFilter>();
-                _listenerLowPassFilter.cutoffFrequency = 22000f;
-                _listenerLowPassFilter.enabled = false;
+                if (!_cachedAudioListener.TryGetComponent<AudioLowPassFilter>(out _listenerLowPassFilter))
+                {
+                    _listenerLowPassFilter = _cachedAudioListener.gameObject.AddComponent<AudioLowPassFilter>();
+                }
+                if (_listenerLowPassFilter != null)
+                {
+                    _listenerLowPassFilter.cutoffFrequency = 22000f;
+                    _listenerLowPassFilter.enabled = false;
+                }
             }
         }
 

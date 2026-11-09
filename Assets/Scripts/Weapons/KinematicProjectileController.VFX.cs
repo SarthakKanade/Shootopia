@@ -4,7 +4,7 @@ namespace Shootopia
 {
     public partial class KinematicProjectileController
     {
-private void SpawnExplosionVFX(RaycastHit hit)
+        private void SpawnExplosionVFX(RaycastHit hit)
         {
             Quaternion hitRotation = hit.normal != Vector3.zero
                 ? (Mathf.Abs(hit.normal.y) > 0.95f ? Quaternion.LookRotation(hit.normal, Vector3.forward) : Quaternion.LookRotation(hit.normal, Vector3.up))
@@ -30,19 +30,7 @@ private void SpawnExplosionVFX(RaycastHit hit)
 
             if (vfxToSpawn != null)
             {
-                GameObject spawned = null;
-                if (GlobalPoolManager.Instance != null)
-                {
-                    spawned = GlobalPoolManager.Instance.Spawn(vfxToSpawn, hit.point, hitRotation);
-                    if (spawned != null && spawned.GetComponent<PooledParticleEffect>() == null && spawned.GetComponent<TimedDestroy>() == null)
-                    {
-                        spawned.AddComponent<PooledParticleEffect>();
-                    }
-                }
-                else
-                {
-                    spawned = Instantiate(vfxToSpawn, hit.point, hitRotation);
-                }
+                var spawned = Instantiate(vfxToSpawn, hit.point, hitRotation);
                 ApplyExplosionModifiers(spawned);
             }
 
@@ -52,19 +40,7 @@ private void SpawnExplosionVFX(RaycastHit hit)
                 {
                     if (extra != null)
                     {
-                        GameObject spawnedExtra = null;
-                        if (GlobalPoolManager.Instance != null)
-                        {
-                            spawnedExtra = GlobalPoolManager.Instance.Spawn(extra, hit.point, hitRotation);
-                            if (spawnedExtra != null && spawnedExtra.GetComponent<PooledParticleEffect>() == null && spawnedExtra.GetComponent<TimedDestroy>() == null)
-                            {
-                                spawnedExtra.AddComponent<PooledParticleEffect>();
-                            }
-                        }
-                        else
-                        {
-                            spawnedExtra = Instantiate(extra, hit.point, hitRotation);
-                        }
+                        var spawnedExtra = Instantiate(extra, hit.point, hitRotation);
                         ApplyExplosionModifiers(spawnedExtra);
                     }
                 }
@@ -79,16 +55,13 @@ private void SpawnExplosionVFX(RaycastHit hit)
             foreach (var ps in vfx.GetComponentsInChildren<ParticleSystem>(true))
             {
                 var main = ps.main;
-                main.simulationSpeed = explosionSpeed;
-                ps.Clear();
-                ps.Play();
+                main.simulationSpeed *= explosionSpeed;
             }
 
             foreach (var audio in vfx.GetComponentsInChildren<AudioSource>(true))
             {
                 audio.volume = Mathf.Clamp01(audio.volume * 1.5f);
-                audio.pitch = 0.7f;
-                audio.Play();
+                audio.pitch *= 0.7f;
             }
         }
     }

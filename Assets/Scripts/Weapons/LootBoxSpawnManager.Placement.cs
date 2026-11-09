@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,6 +6,8 @@ namespace Shootopia
 {
     public partial class LootBoxSpawnManager
     {
+        private readonly List<Vector3> _reservedRelocationPositions = new List<Vector3>();
+
         public void GatherSceneSpawnPoints()
         {
             spawnPoints.Clear();
@@ -80,6 +83,8 @@ namespace Shootopia
             if (spawnPoints.Count == 0) return currentPos;
 
             var occupied = new List<Vector3>();
+            occupied.AddRange(_reservedRelocationPositions);
+
             foreach (var chest in FindObjectsByType<LootBoxController>(FindObjectsSortMode.None))
             {
                 if (chest == null || chest == requestingChest) continue;
@@ -115,7 +120,21 @@ namespace Shootopia
                 }
             }
 
-            return candidates.Count > 0 ? candidates[Random.Range(0, candidates.Count)].position : currentPos;
+            if (candidates.Count > 0)
+            {
+                Vector3 chosen = candidates[Random.Range(0, candidates.Count)].position;
+                _reservedRelocationPositions.Add(chosen);
+                StartCoroutine(ReleaseReservedPosition(chosen));
+                return chosen;
+            }
+
+            return currentPos;
+        }
+
+        private IEnumerator ReleaseReservedPosition(Vector3 pos)
+        {
+            yield return new WaitForSeconds(2.0f);
+            _reservedRelocationPositions.Remove(pos);
         }
     }
 }

@@ -99,23 +99,24 @@ private void HandleImpact(RaycastHit hit)
                         targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
                     }
 
-                    // Freeze status effect (blocked if target has an active or recently-absorbed shield)
+                    // Freeze status effect (blocked if target has an active or recently-absorbed shield or is invincible)
                     if (IsFreezeWeapon() && targetHealth != null)
                     {
                         var targetShield = targetHealth.GetComponent<PlayerShield>();
                         bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
-                        if (!shieldBlocked)
+                        if (!shieldBlocked && !targetHealth.IsInvincible)
                         {
+                            float baseDuration = (_weaponData != null && _weaponData.freezeDuration > 0f) ? _weaponData.freezeDuration : 2.5f;
                             if (isDirect)
                             {
-                                targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                                targetHealth.ApplyFreezeEffect(baseDuration, 1.0f, true);
                             }
                             else
                             {
-                                float maxSlow = _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
-                                float minSlow = _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
+                                float maxSlow = (_weaponData != null && _weaponData.maxSlowPercent > 0f) ? _weaponData.maxSlowPercent : 0.80f;
+                                float minSlow = (_weaponData != null && _weaponData.minSlowPercent > 0f) ? _weaponData.minSlowPercent : 0.20f;
                                 float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
-                                float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
+                                float slowDuration = Mathf.Lerp(baseDuration, 1.0f, normalizedDist);
                                 targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
                             }
                         }
@@ -142,12 +143,13 @@ private void HandleImpact(RaycastHit hit)
                     var targetShield = targetHealth.GetComponent<PlayerShield>();
                     bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
 
-                    if (IsFreezeWeapon() && !shieldBlocked)
+                    if (IsFreezeWeapon() && !shieldBlocked && !targetHealth.IsInvincible)
                     {
-                        targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                        float baseDuration = (_weaponData != null && _weaponData.freezeDuration > 0f) ? _weaponData.freezeDuration : 2.5f;
+                        targetHealth.ApplyFreezeEffect(baseDuration, 1.0f, true);
                     }
 
-                    if (IsFireWeapon() && !shieldBlocked)
+                    if (IsFireWeapon() && !shieldBlocked && !targetHealth.IsInvincible)
                     {
                         float duration = _weaponData.afterburnDuration > 0f ? _weaponData.afterburnDuration : 5.0f;
                         float dps = _weaponData.afterburnDPS > 0f ? _weaponData.afterburnDPS : 5.0f;

@@ -92,6 +92,8 @@ MonoBehaviour:
   homingTurnSpeed: 15
   homingRange: 25
   voidZonePrefab: {fileID: 0}
+  playerHitVFXPrefab: {fileID: 5562265899387408960, guid: 4c503e512e41349e28c7d22976aa6543, type: 3}
+  environmentHitVFXPrefab: {fileID: 5562265899387408960, guid: 4c503e512e41349e28c7d22976aa6543, type: 3}
   projectileScale: 1
   explosionScale: 1
   explosionSpeed: 1

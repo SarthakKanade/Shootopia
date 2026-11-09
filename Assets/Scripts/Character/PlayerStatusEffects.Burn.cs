@@ -13,6 +13,8 @@ namespace Shootopia
         /// </summary>
         public void ApplyBurn(float duration = 5.0f, float dps = 5.0f, WeaponSO weaponUsed = null)
         {
+            if (_health != null && _health.IsInvincible) return;
+
             var shield = GetComponent<PlayerShield>();
             if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
             {
@@ -43,6 +45,8 @@ namespace Shootopia
         [Rpc(SendTo.Everyone)]
         private void ApplyBurnRpc(float duration, float dps)
         {
+            if (_health != null && _health.IsInvincible) return;
+
             var shield = GetComponent<PlayerShield>();
             if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
             {

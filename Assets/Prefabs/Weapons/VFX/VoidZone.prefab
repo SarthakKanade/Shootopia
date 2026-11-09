@@ -117,7 +117,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c40a7e1d513b04240b256696bca943ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VelocityWars.Core.TimedDestroy
-  delay: 10.5
+  delay: 7.0
 --- !u!1 &717118436892542690
 GameObject:
   m_ObjectHideFlags: 0

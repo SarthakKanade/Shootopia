@@ -37,9 +37,18 @@ namespace Shootopia
 
         private float _elevationCheckTimer = 0f;
 
+        private bool IsMatchActive()
+        {
+            return (GameModeBase.Instance != null && (GameModeBase.Instance.MatchActive.Value || GameModeBase.Instance.IsInProgress))
+                || (NetworkedGameManager.Instance != null && 
+                    (NetworkedGameManager.Instance.MatchStarted.Value || 
+                     (NetworkedGameManager.Instance.ActiveGameMode != null && (NetworkedGameManager.Instance.ActiveGameMode.MatchActive.Value || NetworkedGameManager.Instance.ActiveGameMode.IsInProgress))));
+        }
+
         private void Update()
         {
             float dt = Time.deltaTime;
+            bool isMatchActive = IsMatchActive();
 
             // Process players currently sinking in lava
             if (_playersInLava.Count > 0)
@@ -70,6 +79,32 @@ namespace Shootopia
                 bool isInLavaElevation = playerObj.transform.position.y <= lavaSurfaceY;
                 bool isDeepAbyss = playerObj.transform.position.y <= killAbyssY;
 
+                // During warmup lobby: safe teleport rescue back to land instead of lethal death
+                if (!isMatchActive)
+                {
+                    if (isInLavaElevation || isDeepAbyss)
+                    {
+                        if (health.IsOwner || NetworkManager.Singleton == null || NetworkManager.Singleton.IsServer)
+                        {
+                            string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                            Vector3 safePos = MapRegistry.GetDefaultSafeSpawnPosition(currentScene);
+
+                            if (SpawnPointManager.Instance != null)
+                            {
+                                Transform sp = SpawnPointManager.Instance.GetSpawnPoint(SpawnPointType.FFA);
+                                if (sp != null && !MapRegistry.IsPositionInHazardOrVoid(currentScene, sp.position)) safePos = sp.position;
+                            }
+                            health.Teleport(safePos);
+                        }
+                        HandlePlayerExit(playerObj);
+                    }
+                    else if (_playersInLava.Contains(playerObj))
+                    {
+                        HandlePlayerExit(playerObj);
+                    }
+                    continue;
+                }
+
                 if (isInLavaElevation && !health.IsDead && (!health.IsInvincible || isDeepAbyss))
                 {
                     if (_playersInLava.Add(playerObj))
@@ -87,6 +122,8 @@ namespace Shootopia
 
         private void HandlePlayerEnter(GameObject playerObj)
         {
+            if (!IsMatchActive()) return;
+
             var motor = playerObj.GetComponentInParent<CharacterMotor>();
             if (motor == null) motor = playerObj.GetComponent<CharacterMotor>();
             if (motor == null) return;
@@ -135,6 +172,12 @@ namespace Shootopia
 
         private void ProcessPlayerInLava(GameObject playerObj, PlayerHealth health, float dt)
         {
+            if (!IsMatchActive())
+            {
+                HandlePlayerExit(playerObj);
+                return;
+            }
+
             var motor = playerObj.GetComponent<CharacterMotor>();
             if (motor == null) return;
 

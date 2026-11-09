@@ -41,6 +41,8 @@ namespace Shootopia
         /// </summary>
         public void ApplyFreeze(float duration, float slowPercent, bool isDirectHit)
         {
+            if (_health != null && _health.IsInvincible) return;
+
             var shield = GetComponent<PlayerShield>();
             if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
             {
@@ -54,6 +56,8 @@ namespace Shootopia
         [Rpc(SendTo.Everyone)]
         private void ApplyFreezeRpc(float duration, float slowPercent, bool isDirectHit)
         {
+            if (_health != null && _health.IsInvincible) return;
+
             var shield = GetComponent<PlayerShield>();
             if (shield != null && (shield.IsShieldActive || shield.WasActiveOrAbsorbedRecently))
             {
@@ -145,24 +149,30 @@ namespace Shootopia
             mpb.SetColor("_EmissionColor", emissionColor);
 
             var renderers = GetComponentsInChildren<Renderer>(true);
+            Transform weaponSocket = transform.Find("WeaponSocket_R") ?? transform.Find("weaponSocket");
             foreach (var r in renderers)
             {
-                if (r != null && !(r is ParticleSystemRenderer))
-                {
-                    r.SetPropertyBlock(mpb);
-                }
+                if (r == null || r is ParticleSystemRenderer) continue;
+                if (weaponSocket != null && r.transform.IsChildOf(weaponSocket)) continue;
+                if (r.GetComponentInParent<Canvas>() != null) continue;
+                if (r.name.Contains("Shield") || (r.transform.parent != null && r.transform.parent.name.Contains("Shield"))) continue;
+
+                r.SetPropertyBlock(mpb);
             }
         }
 
         public void ClearMaterialPropertyBlock()
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
+            Transform weaponSocket = transform.Find("WeaponSocket_R") ?? transform.Find("weaponSocket");
             foreach (var r in renderers)
             {
-                if (r != null && !(r is ParticleSystemRenderer))
-                {
-                    r.SetPropertyBlock(null);
-                }
+                if (r == null || r is ParticleSystemRenderer) continue;
+                if (weaponSocket != null && r.transform.IsChildOf(weaponSocket)) continue;
+                if (r.GetComponentInParent<Canvas>() != null) continue;
+                if (r.name.Contains("Shield") || (r.transform.parent != null && r.transform.parent.name.Contains("Shield"))) continue;
+
+                r.SetPropertyBlock(null);
             }
         }
 

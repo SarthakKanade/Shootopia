@@ -75,12 +75,13 @@ namespace Shootopia
                         var targetShield = targetHealth.GetComponent<PlayerShield>();
                         bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
 
-                        if (!shieldBlocked)
+                        if (!shieldBlocked && !targetHealth.IsInvincible)
                         {
+                            float baseDuration = (_weaponData != null && _weaponData.freezeDuration > 0f) ? _weaponData.freezeDuration : 2.5f;
                             if (isDirectHit)
                             {
-                                // Direct hit at POC: Completely freezes player for 5 seconds
-                                targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
+                                // Direct hit at POC: Completely freezes player for baseDuration
+                                targetHealth.ApplyFreezeEffect(baseDuration, 1.0f, true);
                             }
                             else
                             {
@@ -88,7 +89,7 @@ namespace Shootopia
                                 float maxSlow = _weaponData != null && _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
                                 float minSlow = _weaponData != null && _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
                                 float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
-                                float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
+                                float slowDuration = Mathf.Lerp(baseDuration, 1.0f, normalizedDist);
 
                                 targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
                             }

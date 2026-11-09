@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Shootopia
 {
@@ -72,6 +73,32 @@ namespace Shootopia
                 return data;
             }
             return new MapData(sceneName, sceneName.ToUpper(), "Custom Map");
+        }
+
+        public static bool HasLava(string sceneName)
+        {
+            return string.Equals(sceneName, "Map1", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsPositionInHazardOrVoid(string sceneName, Vector3 pos)
+        {
+            float voidY = GetVoidThreshold(sceneName);
+            if (pos.y <= voidY) return true;
+            if (HasLava(sceneName) && pos.y <= 1.0f) return true;
+            return false;
+        }
+
+        public static Vector3 GetDefaultSafeSpawnPosition(string sceneName)
+        {
+            if (string.Equals(sceneName, "Map1", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Vector3(120f, 15.3f, 2.5f);
+            }
+            if (string.Equals(sceneName, "WaitingRoom", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Vector3(15f, 0.5f, 15f);
+            }
+            return new Vector3(0f, 0.35f, 0f);
         }
     }
 }

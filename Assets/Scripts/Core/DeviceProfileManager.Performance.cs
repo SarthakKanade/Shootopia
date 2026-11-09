@@ -32,19 +32,19 @@ private void EvaluateEffectiveMode()
 
         private void ApplyPlatformPerformanceSettings()
         {
-            // Lower device load and thermal throttling by capping target frame rate to a stable 60 FPS
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 60;
-
             bool isWebGL = Application.platform == RuntimePlatform.WebGLPlayer;
             bool isMobileExperience = Application.isMobilePlatform || _effectiveMode == InputControlMode.MobileTouch;
 
             if (isWebGL || isMobileExperience)
             {
+                // Lower device load and thermal throttling by capping target frame rate to a stable 60 FPS
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 60;
+
                 // Potato & Mobile Thermal Optimization Profile:
                 QualitySettings.skinWeights = SkinWeights.TwoBones;
                 QualitySettings.anisotropicFiltering = AnisotropicFiltering.Disable;
-                QualitySettings.lodBias = 0.8f;
+                QualitySettings.lodBias = 1.0f;
                 QualitySettings.realtimeGICPUUsage = 25;
                 QualitySettings.particleRaycastBudget = 64;
 
@@ -54,6 +54,12 @@ private void EvaluateEffectiveMode()
                     QualitySettings.SetQualityLevel(0, true);
                     Debug.Log("[DeviceProfileManager] Activated Potato/Mobile Quality (Level 0)");
                 }
+            }
+            else
+            {
+                // Desktop / Editor: Hardware VSync + stable 60 FPS cap to prevent thermal overdrive
+                QualitySettings.vSyncCount = 1;
+                Application.targetFrameRate = 60;
             }
 
             if (isMobileExperience)

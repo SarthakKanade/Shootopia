@@ -45,7 +45,7 @@ namespace Shootopia
 
             float elapsed = 0f;
             float radius = (_data != null && _data.pullRadius > 0f) ? _data.pullRadius : 6f;
-            float duration = (_data != null && _data.voidDuration > 0f) ? _data.voidDuration : 7f;
+            float duration = (_data != null && _data.voidDuration > 0f) ? _data.voidDuration : 5f;
             float damageTickInterval = 0.25f; // 4 ticks/sec for responsive void vortex shredding
             float damageTickTimer = 0f;
 
@@ -68,33 +68,43 @@ namespace Shootopia
                 }
 
                 Collider[] hits = Physics.OverlapSphere(transform.position, radius);
+                var processedEntities = new System.Collections.Generic.HashSet<GameObject>();
+
                 foreach (Collider c in hits)
                 {
                     // Ignore triggers (except maybe specific ones, but generally pull colliders)
                     if (c.isTrigger) continue;
 
-                    float dist = Vector3.Distance(transform.position, c.transform.position);
-                    Vector3 dir = (transform.position - c.transform.position).normalized;
+                    var rootObj = c.transform.root.gameObject;
+                    if (!processedEntities.Add(rootObj)) continue;
 
-                    // Pull force magnitude (matched in power to player run speed: 5.0 m/s)
-                    float pullForceVal = (_data != null && _data.pullForce > 0f) ? _data.pullForce : 5.0f;
-                    var motor = c.GetComponentInParent<CharacterMotor>() ?? c.GetComponent<CharacterMotor>();
-                    if (motor != null && motor.moveSpeed > 0f)
-                    {
-                        pullForceVal = motor.moveSpeed;
-                    }
+                    var motor = c.GetComponentInParent<CharacterMotor>();
+                    Vector3 targetPos = motor != null ? motor.transform.position : c.bounds.center;
+                    float dist = Vector3.Distance(transform.position, targetPos);
+                    Vector3 dir = (transform.position - targetPos);
+                    dir.y = 0f; // Keep pull horizontal so player run speed directly counters the pull
+                    if (dir.sqrMagnitude > 0.0001f) dir.Normalize();
+
+                    float distNormalized = Mathf.Clamp01(dist / radius);
+                    float coreProximity = 1f - distNormalized;
+
+                    // Pull force magnitude: scaled by distance
+                    // Outer edge allows player (5.0 m/s run speed) to break away if running opposite
+                    // Mid-range matches run speed (stuck in place); core overpowers and locks in place
+                    float basePull = (_data != null && _data.pullForce > 0f) ? _data.pullForce : 5.0f;
+                    float pullForceVal = Mathf.Lerp(basePull * 0.92f, basePull * 1.35f, Mathf.Pow(coreProximity, 1.5f));
                     float pullMag = pullForceVal * Time.fixedDeltaTime;
                     
                     // Check if target has active forcefield shield (immune to void black hole pull!)
-                    var playerShield = c.GetComponentInParent<PlayerShield>();
-                    if (playerShield == null) playerShield = c.GetComponent<PlayerShield>();
+                    var playerShield = c.GetComponentInParent<PlayerShield>() ?? c.GetComponent<PlayerShield>();
                     if (playerShield != null && playerShield.IsShieldActive)
                     {
                         continue; // Full immunity to Void pull & continuous void damage
                     }
 
                     // Apply movement to CharacterController (Player)
-                    if (c.TryGetComponent<CharacterController>(out var cc))
+                    var cc = motor != null ? motor.GetComponent<CharacterController>() : c.GetComponentInParent<CharacterController>();
+                    if (cc != null && cc.enabled)
                     {
                         cc.Move(dir * pullMag);
                     }
@@ -112,11 +122,10 @@ namespace Shootopia
                         rb.AddForce(dir * pullForceVal, ForceMode.Acceleration);
                     }
 
-                    // Proximity-based void damage ticks (scaling up to 200+ HP if trapped at core)
+                    // Proximity-based void damage ticks (quadratic scaling up to sure-kill lethal DPS at core)
                     if (shouldTickDamage)
                     {
-                        var damageable = c.GetComponentInParent<IDamageable>();
-                        if (damageable == null) damageable = c.GetComponent<IDamageable>();
+                        var damageable = c.GetComponentInParent<IDamageable>() ?? c.GetComponent<IDamageable>();
                         if (damageable != null)
                         {
                             bool isServerOrOffline = Unity.Netcode.NetworkManager.Singleton == null || Unity.Netcode.NetworkManager.Singleton.IsServer;
@@ -128,17 +137,16 @@ namespace Shootopia
                                     continue;
                                 }
 
-                                var targetHealth = c.GetComponentInParent<PlayerHealth>();
-                                if (targetHealth == null) targetHealth = c.GetComponent<PlayerHealth>();
+                                var targetHealth = c.GetComponentInParent<PlayerHealth>() ?? c.GetComponent<PlayerHealth>();
                                 if (targetHealth != null)
                                 {
                                     targetHealth.LastAttackerClientId = _hasOwner ? _ownerID : Unity.Netcode.NetworkManager.ServerClientId;
                                 }
 
-                                float t = Mathf.Clamp01(dist / radius);
-                                float centerDPS = (_data != null && _data.damageAtCentre > 0f) ? _data.damageAtCentre : 30f;
-                                float edgeDPS = (_data != null && _data.damageAtEdge > 0f) ? _data.damageAtEdge : 8f;
-                                float dps = Mathf.Lerp(centerDPS, edgeDPS, t);
+                                float centerDPS = (_data != null && _data.damageAtCentre > 0f) ? _data.damageAtCentre : 60f;
+                                float edgeDPS = (_data != null && _data.damageAtEdge > 0f) ? _data.damageAtEdge : 3f;
+                                float coreDamageFactor = Mathf.Pow(coreProximity, 2f);
+                                float dps = Mathf.Lerp(edgeDPS, centerDPS, coreDamageFactor);
                                 float tickDamage = dps * damageTickInterval;
 
                                 ulong attackerId = _hasOwner ? _ownerID : (Unity.Netcode.NetworkManager.Singleton != null ? Unity.Netcode.NetworkManager.Singleton.LocalClientId : ulong.MaxValue);

@@ -30,16 +30,15 @@ namespace Unity.Netcode.Components
             Interpolate = true;
             AutoOwnerAuthorityTickOffset = true;
 
-            // SmoothDampening eliminates linear abrupt stops and absorbs velocity changes smoothly
-            PositionInterpolationType = InterpolationTypes.SmoothDampening;
-            RotationInterpolationType = InterpolationTypes.SmoothDampening;
-            PositionMaxInterpolationTime = 0.25f;
-            RotationMaxInterpolationTime = 0.25f;
+            // Lerp interpolation with 0.12s cushion provides stable, constant-velocity motion without rubberbanding
+            PositionInterpolationType = InterpolationTypes.Lerp;
+            RotationInterpolationType = InterpolationTypes.Lerp;
+            PositionMaxInterpolationTime = 0.12f;
+            RotationMaxInterpolationTime = 0.12f;
             PositionLerpSmoothing = true;
             RotationLerpSmoothing = true;
 
-            // Absolute updates rather than unreliable deltas eliminate desync snaps on dropped packets
-            UseUnreliableDeltas = false;
+            UseUnreliableDeltas = true;
         }
 
         protected override bool OnIsServerAuthoritative()

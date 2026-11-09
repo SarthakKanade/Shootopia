@@ -16,7 +16,7 @@ MonoBehaviour:
   weaponName: Sniper
   Damage: 200
   FireRate: 0.05
-  HitVFXPrefab: {fileID: 0}
+  HitVFXPrefab: {fileID: 5562265899387408960, guid: 4c503e512e41349e28c7d22976aa6543, type: 3}
   audio: {fileID: 11400000, guid: e438c981eb52c4490b3c95e32ee09647, type: 2}
   isAutomatic: 0
   CanZoom: 0

@@ -70,19 +70,6 @@ namespace Shootopia
                 _projectileHitMask = ~maskToIgnore;
             }
 
-            if (GlobalPoolManager.Instance != null)
-            {
-                if (playerHitVFXPrefab != null) GlobalPoolManager.Instance.Prewarm(playerHitVFXPrefab, 5);
-                if (environmentHitVFXPrefab != null) GlobalPoolManager.Instance.Prewarm(environmentHitVFXPrefab, 5);
-                if (extraExplosionPrefabs != null)
-                {
-                    foreach (var extra in extraExplosionPrefabs)
-                    {
-                        if (extra != null) GlobalPoolManager.Instance.Prewarm(extra, 3);
-                    }
-                }
-            }
-
             if (data != null)
             {
                 speed = data.projectileSpeed > 0.1f ? data.projectileSpeed : speed;
@@ -125,7 +112,6 @@ namespace Shootopia
             {
                 if (ps != null)
                 {
-                    ps.Clear();
                     ps.Play();
                 }
             }
@@ -188,7 +174,7 @@ namespace Shootopia
             if (distance > 0.0001f)
             {
                 Ray ray = new Ray(currentPos, delta.normalized);
-                if (Physics.Raycast(ray, out RaycastHit hit, distance, _projectileHitMask, QueryTriggerInteraction.Ignore))
+                if (Physics.Raycast(ray, out RaycastHit hit, distance, ~0, QueryTriggerInteraction.Ignore))
                 {
                     // Ignore collision with shooter
                     if (_owner != null && hit.transform.root == _owner.transform.root)
@@ -211,19 +197,7 @@ namespace Shootopia
                                 : environmentHitVFXPrefab;
                             if (bounceVfx != null)
                             {
-                                GameObject spawnedBounce = null;
-                                if (GlobalPoolManager.Instance != null)
-                                {
-                                    spawnedBounce = GlobalPoolManager.Instance.Spawn(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
-                                    if (spawnedBounce != null && spawnedBounce.GetComponent<PooledParticleEffect>() == null && spawnedBounce.GetComponent<TimedDestroy>() == null)
-                                    {
-                                        spawnedBounce.AddComponent<PooledParticleEffect>();
-                                    }
-                                }
-                                else
-                                {
-                                    spawnedBounce = Instantiate(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
-                                }
+                                Instantiate(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
                             }
 
                             transform.position = hit.point + hit.normal * 0.02f;
