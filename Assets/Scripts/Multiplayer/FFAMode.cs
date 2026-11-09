@@ -45,7 +45,9 @@ namespace Shootopia
 
         public override void OnPlayerKilled(ulong killerClientId, ulong victimClientId)
         {
-            if (!IsServer || !MatchInProgress.Value) return;
+            if (!IsServer) return;
+            if (!MatchInProgress.Value && !MatchActive.Value && (NetworkedGameManager.Instance == null || !NetworkedGameManager.Instance.MatchStarted.Value)) return;
+            if (!MatchInProgress.Value) MatchInProgress.Value = true;
 
             // Track base scoring (increments kills or penalizes -1 for self death)
             base.OnPlayerKilled(killerClientId, victimClientId);
@@ -92,7 +94,7 @@ namespace Shootopia
             BroadcastMatchEndClientRpc(winnerInfo, scores);
         }
 
-        [ClientRpc]
+        [Rpc(SendTo.ClientsAndHost)]
         private void SyncPlayerKillsClientRpc(ulong clientId, int kills)
         {
             // Sync locally for client scoring reads if needed

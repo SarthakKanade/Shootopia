@@ -8,5 +8,7 @@ namespace Shootopia
     public class PooledInstance : MonoBehaviour
     {
         public int PrefabInstanceId { get; set; }
+        public int SpawnVersion { get; set; }
+        public bool IsInPool { get; set; }
     }
 }

@@ -30,7 +30,7 @@ namespace Shootopia.FSM
             {
                 SwitchState(Factory.JumpStart());
             }
-            else if (Ctx.InputIntent.Roll)
+            else if (Ctx.InputIntent.Roll && Ctx.CanRoll)
             {
                 SwitchState(Factory.Roll());
             }

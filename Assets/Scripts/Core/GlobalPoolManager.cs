@@ -90,11 +90,14 @@ namespace Shootopia
                 _pools[id] = queue;
             }
 
-            for (int i = 0; i < count; i++)
+            int needed = count - queue.Count;
+            for (int i = 0; i < needed; i++)
             {
                 var inst = Instantiate(prefab, _poolRoot);
                 var tag = inst.GetComponent<PooledInstance>() ?? inst.AddComponent<PooledInstance>();
                 tag.PrefabInstanceId = id;
+                tag.IsInPool = true;
+                tag.SpawnVersion = 0;
                 inst.SetActive(false);
                 queue.Enqueue(inst);
             }
@@ -118,6 +121,10 @@ namespace Shootopia
                         inst.transform.SetParent(null);
                         inst.transform.position = position;
                         inst.transform.rotation = rotation;
+                        var tag = inst.GetComponent<PooledInstance>() ?? inst.AddComponent<PooledInstance>();
+                        tag.PrefabInstanceId = id;
+                        tag.IsInPool = false;
+                        tag.SpawnVersion++;
                         inst.SetActive(true);
                         return inst;
                     }
@@ -126,8 +133,10 @@ namespace Shootopia
 
             // Pool empty or non-existent: instantiate new
             var newInst = Instantiate(prefab, position, rotation);
-            var tag = newInst.GetComponent<PooledInstance>() ?? newInst.AddComponent<PooledInstance>();
-            tag.PrefabInstanceId = id;
+            var newTag = newInst.GetComponent<PooledInstance>() ?? newInst.AddComponent<PooledInstance>();
+            newTag.PrefabInstanceId = id;
+            newTag.IsInPool = false;
+            newTag.SpawnVersion = 1;
             return newInst;
         }
 
@@ -142,6 +151,9 @@ namespace Shootopia
             var tag = instance.GetComponent<PooledInstance>();
             if (tag != null)
             {
+                if (tag.IsInPool) return; // Prevent duplicate enqueue
+                tag.IsInPool = true;
+
                 // Reset Rigidbody physics velocity if present
                 var rb = instance.GetComponent<Rigidbody>();
                 if (rb != null)
@@ -175,6 +187,9 @@ namespace Shootopia
         public void DespawnDelayed(GameObject instance, float delaySeconds)
         {
             if (instance == null) return;
+            var tag = instance.GetComponent<PooledInstance>();
+            if (tag != null && tag.IsInPool) return;
+
             if (delaySeconds <= 0f)
             {
                 Despawn(instance);
@@ -183,7 +198,8 @@ namespace Shootopia
 
             if (gameObject.activeInHierarchy)
             {
-                StartCoroutine(DespawnRoutine(instance, delaySeconds));
+                int version = tag != null ? tag.SpawnVersion : 0;
+                StartCoroutine(DespawnRoutine(instance, delaySeconds, version));
             }
             else
             {
@@ -191,12 +207,23 @@ namespace Shootopia
             }
         }
 
-        private IEnumerator DespawnRoutine(GameObject instance, float delay)
+        private IEnumerator DespawnRoutine(GameObject instance, float delay, int version)
         {
             yield return new WaitForSeconds(delay);
             if (instance != null)
             {
-                Despawn(instance);
+                var tag = instance.GetComponent<PooledInstance>();
+                if (tag != null)
+                {
+                    if (!tag.IsInPool && tag.SpawnVersion == version)
+                    {
+                        Despawn(instance);
+                    }
+                }
+                else
+                {
+                    Despawn(instance);
+                }
             }
         }
     }

@@ -9,7 +9,7 @@ namespace Shootopia
     /// and edge-triggered impulses (Jump, Dash, Roll, Reload, Weapon Cycle, Shield).
     /// Includes visual press feedback and optional cooldown overlays.
     /// </summary>
-    public class TouchActionButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler
+    public partial class TouchActionButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler
     {
         [Header("Visual Feedback")]
         [SerializeField] private Graphic targetGraphic;
@@ -83,44 +83,13 @@ namespace Shootopia
                 ? _parentCanvas.worldCamera
                 : null;
 
-            if (innerButtonRect != null)
-            {
-                _originalInnerScale = innerButtonRect.localScale;
-                _currentInnerScale = _originalInnerScale;
-                _targetInnerScale = _originalInnerScale;
-                _currentInnerPos = innerButtonRect.anchoredPosition;
-                _targetInnerPos = innerButtonRect.anchoredPosition;
-            }
-
+            InitDeflection();
             ApplyVisualState(false);
         }
 
         private void Update()
         {
-            if (innerButtonRect != null)
-            {
-                if (Vector2.Distance(_currentInnerPos, _targetInnerPos) > 0.01f)
-                {
-                    _currentInnerPos = Vector2.Lerp(_currentInnerPos, _targetInnerPos, Time.unscaledDeltaTime * springReturnSpeed);
-                    innerButtonRect.anchoredPosition = _currentInnerPos;
-                }
-                else
-                {
-                    innerButtonRect.anchoredPosition = _targetInnerPos;
-                    _currentInnerPos = _targetInnerPos;
-                }
-
-                if (Vector3.Distance(_currentInnerScale, _targetInnerScale) > 0.005f)
-                {
-                    _currentInnerScale = Vector3.Lerp(_currentInnerScale, _targetInnerScale, Time.unscaledDeltaTime * springReturnSpeed);
-                    innerButtonRect.localScale = _currentInnerScale;
-                }
-                else
-                {
-                    innerButtonRect.localScale = _targetInnerScale;
-                    _currentInnerScale = _targetInnerScale;
-                }
-            }
+            UpdateDeflection();
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -136,14 +105,7 @@ namespace Shootopia
                 _uiCamera = _parentCanvas.worldCamera;
             }
 
-            if (innerButtonRect != null && _rectTransform != null)
-            {
-                _originalInnerScale = innerButtonRect.localScale;
-                var cam = eventData.pressEventCamera != null ? eventData.pressEventCamera : _uiCamera;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(_rectTransform, eventData.position, cam, out _touchStartLocalPos);
-                _targetInnerPos = Vector2.zero;
-                _targetInnerScale = _originalInnerScale * innerPressedScale;
-            }
+            HandlePointerDownDeflection(eventData);
 
             if (isToggle)
             {
@@ -166,15 +128,7 @@ namespace Shootopia
         {
             if (eventData.pointerId != _activePointerId) return;
 
-            if (innerButtonRect != null && _rectTransform != null)
-            {
-                var cam = eventData.pressEventCamera != null ? eventData.pressEventCamera : _uiCamera;
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_rectTransform, eventData.position, cam, out Vector2 currentLocalPos))
-                {
-                    Vector2 deflection = currentLocalPos - _touchStartLocalPos;
-                    _targetInnerPos = Vector2.ClampMagnitude(deflection, maxDeflectionDistance);
-                }
-            }
+            HandleDragDeflection(eventData);
 
             if (allowDragToAim)
             {
@@ -187,11 +141,7 @@ namespace Shootopia
             if (eventData.pointerId != _activePointerId) return;
             _activePointerId = -999;
 
-            if (innerButtonRect != null)
-            {
-                _targetInnerPos = Vector2.zero;
-                _targetInnerScale = _originalInnerScale;
-            }
+            HandlePointerUpDeflection();
 
             if (!isToggle)
             {
@@ -240,15 +190,7 @@ namespace Shootopia
             _activePointerId = -999;
             _isPressed = false;
             _wasPressedThisFrame = false;
-            if (innerButtonRect != null)
-            {
-                _targetInnerPos = Vector2.zero;
-                _currentInnerPos = Vector2.zero;
-                innerButtonRect.anchoredPosition = Vector2.zero;
-                _targetInnerScale = _originalInnerScale;
-                _currentInnerScale = _originalInnerScale;
-                innerButtonRect.localScale = _originalInnerScale;
-            }
+            ResetDeflectionState();
             ApplyVisualState(false);
         }
 

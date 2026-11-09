@@ -14,6 +14,7 @@ namespace Shootopia.FSM
         {
             _isFinished = false;
             _elapsedTime = 0f;
+            Ctx.TriggerRollCooldown();
             
             Vector3 fwd = Ctx.Aim != null ? Ctx.Aim.CameraPlanarForward : Ctx.ModelRoot.forward;
             Vector3 right = Ctx.Aim != null ? Ctx.Aim.CameraPlanarRight : Ctx.ModelRoot.right;

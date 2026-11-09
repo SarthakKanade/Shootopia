@@ -31,12 +31,18 @@ namespace Shootopia
             ApplySafeArea();
         }
 
+        private float _checkTimer = 0f;
+
         private void Update()
         {
-            if (_lastSafeArea != Screen.safeArea || 
-                _lastScreenSize.x != Screen.width || 
+            _checkTimer += Time.unscaledDeltaTime;
+            if (_checkTimer < 0.5f) return;
+            _checkTimer = 0f;
+
+            if (_lastScreenSize.x != Screen.width || 
                 _lastScreenSize.y != Screen.height ||
-                _lastOrientation != Screen.orientation)
+                _lastOrientation != Screen.orientation ||
+                _lastSafeArea != Screen.safeArea)
             {
                 ApplySafeArea();
             }

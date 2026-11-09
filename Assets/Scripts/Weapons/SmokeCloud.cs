@@ -92,7 +92,14 @@ namespace Shootopia
                                 if (damageable == null || !damagedEntities.Add(damageable)) continue;
                             }
 
-                            damageable.TakeDamage(damagePerTick, DamageType.Environment, _data);
+                            if (ph != null)
+                            {
+                                ph.TakeDamage(damagePerTick, DamageType.Projectile, _data, (ulong)_ownerID);
+                            }
+                            else
+                            {
+                                damageable.TakeDamage(damagePerTick, DamageType.Projectile, _data);
+                            }
                         }
                     }
                 }

@@ -9,7 +9,7 @@ namespace Shootopia
     /// continuous raycast sweeps for reliable netcode-friendly collision registration.
     /// Supports gravity, ricochet bouncing, homing, explosive splash, and void zone spawning.
     /// </summary>
-    public class KinematicProjectileController : BaseProjectile
+    public partial class KinematicProjectileController : BaseProjectile
     {
         [Header("Movement Settings")]
         [SerializeField] private float speed = 40f;
@@ -43,13 +43,45 @@ namespace Shootopia
         private float _aliveTime;
         private int _bounceCount;
         private Transform _homingTarget;
+        private float _homingSearchTimer;
         private Vector3 _startPosition;
         private float _distanceTraveled;
         private float _maxDistance;
+        private ParticleSystem[] _cachedParticleSystems;
+        private static int _projectileHitMask = -1;
+        private static readonly Collider[] _homingHitBuffer = new Collider[16];
+
+        private void Awake()
+        {
+            _cachedParticleSystems = GetComponentsInChildren<ParticleSystem>(true);
+        }
 
         public override void Init(WeaponSO data, GameObject owner)
         {
             base.Init(data, owner);
+
+            if (_projectileHitMask == -1)
+            {
+                int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
+                int ui = LayerMask.NameToLayer("UI");
+                int maskToIgnore = 0;
+                if (ignoreRaycast >= 0) maskToIgnore |= (1 << ignoreRaycast);
+                if (ui >= 0) maskToIgnore |= (1 << ui);
+                _projectileHitMask = ~maskToIgnore;
+            }
+
+            if (GlobalPoolManager.Instance != null)
+            {
+                if (playerHitVFXPrefab != null) GlobalPoolManager.Instance.Prewarm(playerHitVFXPrefab, 5);
+                if (environmentHitVFXPrefab != null) GlobalPoolManager.Instance.Prewarm(environmentHitVFXPrefab, 5);
+                if (extraExplosionPrefabs != null)
+                {
+                    foreach (var extra in extraExplosionPrefabs)
+                    {
+                        if (extra != null) GlobalPoolManager.Instance.Prewarm(extra, 3);
+                    }
+                }
+            }
 
             if (data != null)
             {
@@ -86,14 +118,19 @@ namespace Shootopia
 
             transform.localScale = Vector3.one * projectileScale;
 
-            // Clear and restart any child particle systems for pooled projectile reuse
-            var particleSystems = GetComponentsInChildren<ParticleSystem>(true);
-            foreach (var ps in particleSystems)
+            if (_cachedParticleSystems == null)
+                _cachedParticleSystems = GetComponentsInChildren<ParticleSystem>(true);
+
+            foreach (var ps in _cachedParticleSystems)
             {
-                ps.Clear();
-                ps.Play();
+                if (ps != null)
+                {
+                    ps.Clear();
+                    ps.Play();
+                }
             }
 
+            _homingSearchTimer = 0f;
             if (isHoming)
             {
                 FindHomingTarget();
@@ -114,7 +151,12 @@ namespace Shootopia
             // 1. Homing direction adjustment
             if (isHoming)
             {
-                if (_homingTarget == null) FindHomingTarget();
+                _homingSearchTimer -= dt;
+                if (_homingTarget == null && _homingSearchTimer <= 0f)
+                {
+                    _homingSearchTimer = 0.1f; // 10 Hz throttled non-alloc search
+                    FindHomingTarget();
+                }
 
                 if (_homingTarget != null)
                 {
@@ -146,7 +188,7 @@ namespace Shootopia
             if (distance > 0.0001f)
             {
                 Ray ray = new Ray(currentPos, delta.normalized);
-                if (Physics.Raycast(ray, out RaycastHit hit, distance, ~0, QueryTriggerInteraction.Ignore))
+                if (Physics.Raycast(ray, out RaycastHit hit, distance, _projectileHitMask, QueryTriggerInteraction.Ignore))
                 {
                     // Ignore collision with shooter
                     if (_owner != null && hit.transform.root == _owner.transform.root)
@@ -169,7 +211,19 @@ namespace Shootopia
                                 : environmentHitVFXPrefab;
                             if (bounceVfx != null)
                             {
-                                Instantiate(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
+                                GameObject spawnedBounce = null;
+                                if (GlobalPoolManager.Instance != null)
+                                {
+                                    spawnedBounce = GlobalPoolManager.Instance.Spawn(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
+                                    if (spawnedBounce != null && spawnedBounce.GetComponent<PooledParticleEffect>() == null && spawnedBounce.GetComponent<TimedDestroy>() == null)
+                                    {
+                                        spawnedBounce.AddComponent<PooledParticleEffect>();
+                                    }
+                                }
+                                else
+                                {
+                                    spawnedBounce = Instantiate(bounceVfx, hit.point, Quaternion.LookRotation(hit.normal));
+                                }
                             }
 
                             transform.position = hit.point + hit.normal * 0.02f;
@@ -188,291 +242,5 @@ namespace Shootopia
             }
         }
 
-        private void HandleImpact(RaycastHit hit)
-        {
-            Vector3 poc = hit.point;
-            bool isSplashWeapon = _weaponData != null && (_weaponData.isExplosive || _weaponData.blastRadius > 0.1f);
-
-            if (isSplashWeapon)
-            {
-                ApplySplashDamage(poc, hit);
-            }
-            else
-            {
-                ApplyDirectDamage(hit);
-            }
-
-            if (AudioManager.Instance != null)
-            {
-                float duckAmount = isSplashWeapon ? 0.35f : 0.42f;
-                float holdDuration = isSplashWeapon ? 1.2f : 0.8f;
-                AudioManager.Instance.TriggerCombatDucking(duckAmount, holdDuration, true);
-            }
-
-            SpawnVoidZone(hit);
-            SpawnExplosionVFX(hit);
-
-            if (GlobalPoolManager.Instance != null) GlobalPoolManager.Instance.Despawn(gameObject);
-            else Destroy(gameObject);
-        }
-
-        private void ApplySplashDamage(Vector3 poc, RaycastHit directHit)
-        {
-            float blastRadius = (_weaponData != null && _weaponData.blastRadius > 0.1f) ? _weaponData.blastRadius : 3.5f;
-            float maxDamage = _weaponData != null ? _weaponData.Damage : 25f;
-            float minDamage = (_weaponData != null && _weaponData.splashDamage > 0f) ? _weaponData.splashDamage : (maxDamage * 0.25f);
-
-            Collider[] hitColliders = Physics.OverlapSphere(poc, blastRadius);
-            var processedTargets = new HashSet<IDamageable>();
-            var processedPlayers = new HashSet<PlayerHealth>();
-            ulong attackerId = GetAttackerClientId();
-
-            foreach (var col in hitColliders)
-            {
-                if (col == null) continue;
-                bool isOwner = (_owner != null && col.transform.root == _owner.transform.root);
-                bool allowSelfDamage = (_weaponData != null && (_weaponData.selfDamage || _weaponData.isExplosive));
-                if (isOwner && !allowSelfDamage)
-                    continue;
-
-                IDamageable targetDamageable = null;
-                var targetHealth = col.GetComponentInParent<PlayerHealth>() ?? col.GetComponent<PlayerHealth>();
-                if (targetHealth != null)
-                {
-                    if (!processedPlayers.Add(targetHealth)) continue;
-                }
-                else
-                {
-                    targetDamageable = col.GetComponentInParent<IDamageable>() ?? col.GetComponent<IDamageable>();
-                    if (targetDamageable == null || !processedTargets.Add(targetDamageable)) continue;
-                }
-
-                if (IsOwnerProjectile())
-                {
-                    if (targetHealth != null) targetHealth.LastAttackerClientId = attackerId;
-
-                    // Check if this target was directly struck by the projectile (head-on direct hit)
-                    bool isDirect = (directHit.collider != null && (col == directHit.collider || col.transform.root == directHit.collider.transform.root))
-                                    || (col != null && Vector3.Distance(poc, col.ClosestPoint(poc)) <= 0.05f);
-
-                    float calculatedDamage;
-                    float normalizedDist = 0f;
-
-                    if (isDirect)
-                    {
-                        // Direct contact hit guarantees full center damage (100 = 1-hit KO for Area Blaster, 60 for Freeze Gun)
-                        calculatedDamage = maxDamage;
-                    }
-                    else
-                    {
-                        Vector3 closestPoint = col.ClosestPoint(poc);
-                        float distToPOC = Vector3.Distance(poc, closestPoint);
-                        normalizedDist = Mathf.Clamp01(distToPOC / blastRadius);
-                        calculatedDamage = Mathf.Lerp(maxDamage, minDamage, normalizedDist);
-                        calculatedDamage = Mathf.Clamp(calculatedDamage, minDamage, maxDamage);
-                    }
-
-                    if (targetHealth != null)
-                    {
-                        targetHealth.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData, attackerId);
-                    }
-                    else
-                    {
-                        targetDamageable.TakeDamage(calculatedDamage, DamageType.Explosion, _weaponData);
-                    }
-
-                    // Freeze status effect (blocked if target has an active or recently-absorbed shield)
-                    if (IsFreezeWeapon() && targetHealth != null)
-                    {
-                        var targetShield = targetHealth.GetComponent<PlayerShield>();
-                        bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
-                        if (!shieldBlocked)
-                        {
-                            if (isDirect)
-                            {
-                                targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
-                            }
-                            else
-                            {
-                                float maxSlow = _weaponData.maxSlowPercent > 0f ? _weaponData.maxSlowPercent : 0.80f;
-                                float minSlow = _weaponData.minSlowPercent > 0f ? _weaponData.minSlowPercent : 0.20f;
-                                float slowPercent = Mathf.Lerp(maxSlow, minSlow, normalizedDist);
-                                float slowDuration = Mathf.Lerp(3.5f, 1.5f, normalizedDist);
-                                targetHealth.ApplyFreezeEffect(slowDuration, slowPercent, false);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private void ApplyDirectDamage(RaycastHit hit)
-        {
-            if (!IsOwnerProjectile()) return;
-
-            var targetHealth = hit.collider.GetComponentInParent<PlayerHealth>() ?? hit.collider.GetComponent<PlayerHealth>();
-            var damageable = hit.collider.GetComponentInParent<IDamageable>() ?? hit.collider.GetComponent<IDamageable>();
-
-            if (targetHealth != null || damageable != null)
-            {
-                ulong attackerId = GetAttackerClientId();
-
-                if (targetHealth != null)
-                {
-                    targetHealth.LastAttackerClientId = attackerId;
-
-                    var targetShield = targetHealth.GetComponent<PlayerShield>();
-                    bool shieldBlocked = targetShield != null && (targetShield.IsShieldActive || targetShield.WasActiveOrAbsorbedRecently);
-
-                    if (IsFreezeWeapon() && !shieldBlocked)
-                    {
-                        targetHealth.ApplyFreezeEffect(5.0f, 1.0f, true);
-                    }
-
-                    if (IsFireWeapon() && !shieldBlocked)
-                    {
-                        float duration = _weaponData.afterburnDuration > 0f ? _weaponData.afterburnDuration : 5.0f;
-                        float dps = _weaponData.afterburnDPS > 0f ? _weaponData.afterburnDPS : 5.0f;
-                        targetHealth.ApplyBurnEffect(duration, dps, _weaponData);
-                    }
-                }
-
-                float damage = _weaponData != null ? _weaponData.Damage : 10f;
-                if (targetHealth != null)
-                {
-                    targetHealth.TakeDamage(damage, DamageType.Projectile, _weaponData, attackerId);
-                }
-                else
-                {
-                    damageable.TakeDamage(damage, DamageType.Projectile, _weaponData);
-                }
-            }
-        }
-
-        private void SpawnVoidZone(RaycastHit hit)
-        {
-            if (voidZonePrefab == null) return;
-
-            Vector3 spawnPoint = hit.point;
-            if (hit.normal.y > 0.7f) spawnPoint += Vector3.up * 0.5f;
-
-            var zone = Instantiate(voidZonePrefab, spawnPoint, Quaternion.identity);
-            var zoneScript = zone.GetComponent<VoidZone>();
-            if (zoneScript != null && _weaponData != null)
-            {
-                zoneScript.Initialize(_weaponData, GetAttackerClientId());
-            }
-        }
-
-        private void SpawnExplosionVFX(RaycastHit hit)
-        {
-            Quaternion hitRotation = hit.normal != Vector3.zero
-                ? (Mathf.Abs(hit.normal.y) > 0.95f ? Quaternion.LookRotation(hit.normal, Vector3.forward) : Quaternion.LookRotation(hit.normal, Vector3.up))
-                : Quaternion.LookRotation(Vector3.up, Vector3.forward);
-
-            bool isPlayerHit = hit.collider != null && (
-                hit.collider.GetComponentInParent<PlayerHealth>() != null ||
-                hit.collider.GetComponent<PlayerHealth>() != null ||
-                hit.collider.CompareTag("Player"));
-
-            GameObject vfxToSpawn = null;
-            if (isPlayerHit)
-            {
-                if (playerHitVFXPrefab != null) vfxToSpawn = playerHitVFXPrefab;
-                else if (_weaponData != null && _weaponData.playerHitVFXPrefab != null) vfxToSpawn = _weaponData.playerHitVFXPrefab;
-                else if (_weaponData != null && _weaponData.HitVFXPrefab != null) vfxToSpawn = _weaponData.HitVFXPrefab;
-            }
-            else
-            {
-                if (environmentHitVFXPrefab != null) vfxToSpawn = environmentHitVFXPrefab;
-                else if (_weaponData != null && _weaponData.HitVFXPrefab != null) vfxToSpawn = _weaponData.HitVFXPrefab;
-            }
-
-            if (vfxToSpawn != null)
-            {
-                var spawned = Instantiate(vfxToSpawn, hit.point, hitRotation);
-                ApplyExplosionModifiers(spawned);
-            }
-
-            if (extraExplosionPrefabs != null)
-            {
-                foreach (var extra in extraExplosionPrefabs)
-                {
-                    if (extra != null)
-                    {
-                        var spawnedExtra = Instantiate(extra, hit.point, hitRotation);
-                        ApplyExplosionModifiers(spawnedExtra);
-                    }
-                }
-            }
-        }
-
-        private void ApplyExplosionModifiers(GameObject vfx)
-        {
-            if (vfx == null) return;
-            vfx.transform.localScale = Vector3.one * explosionScale;
-
-            foreach (var ps in vfx.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                var main = ps.main;
-                main.simulationSpeed *= explosionSpeed;
-            }
-
-            foreach (var audio in vfx.GetComponentsInChildren<AudioSource>(true))
-            {
-                audio.volume = Mathf.Clamp01(audio.volume * 1.5f);
-                audio.pitch *= 0.7f;
-            }
-        }
-
-        private ulong GetAttackerClientId()
-        {
-            if (_owner != null)
-            {
-                var netObj = _owner.GetComponent<NetworkObject>();
-                if (netObj != null) return netObj.OwnerClientId;
-            }
-            return NetworkManager.ServerClientId;
-        }
-
-        private bool IsFreezeWeapon()
-        {
-            if (_weaponData == null) return false;
-            return _weaponData.freezeDuration > 0f || _weaponData.maxSlowPercent > 0f ||
-                   (!string.IsNullOrEmpty(_weaponData.weaponName) && _weaponData.weaponName.ToLower().Contains("freeze"));
-        }
-
-        private bool IsFireWeapon()
-        {
-            if (_weaponData == null) return false;
-            return _weaponData.afterburnDuration > 0f || _weaponData.afterburnDPS > 0f ||
-                   (!string.IsNullOrEmpty(_weaponData.weaponName) && (_weaponData.weaponName.ToLower().Contains("flame") || _weaponData.weaponName.ToLower().Contains("fire")));
-        }
-
-        private void FindHomingTarget()
-        {
-            Collider[] colliders = Physics.OverlapSphere(transform.position, homingRange);
-            float minAngle = 360f;
-            Transform bestTarget = null;
-
-            foreach (var col in colliders)
-            {
-                if (col.isTrigger) continue;
-                if (_owner != null && col.transform.root == _owner.transform.root) continue;
-
-                if (col.GetComponent<IDamageable>() != null || col.gameObject.layer == LayerMask.NameToLayer("Enemy"))
-                {
-                    Vector3 toTarget = (col.transform.position - transform.position).normalized;
-                    float angle = Vector3.Angle(transform.forward, toTarget);
-                    if (angle < minAngle)
-                    {
-                        minAngle = angle;
-                        bestTarget = col.transform;
-                    }
-                }
-            }
-
-            _homingTarget = bestTarget;
-        }
     }
 }

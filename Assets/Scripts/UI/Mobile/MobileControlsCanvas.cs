@@ -64,39 +64,20 @@ namespace Shootopia
                 };
             }
 
-            if (altFireButton != null)
-            {
-                altFireButton.SetToggle(true);
-            }
+            if (altFireButton != null) altFireButton.SetToggle(true);
 
             if (jumpButton != null)
             {
-                jumpButton.OnPressed += () =>
-                {
-                    EnsureLocalPlayerReference();
-                    _localInputRouter?.QueueJump();
-                    MobileHapticsManager.TriggerLightTap();
-                };
+                jumpButton.OnPressed += () => { EnsureLocalPlayerReference(); _localInputRouter?.QueueJump(); MobileHapticsManager.TriggerLightTap(); };
             }
 
             if (dashButton != null)
             {
-                dashButton.OnPressed += () =>
-                {
-                    EnsureLocalPlayerReference();
-                    _localInputRouter?.QueueRoll();
-                    MobileHapticsManager.TriggerLightTap();
-                };
+                dashButton.OnPressed += () => { EnsureLocalPlayerReference(); _localInputRouter?.QueueRoll(); MobileHapticsManager.TriggerLightTap(); };
             }
 
-            if (pauseButton != null)
-            {
-                pauseButton.onClick.AddListener(OnPauseClicked);
-            }
-            if (scoreboardButton != null)
-            {
-                scoreboardButton.onClick.AddListener(OnScoreboardClicked);
-            }
+            if (pauseButton != null) pauseButton.onClick.AddListener(OnPauseClicked);
+            if (scoreboardButton != null) scoreboardButton.onClick.AddListener(OnScoreboardClicked);
         }
 
         private void OnEnable()
@@ -117,7 +98,11 @@ namespace Shootopia
 
         private void UpdateVisibility(InputControlMode mode)
         {
-            bool showTouch = (mode == InputControlMode.MobileTouch);
+            bool isMenuOpen = WaitingRoomController.IsLobbyMenuOpen || 
+                             WaitingRoomController.IsGameOverOpen || 
+                             PauseMenuController.IsMenuPaused;
+
+            bool showTouch = (mode == InputControlMode.MobileTouch) && !isMenuOpen;
 
             if (canvasGroup != null)
             {
@@ -145,16 +130,39 @@ namespace Shootopia
 
         private void OnScoreboardClicked()
         {
-            if (ScoreboardController.Instance != null)
+            if (WaitingRoomController.Instance != null && !WaitingRoomController.Instance.IsMatchStarted)
             {
-                ScoreboardController.Instance.ToggleScoreboard();
+                WaitingRoomController.Instance.ToggleLobbyVisibility();
+                return;
+            }
+
+            if (PauseMenuController.Instance != null)
+            {
+                PauseMenuController.Instance.TogglePause(!PauseMenuController.IsMenuPaused);
             }
         }
 
         private void Update()
         {
-            // If touch mode is disabled, skip injecting external intent
-            if (!DeviceProfileManager.IsTouchActive) return;
+            bool isMenuOpen = WaitingRoomController.IsLobbyMenuOpen || 
+                             WaitingRoomController.IsGameOverOpen || 
+                             PauseMenuController.IsMenuPaused;
+
+            bool showTouch = (DeviceProfileManager.EffectiveMode == InputControlMode.MobileTouch) && !isMenuOpen;
+
+            if (canvasGroup != null)
+            {
+                float targetAlpha = showTouch ? 1f : 0f;
+                if (!Mathf.Approximately(canvasGroup.alpha, targetAlpha))
+                {
+                    canvasGroup.alpha = targetAlpha;
+                    canvasGroup.interactable = showTouch;
+                    canvasGroup.blocksRaycasts = showTouch;
+                }
+            }
+
+            // If touch mode is disabled or a menu is active, skip injecting external intent
+            if (!showTouch) return;
 
             EnsureLocalPlayerReference();
             if (_localInputRouter == null) return;

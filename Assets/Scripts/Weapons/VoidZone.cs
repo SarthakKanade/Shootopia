@@ -141,7 +141,15 @@ namespace Shootopia
                                 float dps = Mathf.Lerp(centerDPS, edgeDPS, t);
                                 float tickDamage = dps * damageTickInterval;
 
-                                damageable.TakeDamage(tickDamage, DamageType.Environment, _data);
+                                ulong attackerId = _hasOwner ? _ownerID : (Unity.Netcode.NetworkManager.Singleton != null ? Unity.Netcode.NetworkManager.Singleton.LocalClientId : ulong.MaxValue);
+                                if (targetHealth != null)
+                                {
+                                    targetHealth.TakeDamage(tickDamage, DamageType.Projectile, _data, attackerId);
+                                }
+                                else
+                                {
+                                    damageable.TakeDamage(tickDamage, DamageType.Projectile, _data);
+                                }
                             }
                         }
                     }

@@ -6,7 +6,7 @@ using Unity.Netcode;
 namespace Shootopia
 {
     [RequireComponent(typeof(CharacterController))]
-    public class CharacterMotor : NetworkBehaviour
+    public partial class CharacterMotor : NetworkBehaviour
     {
         [Header("References")]
         [SerializeField] private PlayerInputRouter input;
@@ -22,7 +22,10 @@ namespace Shootopia
         public float dashSpeed = 14.5f;
         public float rollSpeed = 21.75f;
         public float rollDuration = 0.55f;
+        public float rollCooldown = 3.0f;
         public float animDamp = 0.1f;
+
+        private float _rollCooldownTimer = 0f;
 
         public CharacterController Controller { get; private set; }
         public Animator Animator => animator;
@@ -32,6 +35,14 @@ namespace Shootopia
         
         public float VerticalVelocity { get; set; }
         public float MoveSpeedMultiplier { get; set; } = 1f;
+        public float RollCooldown => rollCooldown;
+        public float RollCooldownRemaining => Mathf.Max(0f, _rollCooldownTimer);
+        public bool CanRoll => _rollCooldownTimer <= 0f && !(CurrentState is FSM.RollState);
+
+        public void TriggerRollCooldown()
+        {
+            _rollCooldownTimer = rollCooldown;
+        }
         private readonly NetworkVariable<bool> _isInLava = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         public bool IsInLava
         {
@@ -100,7 +111,7 @@ namespace Shootopia
         private void Update()
         {
             float dt = Time.deltaTime;
-            UpdateFootsteps(dt);
+            if (_rollCooldownTimer > 0f) _rollCooldownTimer -= dt;
 
             // Handle fall animation when sinking in lava across all clients
             if (_isInLava.Value && animator != null)
@@ -125,7 +136,8 @@ namespace Shootopia
             // Only the owning client drives FSM, input, and animator triggers.
             if (!IsOwner)
             {
-                ModelRoot.rotation = Quaternion.Slerp(ModelRoot.rotation, _modelRotation.Value, Mathf.Min(1f, 15f * dt));
+                float t = 1f - Mathf.Exp(-18f * dt);
+                ModelRoot.rotation = Quaternion.Slerp(ModelRoot.rotation, _modelRotation.Value, t);
                 return;
             }
             if (input == null) return;
@@ -140,87 +152,21 @@ namespace Shootopia
             CurrentState?.UpdateStates(dt);
         }
 
-        public void PlayJumpAudio(float delay = 0.11f)
-        {
-            // Jump sound removed per design request
-        }
-
-        private IEnumerator DelayedJumpAudioRoutine(float delay)
-        {
-            yield break;
-        }
-
-        private void TriggerJumpAudio()
-        {
-            // Jump sound removed per design request
-        }
+        public void PlayJumpAudio(float delay = 0.11f) { }
 
         public void PlayDashAudio()
         {
-            if (AudioManager.Instance == null) return;
-            AudioClip clip = (playerAudioConfig != null && playerAudioConfig.dashClip != null) ? playerAudioConfig.dashClip : null;
-            if (clip != null)
+            if (AudioManager.Instance != null && playerAudioConfig != null && playerAudioConfig.dashClip != null)
             {
-                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.75f);
+                AudioManager.Instance.PlaySFXAtPosition(playerAudioConfig.dashClip, transform.position, 0.75f);
             }
         }
 
         public void PlayRollAudio()
         {
-            if (AudioManager.Instance == null) return;
-            AudioClip clip = (playerAudioConfig != null && playerAudioConfig.rollClip != null) ? playerAudioConfig.rollClip : null;
-            if (clip != null)
+            if (AudioManager.Instance != null && playerAudioConfig != null && playerAudioConfig.rollClip != null)
             {
-                AudioManager.Instance.PlaySFXAtPosition(clip, transform.position, 0.70f);
-            }
-        }
-
-        private void UpdateFootsteps(float dt)
-        {
-            // Walk / footstep sounds removed per design request
-        }
-
-        public void ApplyMovementAndRotation(float dt, float speedMultiplier = 1f)
-        {
-            Vector3 fwd = Aim != null ? Aim.CameraPlanarForward : Vector3.forward;
-            Vector3 right = Aim != null ? Aim.CameraPlanarRight : Vector3.right;
-            
-            Vector3 worldMove = fwd * InputIntent.Move.y + right * InputIntent.Move.x;
-            if (worldMove.sqrMagnitude > 1f) worldMove.Normalize();
-
-            if (Aim != null && fwd.sqrMagnitude >= 0.0004f)
-            {
-                Quaternion target = Quaternion.LookRotation(fwd, Vector3.up);
-                float activeRotSpeed = (IsInCombat || (animator != null && animator.GetBool(HashIsFiring))) ? 1400f : rotationSpeed;
-                ModelRoot.rotation = Quaternion.RotateTowards(ModelRoot.rotation, target, activeRotSpeed * dt);
-                _modelRotation.Value = ModelRoot.rotation;
-            }
-
-            Vector3 localMove = ModelRoot.InverseTransformDirection(worldMove);
-            if (animator != null)
-            {
-                animator.SetFloat(HashMoveX, localMove.x, animDamp, dt);
-                animator.SetFloat(HashMoveY, localMove.z, animDamp, dt);
-                animator.SetFloat(HashSpeed, worldMove.magnitude, animDamp, dt);
-            }
-
-            Vector3 velocity = worldMove * (moveSpeed * speedMultiplier * MoveSpeedMultiplier) + Vector3.up * VerticalVelocity;
-            Controller.Move(velocity * dt);
-
-            // Immediate zero-latency ground contact detection
-            if (Controller.isGrounded && VerticalVelocity <= 0f && !_isInLava.Value)
-            {
-                if (animator != null)
-                {
-                    animator.SetBool(HashGrounded, true);
-                }
-                if (CurrentState is AirborneState)
-                {
-                    CurrentState.ExitState();
-                    CurrentState = _factory.Grounded();
-                    CurrentState.EnterState();
-                    VerticalVelocity = -2f;
-                }
+                AudioManager.Instance.PlaySFXAtPosition(playerAudioConfig.rollClip, transform.position, 0.70f);
             }
         }
 

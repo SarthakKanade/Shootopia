@@ -66,37 +66,66 @@ namespace Shootopia
             }
 
             _initTask = InitializeInternal();
-            bool result = await _initTask;
-            _initTask = null;
-            return result;
+            try
+            {
+                bool result = await _initTask;
+                return result;
+            }
+            finally
+            {
+                _initTask = null;
+            }
         }
 
         private static async Task<bool> InitializeInternal()
         {
-            try
+            const int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                if (UnityServices.State == ServicesInitializationState.Uninitialized)
+                try
                 {
-                    Debug.Log("[MultiplayerAutoInitializer] Initializing Unity Services...");
-                    await UnityServices.InitializeAsync();
-                }
+                    if (UnityServices.State == ServicesInitializationState.Uninitialized)
+                    {
+                        Debug.Log($"[MultiplayerAutoInitializer] Initializing Unity Services (Attempt {attempt}/{maxRetries})...");
+                        await UnityServices.InitializeAsync();
+                    }
+                    else if (UnityServices.State == ServicesInitializationState.Initializing)
+                    {
+                        int waited = 0;
+                        while (UnityServices.State == ServicesInitializationState.Initializing && waited < 4000)
+                        {
+                            await Task.Delay(100);
+                            waited += 100;
+                        }
+                    }
 
-                if (!AuthenticationService.Instance.IsSignedIn)
+                    if (AuthenticationService.Instance != null && !AuthenticationService.Instance.IsSignedIn)
+                    {
+                        Debug.Log($"[MultiplayerAutoInitializer] Signing in anonymously (Attempt {attempt}/{maxRetries})...");
+                        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                        Debug.Log($"[MultiplayerAutoInitializer] Signed in successfully. Player ID: {AuthenticationService.Instance.PlayerId}");
+                    }
+
+                    Instance?.OnAuthSuccess?.Invoke();
+                    return true;
+                }
+                catch (Exception ex)
                 {
-                    Debug.Log("[MultiplayerAutoInitializer] Signing in anonymously...");
-                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                    Debug.Log($"[MultiplayerAutoInitializer] Signed in successfully. Player ID: {AuthenticationService.Instance.PlayerId}");
+                    Debug.LogWarning($"[MultiplayerAutoInitializer] Init/Auth attempt {attempt}/{maxRetries} failed: {ex.Message}");
+                    if (attempt < maxRetries)
+                    {
+                        await Task.Delay(1000 * attempt);
+                    }
+                    else
+                    {
+                        Debug.LogError($"[MultiplayerAutoInitializer] Initialization/Auth failed after {maxRetries} attempts: {ex.Message}");
+                        Instance?.OnAuthError?.Invoke(ex.Message);
+                        return false;
+                    }
                 }
+            }
 
-                Instance?.OnAuthSuccess?.Invoke();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[MultiplayerAutoInitializer] Initialization/Auth failed: {ex.Message}");
-                Instance?.OnAuthError?.Invoke(ex.Message);
-                return false;
-            }
+            return false;
         }
     }
 }

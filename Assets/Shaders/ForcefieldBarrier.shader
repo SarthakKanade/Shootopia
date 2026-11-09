@@ -106,28 +106,20 @@ Shader "Shootopia/ForcefieldBarrier"
                 float NdotV = saturate(dot(normalWS, viewDirWS));
                 float fresnel = pow(1.0 - NdotV, _RimPower);
 
-                // 2. Animated Grid
-                float2 scrolledUV = input.uv * _GridTiling.xy + _ScrollSpeed.xy * _Time.y;
-                float2 gridFract = frac(scrolledUV);
+                // 2. Static Holographic Grid (zero animation load)
+                float2 uv = input.uv * _GridTiling.xy;
+                float2 gridFract = frac(uv);
                 float gridX = step(gridFract.x, _GridThickness) + step(1.0 - _GridThickness, gridFract.x);
                 float gridY = step(gridFract.y, _GridThickness) + step(1.0 - _GridThickness, gridFract.y);
                 float gridLine = saturate(gridX + gridY);
 
-                // 3. Scanline Wave
-                float scanline = sin((input.positionWS.y * _ScanlineDensity) - (_Time.y * _ScanlineSpeed * 5.0));
-                scanline = smoothstep(0.7, 1.0, scanline);
-
-                // 4. Energy Pulse (breathing pulse)
-                float pulse = sin(_Time.y * _PulseSpeed) * _PulseIntensity;
-
-                // 5. Color Composite
+                // 3. Color Composite
                 float3 col = _BaseColor.rgb;
                 col = lerp(col, _RimColor.rgb, fresnel);
-                col += _GridColor.rgb * (gridLine * 0.85);
-                col += _RimColor.rgb * (scanline * 0.4);
+                col += _GridColor.rgb * (gridLine * 0.75);
 
-                // 6. Alpha Composite
-                float finalAlpha = _BaseColor.a + (fresnel * _RimColor.a * 0.6) + (gridLine * 0.4) + (scanline * 0.25) + pulse;
+                // 4. Alpha Composite
+                float finalAlpha = _BaseColor.a + (fresnel * _RimColor.a * 0.5) + (gridLine * 0.35);
                 finalAlpha = saturate(finalAlpha * _Alpha);
 
                 return half4(col, finalAlpha);

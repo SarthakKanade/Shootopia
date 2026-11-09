@@ -27,6 +27,8 @@ namespace Shootopia
     {
         public static GameModeBase Instance { get; set; }
         public static void SetActiveInstance(GameModeBase mode) => Instance = mode;
+        public static event System.Action OnPlayerStatsUpdated;
+        public static void TriggerPlayerStatsUpdated() => OnPlayerStatsUpdated?.Invoke();
         public static event System.Action<string, PlayerScoreEntry[]> OnMatchEndedWithScoreboard;
         public static event System.Action<string, string, string, ulong, ulong> OnKillFeedReceived;
         public static event System.Action<string> OnSystemMessageReceived;
@@ -152,11 +154,12 @@ namespace Shootopia
             SyncPlayerStatsClientRpc(scoreTargetId, targetScore, victimClientId, PlayerDeaths[victimClientId]);
         }
 
-        [ClientRpc]
+        [Rpc(SendTo.ClientsAndHost)]
         protected void SyncPlayerStatsClientRpc(ulong killerId, int killerKills, ulong victimId, int victimDeaths)
         {
             PlayerKills[killerId] = killerKills;
             PlayerDeaths[victimId] = victimDeaths;
+            OnPlayerStatsUpdated?.Invoke();
         }
 
         public virtual int GetPlayerKills(ulong clientId)
@@ -195,7 +198,7 @@ namespace Shootopia
             }
         }
 
-        [ClientRpc]
+        [Rpc(SendTo.ClientsAndHost)]
         public void BroadcastTimeRemainingClientRpc(float timeRemaining)
         {
             if (IsServer)
@@ -204,21 +207,21 @@ namespace Shootopia
             }
         }
 
-        [ClientRpc]
+        [Rpc(SendTo.ClientsAndHost)]
         public void BroadcastKillFeedClientRpc(string killerName, string victimName, string weaponName, ulong killerClientId, ulong victimClientId)
         {
             Debug.Log($"[KillFeed] {killerName} killed {victimName} with {weaponName}");
             OnKillFeedReceived?.Invoke(killerName, victimName, weaponName, killerClientId, victimClientId);
         }
 
-        [ClientRpc]
+        [Rpc(SendTo.ClientsAndHost)]
         public void BroadcastSystemMessageClientRpc(string message)
         {
             Debug.Log($"[SystemMessage] {message}");
             OnSystemMessageReceived?.Invoke(message);
         }
 
-        [ClientRpc]
+        [Rpc(SendTo.ClientsAndHost)]
         public void BroadcastMatchEndClientRpc(string winnerInfo, PlayerScoreEntry[] scores)
         {
             Debug.Log($"[MatchEnd] Winner: {winnerInfo}");

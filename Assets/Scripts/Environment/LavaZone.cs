@@ -30,18 +30,36 @@ namespace Shootopia
             HandlePlayerEnter(other.gameObject);
         }
 
-        private void OnTriggerStay(Collider other)
-        {
-            HandlePlayerEnter(other.gameObject);
-        }
-
         private void OnTriggerExit(Collider other)
         {
             HandlePlayerExit(other.gameObject);
         }
 
+        private float _elevationCheckTimer = 0f;
+
         private void Update()
         {
+            float dt = Time.deltaTime;
+
+            // Process players currently sinking in lava
+            if (_playersInLava.Count > 0)
+            {
+                var activeList = PlayerHealth.ActivePlayers;
+                for (int i = 0; i < activeList.Count; i++)
+                {
+                    var health = activeList[i];
+                    if (health != null && _playersInLava.Contains(health.gameObject))
+                    {
+                        ProcessPlayerInLava(health.gameObject, health, dt);
+                    }
+                }
+            }
+
+            // Throttled 10 Hz check for elevation-based lava entry/exit
+            _elevationCheckTimer += dt;
+            if (_elevationCheckTimer < 0.1f) return;
+            _elevationCheckTimer = 0f;
+
             var activePlayers = PlayerHealth.ActivePlayers;
             for (int i = 0; i < activePlayers.Count; i++)
             {
@@ -57,9 +75,8 @@ namespace Shootopia
                     if (_playersInLava.Add(playerObj))
                     {
                         _lavaImmersionTimers[playerObj] = 0f;
-                        health.ApplyBurnEffect(999f, 0f); // Visual fiery tint only, zero tick damage
+                        health.ApplyBurnEffect(999f, 0f);
                     }
-                    ProcessPlayerInLava(playerObj, health);
                 }
                 else if (_playersInLava.Contains(playerObj))
                 {
@@ -116,7 +133,7 @@ namespace Shootopia
             }
         }
 
-        private void ProcessPlayerInLava(GameObject playerObj, PlayerHealth health)
+        private void ProcessPlayerInLava(GameObject playerObj, PlayerHealth health, float dt)
         {
             var motor = playerObj.GetComponent<CharacterMotor>();
             if (motor == null) return;
@@ -133,11 +150,11 @@ namespace Shootopia
             var cc = motor.GetComponent<CharacterController>();
             if (cc != null && cc.enabled)
             {
-                cc.Move(Vector3.down * sinkSpeed * Time.deltaTime);
+                cc.Move(Vector3.down * sinkSpeed * dt);
             }
             else
             {
-                motor.transform.position += Vector3.down * sinkSpeed * Time.deltaTime;
+                motor.transform.position += Vector3.down * sinkSpeed * dt;
             }
 
             // 3. Keep health full for the first 2 seconds, then instant kill (no repetitive damage tick SFX)
@@ -145,7 +162,7 @@ namespace Shootopia
             {
                 _lavaImmersionTimers[playerObj] = 0f;
             }
-            _lavaImmersionTimers[playerObj] += Time.deltaTime;
+            _lavaImmersionTimers[playerObj] += dt;
 
             bool canApplyDamage = (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening || NetworkManager.Singleton.IsServer);
             if (canApplyDamage && health != null && !health.IsDead)

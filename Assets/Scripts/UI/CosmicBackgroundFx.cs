@@ -34,6 +34,8 @@ namespace Shootopia
 
         private void Awake()
         {
+            // Isolate background animations into their own sub-canvas to prevent dirtying the main menu canvas
+            if (GetComponent<Canvas>() == null) gameObject.AddComponent<Canvas>();
             if (planet1 != null) _planet1Origin = planet1.anchoredPosition;
             if (planet2 != null) _planet2Origin = planet2.anchoredPosition;
         }
