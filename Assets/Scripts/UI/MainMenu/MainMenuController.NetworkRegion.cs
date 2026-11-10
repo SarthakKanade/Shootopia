@@ -42,16 +42,20 @@ private void UpdateChipVisuals()
             }
 
             // Server Region Visuals
-            string currentPref = PlayerPrefs.GetString("Shootopia_PreferredRegion", "auto");
-            bool isAuto = string.IsNullOrEmpty(currentPref) || currentPref.Equals("auto", StringComparison.OrdinalIgnoreCase);
+            string currentPref = PlayerPrefs.GetString("Shootopia_PreferredRegion", "in");
+            bool isAuto = !string.IsNullOrEmpty(currentPref) && currentPref.Equals("auto", StringComparison.OrdinalIgnoreCase);
             SetChipActive(chipRegionAuto, isAuto);
             SetChipActive(chipRegionIndia, !isAuto && currentPref.Equals("in", StringComparison.OrdinalIgnoreCase));
             SetChipActive(chipRegionAsia, !isAuto && currentPref.Equals("asia", StringComparison.OrdinalIgnoreCase));
             SetChipActive(chipRegionEurope, !isAuto && currentPref.Equals("eu", StringComparison.OrdinalIgnoreCase));
             SetChipActive(chipRegionUSEast, !isAuto && currentPref.Equals("us", StringComparison.OrdinalIgnoreCase));
 
-            string displayRegion = "AUTO";
-            if (!isAuto)
+            string displayRegion = "INDIA";
+            if (isAuto)
+            {
+                displayRegion = "AUTO";
+            }
+            else
             {
                 if (currentPref.Equals("in", StringComparison.OrdinalIgnoreCase)) displayRegion = "INDIA";
                 else if (currentPref.Equals("asia", StringComparison.OrdinalIgnoreCase)) displayRegion = "ASIA";

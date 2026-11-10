@@ -89,11 +89,17 @@ namespace Shootopia
 
         private void ApplyRelayRegionOptions(SessionOptions options)
         {
-            string preferredRegion = PlayerPrefs.GetString("Shootopia_PreferredRegion", "auto");
+            string preferredRegion = PlayerPrefs.GetString("Shootopia_PreferredRegion", "in");
             if (string.IsNullOrEmpty(preferredRegion) || preferredRegion.Equals("auto", StringComparison.OrdinalIgnoreCase))
             {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                // In WebGL, browsers cannot ping Relay datacenters; default to asia-south1 (Mumbai) to prevent routing to US-East
+                options.WithRelayNetwork("asia-south1");
+                return;
+#else
                 options.WithRelayNetwork();
                 return;
+#endif
             }
 
             string targetRegion = preferredRegion.ToLower() switch
@@ -102,11 +108,10 @@ namespace Shootopia
                 "asia" => "asia-southeast1",
                 "eu" => "europe-central2",
                 "us" => "us-east1",
-                _ => null
+                _ => "asia-south1"
             };
 
-            if (!string.IsNullOrEmpty(targetRegion)) options.WithRelayNetwork(targetRegion);
-            else options.WithRelayNetwork();
+            options.WithRelayNetwork(targetRegion);
         }
 
         public async Task JoinByCode(string joinCode)
