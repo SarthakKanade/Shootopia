@@ -10,7 +10,7 @@ namespace Shootopia
 {
     public partial class MainMenuController
     {
-private void OpenCustomRooms()
+        private void OpenCustomRooms()
         {
             OpenModal(modalCustomRooms, customRoomsGroup);
             SwitchCustomRoomsTab(true); // Default to Create tab or Join tab
@@ -79,7 +79,7 @@ private void OpenCustomRooms()
             int matchDurationSeconds = _createDurationMinutes * 60;
             int scoreLimit = _createScoreLimit;
             bool isPublic = togglePublicRoom == null || togglePublicRoom.isOn;
-            bool isLan = (toggleLanRoom != null && toggleLanRoom.isOn) || roomName.StartsWith("LAN", StringComparison.OrdinalIgnoreCase);
+            bool isLan = toggleLanRoom != null && toggleLanRoom.gameObject.activeInHierarchy && toggleLanRoom.isOn;
 
             CloseTopModal();
             ShowBusy(true, isLan ? "STARTING LOCAL WI-FI ARENA..." : "INITIALIZING ARENA...");
