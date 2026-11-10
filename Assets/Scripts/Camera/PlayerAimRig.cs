@@ -43,6 +43,18 @@ namespace Shootopia
             if (input == null || aimPivot == null) return;
 
             Vector2 look = input.LookDelta;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (!DeviceProfileManager.IsTouchActive)
+            {
+                // WebGL PointerLock reports raw un-damped hardware deltas; scale by 0.38x and clamp spikes
+                look = new Vector2(
+                    Mathf.Clamp(look.x * 0.38f, -35f, 35f),
+                    Mathf.Clamp(look.y * 0.38f, -35f, 35f)
+                );
+            }
+#endif
+
             float mouseSens = (PlayerProfileManager.Instance != null) ? PlayerProfileManager.Instance.MouseSensitivity : 1.0f;
             bool invertY = (PlayerProfileManager.Instance != null && PlayerProfileManager.Instance.InvertY)
                         || (PlayerPrefs.GetInt("Shootopia_InvertY", 0) == 1);

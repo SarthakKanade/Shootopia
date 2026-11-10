@@ -47,6 +47,13 @@ private void EnsureLanRoomToggleInitialized()
                 _publicRoomLabel.alignment = TextAlignmentOptions.MidlineLeft;
             }
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // In WebGL, browsers cannot host raw UDP sockets for local Wi-Fi LAN; keep hidden
+            Transform webglLanRow = container.Find("Row_LanRoom");
+            if (webglLanRow != null) webglLanRow.gameObject.SetActive(false);
+            return;
+#endif
+
             // Find or instantiate Row 2: LAN Room
             GameObject lanRow = null;
             Transform existingLanRow = container.Find("Row_LanRoom");

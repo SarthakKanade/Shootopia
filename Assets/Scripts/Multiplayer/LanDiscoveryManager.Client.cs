@@ -21,6 +21,10 @@ namespace Shootopia
         /// </summary>
         public static async Task<LanSessionInfo> FindRoomByCodeAsync(string roomCode, int timeoutMs = 2500)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            await Task.Yield();
+            return null;
+#else
             string cleanCode = roomCode.Trim().ToUpper();
             if (cleanCode.StartsWith("LAN_")) cleanCode = cleanCode.Substring(4);
 
@@ -86,6 +90,7 @@ namespace Shootopia
             }
 
             return null;
+#endif
         }
 
         private static LanSessionInfo ParsePacket(string packet, string remoteSenderIp)

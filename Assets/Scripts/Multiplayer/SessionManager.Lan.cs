@@ -20,6 +20,9 @@ namespace Shootopia
 
         public async Task StartLanSession(string sessionName, int maxPlayers, string gameMode, string mapName = "Map1", int matchDurationSeconds = 300, int scoreLimit = 10)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            throw new InvalidOperationException("LAN matches are not supported in web browsers. Please create an Online Arena using a Room Code.");
+#endif
             if (_isProcessingSession) return;
             _isProcessingSession = true;
 
@@ -84,6 +87,9 @@ namespace Shootopia
 
         public async Task JoinLanSessionByCode(string joinCode)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            throw new InvalidOperationException("LAN matches are not supported in web browsers. Please connect via Online Room Code.");
+#endif
             if (_isProcessingSession) return;
             _isProcessingSession = true;
 
