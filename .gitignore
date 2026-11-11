@@ -114,3 +114,7 @@ project.lock.json
 # Multiplayer packages local settings
 /ProjectSettings/VirtualProjectsConfig.json
 /ProjectSettings/Packages/com.unity.multiplayer.tools/
+
+# Android build cache
+/.utmp/
+/[Uu]tmp/
