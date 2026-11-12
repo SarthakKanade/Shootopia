@@ -141,13 +141,14 @@ namespace Shootopia
                 _currentSession = null;
             }
 
-            if (NetworkManager.Singleton != null && (NetworkManager.Singleton.IsListening || NetworkManager.Singleton.ShutdownInProgress))
+            if (IsLanSession && NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
             {
-                if (!NetworkManager.Singleton.ShutdownInProgress) NetworkManager.Singleton.Shutdown();
-                while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
-                {
-                    await Task.Yield();
-                }
+                NetworkManager.Singleton.Shutdown();
+            }
+
+            while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
+            {
+                await Task.Yield();
             }
 
             if (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.gameObject.scene.name == "DontDestroyOnLoad")
