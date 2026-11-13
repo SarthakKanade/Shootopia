@@ -80,7 +80,24 @@ namespace Shootopia
 
             foreach (var p in _currentSession.Players)
             {
-                string name = p.Properties?.ContainsKey("DisplayName") == true ? p.Properties["DisplayName"].Value : p.Id;
+                string name;
+                if (p.Properties?.ContainsKey("DisplayName") == true && !string.IsNullOrWhiteSpace(p.Properties["DisplayName"].Value))
+                {
+                    name = p.Properties["DisplayName"].Value;
+                }
+                else if (_currentSession.CurrentPlayer != null && p.Id == _currentSession.CurrentPlayer.Id && PlayerProfileManager.Instance != null && !string.IsNullOrWhiteSpace(PlayerProfileManager.Instance.DisplayName))
+                {
+                    name = PlayerProfileManager.Instance.DisplayName;
+                }
+                else if (PlayerNameRegistry.TryGetNameByPlayerId(p.Id, out string regName) && !string.IsNullOrWhiteSpace(regName))
+                {
+                    name = regName;
+                }
+                else
+                {
+                    name = "Player";
+                }
+
                 bool ready = p.Properties?.ContainsKey("IsReady") == true && p.Properties["IsReady"].Value == "true";
                 int team = 0;
                 if (p.Properties?.ContainsKey("TeamIndex") == true && int.TryParse(p.Properties["TeamIndex"].Value, out int parsed))
@@ -89,6 +106,26 @@ namespace Shootopia
                 list.Add(new PlayerReadyState(p.Id, ready, name, team));
             }
             return list;
+        }
+
+        public async Task<bool> KickPlayerAsync(string playerId)
+        {
+            if (_currentSession == null || !_currentSession.IsHost || string.IsNullOrEmpty(playerId)) return false;
+            try
+            {
+                var hostSession = _currentSession.AsHost();
+                if (hostSession != null)
+                {
+                    await hostSession.RemovePlayerAsync(playerId);
+                    OnSessionUpdated?.Invoke();
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SessionManager] KickPlayerAsync note: {ex.Message}");
+            }
+            return false;
         }
 
         public string GetSessionMapName()

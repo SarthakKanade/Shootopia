@@ -95,10 +95,18 @@ namespace Shootopia
             {
                 try
                 {
-                    string clientName = System.Text.Encoding.UTF8.GetString(request.Payload);
-                    if (!string.IsNullOrWhiteSpace(clientName))
+                    string payloadStr = System.Text.Encoding.UTF8.GetString(request.Payload);
+                    if (!string.IsNullOrWhiteSpace(payloadStr))
                     {
-                        PlayerNameRegistry.Register(request.ClientNetworkId, clientName.Trim());
+                        string clientName = payloadStr;
+                        string ugsId = null;
+                        int pipeIdx = payloadStr.IndexOf('|');
+                        if (pipeIdx > 0)
+                        {
+                            clientName = payloadStr.Substring(0, pipeIdx);
+                            ugsId = payloadStr.Substring(pipeIdx + 1);
+                        }
+                        PlayerNameRegistry.Register(request.ClientNetworkId, clientName.Trim(), ugsId);
                     }
                 }
                 catch (Exception ex)

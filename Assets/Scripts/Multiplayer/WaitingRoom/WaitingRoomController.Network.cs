@@ -17,6 +17,7 @@ namespace Shootopia
                 if (NetworkManager.Singleton.CustomMessagingManager != null)
                 {
                     NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_MatchStarted", OnMatchStartedDirectMessage);
+                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("Shootopia_Kicked", OnKickedDirectMessage);
                 }
             }
         }
@@ -31,6 +32,7 @@ namespace Shootopia
                 if (NetworkManager.Singleton.CustomMessagingManager != null)
                 {
                     NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_MatchStarted");
+                    NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("Shootopia_Kicked");
                 }
             }
         }
@@ -38,6 +40,13 @@ namespace Shootopia
         private void OnClientConnectionChanged(ulong clientId)
         {
             RefreshLobbyUI();
+        }
+
+        private void OnKickedDirectMessage(ulong senderClientId, FastBufferReader reader)
+        {
+            Debug.Log("[WaitingRoomController] Direct Shootopia_Kicked message received from host.");
+            NetworkNotificationUI.ShowToast("You have been kicked from the room by the host.", 4.5f, true);
+            LeaveLobby();
         }
 
         private void OnMatchStartedDirectMessage(ulong senderClientId, FastBufferReader reader)
