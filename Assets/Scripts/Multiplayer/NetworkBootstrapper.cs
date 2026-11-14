@@ -219,8 +219,6 @@ namespace Shootopia
                     try { client.PlayerObject.Despawn(true); } catch { }
                 }
             }
-
-            PlayerNameRegistry.Unregister(clientId);
         }
 
     }

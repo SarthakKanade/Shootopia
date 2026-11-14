@@ -135,21 +135,29 @@ public void SpawnAllConnectedPlayers(bool cleanRespawn = false)
 
         private void AssignPlayerDisplayName(ulong clientId, GameObject playerObject)
         {
-            string displayName = ResolveDisplayName(clientId);
-            if (string.IsNullOrEmpty(displayName))
-            {
-                displayName = PlayerNameRegistry.GetName(clientId);
-            }
-            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {clientId}")
+            string displayName = PlayerNameRegistry.GetName(clientId);
+
+            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {clientId}" || displayName == "Player")
             {
                 if (NetworkManager.Singleton != null && clientId == NetworkManager.Singleton.LocalClientId && PlayerProfileManager.Instance != null)
                 {
                     displayName = PlayerProfileManager.Instance.DisplayName;
                 }
-                else
-                {
-                    displayName = $"Agent_{clientId}";
-                }
+            }
+
+            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {clientId}" || displayName == "Player")
+            {
+                displayName = ResolveDisplayName(clientId);
+            }
+
+            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {clientId}")
+            {
+                displayName = PlayerNameRegistry.GetLastKnownName(clientId);
+            }
+
+            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {clientId}")
+            {
+                displayName = "Player";
             }
 
             var nameDisplay = playerObject.GetComponent<PlayerNameDisplay>();
@@ -168,29 +176,25 @@ public void SpawnAllConnectedPlayers(bool cleanRespawn = false)
             var session = SessionManager.Instance.GetCurrentSession();
             if (session == null || session.Players == null) return null;
 
-            int clientIdx = 0;
-            for (int i = 0; i < NetworkManager.Singleton.ConnectedClientsList.Count; i++)
+            // 1. Try resolving via mapped UGS Player ID
+            if (PlayerNameRegistry.TryGetPlayerIdByClientId(clientId, out string ugsId))
             {
-                if (NetworkManager.Singleton.ConnectedClientsList[i].ClientId == clientId)
+                foreach (var player in session.Players)
                 {
-                    clientIdx = i;
-                    break;
+                    if (player != null && player.Id == ugsId && player.Properties != null && player.Properties.TryGetValue("DisplayName", out var prop))
+                    {
+                        if (!string.IsNullOrWhiteSpace(prop.Value)) return prop.Value;
+                    }
                 }
             }
 
-            int pIdx = 0;
-            foreach (var player in session.Players)
+            // 2. If single client or host match
+            if (NetworkManager.Singleton != null && clientId == NetworkManager.Singleton.LocalClientId)
             {
-                if (player == null) continue;
-                if (pIdx == clientIdx)
+                if (PlayerProfileManager.Instance != null && !string.IsNullOrWhiteSpace(PlayerProfileManager.Instance.DisplayName))
                 {
-                    if (player.Properties != null && player.Properties.TryGetValue("DisplayName", out var prop) && !string.IsNullOrEmpty(prop.Value))
-                    {
-                        return prop.Value;
-                    }
-                    return $"Agent_{clientId}";
+                    return PlayerProfileManager.Instance.DisplayName;
                 }
-                pIdx++;
             }
 
             return null;

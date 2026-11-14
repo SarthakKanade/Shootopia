@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
+using Unity.Collections;
 using Unity.Services.Multiplayer;
 
 namespace Shootopia
@@ -59,7 +60,8 @@ private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
 
                 if (targetParent != null && playerCardPrefab != null)
                 {
-                    CreatePlayerCard(targetParent, p, isPlayerHost, isLocal, isReady, themeColor);
+                    bool canKick = isHost && !isLocal && !isPlayerHost;
+                    CreatePlayerCard(targetParent, p, isPlayerHost, isLocal, isReady, themeColor, canKick);
                 }
             }
 
@@ -90,7 +92,7 @@ private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
             }
         }
 
-        private void CreatePlayerCard(Transform parent, PlayerReadyState player, bool isHost, bool isLocal, bool isReady, Color nameColor)
+        private void CreatePlayerCard(Transform parent, PlayerReadyState player, bool isPlayerHost, bool isLocal, bool isReady, Color nameColor, bool canKick = false)
         {
             var card = Instantiate(playerCardPrefab, parent);
             var rect = card.GetComponent<RectTransform>();
@@ -103,7 +105,7 @@ private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
             var images = card.GetComponentsInChildren<Image>();
 
             string namePrefix = "";
-            if (isHost)
+            if (isPlayerHost)
             {
                 namePrefix = "<color=#FFD555>[HOST] </color>";
             }
@@ -134,19 +136,142 @@ private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
             {
                 if (img.gameObject.name.Contains("Crown") || img.gameObject.name.Contains("HostIcon"))
                 {
-                    img.gameObject.SetActive(isHost);
-                    if (isHost) img.color = ColorGold;
+                    img.gameObject.SetActive(isPlayerHost);
+                    if (isPlayerHost) img.color = ColorGold;
                 }
                 if (img.gameObject.name.Contains("ReadyBadge") || img.gameObject.name.Contains("StatusIndicator"))
                 {
-                    img.gameObject.SetActive(!isHost && isReady);
+                    img.gameObject.SetActive(!isPlayerHost && isReady);
                     img.color = ColorGreen;
+                    if (canKick)
+                    {
+                        var badgeRt = img.GetComponent<RectTransform>();
+                        if (badgeRt != null)
+                        {
+                            badgeRt.anchoredPosition = new Vector2(-76f, 0f);
+                        }
+                    }
                 }
                 if (img.gameObject.name == "CardBorder" || img.gameObject.name == "BorderGlow")
                 {
                     img.color = nameColor;
                 }
             }
+
+            if (canKick)
+            {
+                CreateKickButton(card.transform, player);
+            }
+        }
+
+        private void CreateKickButton(Transform cardTransform, PlayerReadyState player)
+        {
+            var kickObj = new GameObject("BtnKick", typeof(RectTransform), typeof(Image), typeof(Button));
+            kickObj.transform.SetParent(cardTransform, false);
+
+            var rt = kickObj.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(1f, 0.5f);
+            rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-12f, 0f);
+            rt.sizeDelta = new Vector2(58f, 26f);
+
+            var img = kickObj.GetComponent<Image>();
+            img.color = new Color(0.65f, 0.12f, 0.16f, 0.9f);
+
+            var btn = kickObj.GetComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor = new Color(0.65f, 0.12f, 0.16f, 0.9f);
+            colors.highlightedColor = new Color(0.85f, 0.2f, 0.25f, 1f);
+            colors.pressedColor = new Color(0.4f, 0.08f, 0.1f, 1f);
+            btn.colors = colors;
+
+            var textObj = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            textObj.transform.SetParent(kickObj.transform, false);
+            var textRt = textObj.GetComponent<RectTransform>();
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.sizeDelta = Vector2.zero;
+
+            var tmp = textObj.GetComponent<TextMeshProUGUI>();
+            tmp.text = "KICK";
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 11f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = Color.white;
+            tmp.raycastTarget = false;
+
+            string targetPlayerId = player.playerId;
+            string targetDisplayName = player.displayName;
+            btn.onClick.AddListener(() => KickPlayer(targetPlayerId, targetDisplayName));
+        }
+
+        public async void KickPlayer(string playerId, string displayName)
+        {
+            if (SessionManager.Instance == null || !SessionManager.Instance.IsHost) return;
+
+            Debug.Log($"[WaitingRoomController] Host kicking player '{displayName}' (ID: {playerId})...");
+
+            // 1. Resolve NGO clientId
+            ulong targetClientId = ulong.MaxValue;
+            if (PlayerNameRegistry.TryGetClientIdByPlayerId(playerId, out ulong foundId))
+            {
+                targetClientId = foundId;
+            }
+            else if (ulong.TryParse(playerId, out ulong parsedId))
+            {
+                targetClientId = parsedId;
+            }
+            else if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClientsList != null)
+            {
+                foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+                {
+                    if (client.ClientId != NetworkManager.Singleton.LocalClientId)
+                    {
+                        string name = PlayerNameRegistry.GetName(client.ClientId);
+                        if (name == displayName)
+                        {
+                            targetClientId = client.ClientId;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 2. Send kick notification direct message to client if connected to NGO
+            if (targetClientId != ulong.MaxValue && NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                try
+                {
+                    using (var writer = new FastBufferWriter(0, Allocator.Temp))
+                    {
+                        NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage("Shootopia_Kicked", targetClientId, writer);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[WaitingRoomController] Note on SendNamedMessage Kick: {ex.Message}");
+                }
+
+                // Disconnect from NGO
+                try
+                {
+                    NetworkManager.Singleton.DisconnectClient(targetClientId);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[WaitingRoomController] Note on DisconnectClient: {ex.Message}");
+                }
+            }
+
+            // 3. Remove from UGS session if online
+            if (SessionManager.Instance != null)
+            {
+                await SessionManager.Instance.KickPlayerAsync(playerId);
+            }
+
+            NetworkNotificationUI.ShowToast($"{displayName} was kicked from the room.", 3f, false);
+            RefreshLobbyUI();
         }
 
         public async void SwitchTeam(int newTeamIndex)
