@@ -141,8 +141,11 @@ private void PopulateGameOverRoster(bool isTeamMode, PlayerScoreEntry[] scores, 
             var texts = card.GetComponentsInChildren<TextMeshProUGUI>();
             var images = card.GetComponentsInChildren<Image>();
 
-            string displayName = PlayerNameRegistry.GetName(entry.ClientId);
-            if (string.IsNullOrEmpty(displayName)) displayName = $"Player {entry.ClientId}";
+            string displayName = PlayerNameRegistry.GetLastKnownName(entry.ClientId);
+            if (string.IsNullOrEmpty(displayName) || displayName == $"Player {entry.ClientId}")
+            {
+                displayName = isLocal && PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Player";
+            }
             if (isLocal) displayName += " <color=#FFD555>(YOU)</color>";
 
             foreach (var t in texts)

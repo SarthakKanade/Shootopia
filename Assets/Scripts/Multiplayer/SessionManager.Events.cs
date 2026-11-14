@@ -27,8 +27,22 @@ namespace Shootopia
                 _currentSession = null;
             }
 
-            if (IsLanSession && NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-                NetworkManager.Singleton.Shutdown();
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+            {
+                try
+                {
+                    NetworkManager.Singleton.Shutdown();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[SessionManager] NetworkManager shutdown note: {ex.Message}");
+                }
+            }
+
+            while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
+            {
+                await Task.Yield();
+            }
 
             LanDiscoveryManager.StopBroadcasting();
             IsLanSession = false;
