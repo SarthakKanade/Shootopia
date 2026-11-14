@@ -176,14 +176,14 @@ namespace Shootopia
             {
                 try { await SessionManager.Instance.LeaveSession(); } catch { }
             }
+            else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+            {
+                try { NetworkManager.Singleton.Shutdown(); } catch { }
+            }
 
             // Ensure we return to MainMenu even if leave threw an exception or session was null
             if (SceneManager.GetActiveScene().name != "MainMenu")
             {
-                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
-                {
-                    try { NetworkManager.Singleton.Shutdown(); } catch { }
-                }
                 SceneManager.LoadScene("MainMenu");
             }
         }
