@@ -131,6 +131,7 @@ namespace Shootopia
             LanDiscoveryManager.StopBroadcasting();
             CurrentRoomCode = "";
 
+            bool hadOnlineSession = (_currentSession != null);
             if (_currentSession != null)
             {
                 try
@@ -154,22 +155,27 @@ namespace Shootopia
                 _currentSession = null;
             }
 
-            // Ensure NetworkManager is fully stopped before starting any new session (LAN or Online)
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+            // Only manually shut down NetworkManager for LAN sessions or if no UGS session was managing it
+            if (IsLanSession || !hadOnlineSession)
             {
-                try
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
                 {
-                    NetworkManager.Singleton.Shutdown();
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogWarning($"[SessionManager] NetworkManager shutdown note: {ex.Message}");
+                    try
+                    {
+                        NetworkManager.Singleton.Shutdown();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[SessionManager] NetworkManager shutdown note: {ex.Message}");
+                    }
                 }
             }
 
-            while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
+            int waitCount = 0;
+            while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress && waitCount < 30)
             {
-                await Task.Yield();
+                await Task.Delay(50);
+                waitCount++;
             }
 
             IsLanSession = false;
