@@ -117,4 +117,8 @@ project.lock.json
 
 # Build cache
 /.utmp/
-/[Uu]tmp/
+/[Uu]tmp//Shootopia_Android.apk
+/Shootopia_Android.zip
+/Shootopia_Windows.zip
+/Shootopia_macOS.zip
+/Shootopia_webGL.zip
