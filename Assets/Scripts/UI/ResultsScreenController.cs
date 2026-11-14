@@ -162,8 +162,11 @@ namespace Shootopia
                 }
 
                 var texts = rowObj.GetComponentsInChildren<TextMeshProUGUI>();
-                string pName = PlayerNameRegistry.GetName(entry.ClientId);
-                if (string.IsNullOrEmpty(pName)) pName = $"Agent {entry.ClientId}";
+                string pName = PlayerNameRegistry.GetLastKnownName(entry.ClientId);
+                if (string.IsNullOrEmpty(pName) || pName == $"Player {entry.ClientId}" || pName == $"Agent {entry.ClientId}")
+                {
+                    pName = isLocalPlayer && PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Player";
+                }
                 if (isLocalPlayer) pName += " <color=#FFD555>(YOU)</color>";
 
                 int score = entry.Kills * 100 - entry.Deaths * 25;

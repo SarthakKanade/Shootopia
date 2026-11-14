@@ -74,6 +74,12 @@ namespace Shootopia
             var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
             if (transport == null) return;
 
+            // Safe internet MTU (1400 bytes) prevents UDP fragmentation and packet dropping on strict routers/hotspots
+            transport.MaxPayloadSize = 1400;
+            // 4.0s connection timeout gives ample headroom for multi-client Relay DTLS handshakes without false timeouts
+            transport.ConnectTimeoutMS = 4000;
+            transport.HeartbeatTimeoutMS = 1000;
+
 #if UNITY_WEBGL
             if (!transport.UseWebSockets)
             {
@@ -95,10 +101,18 @@ namespace Shootopia
             {
                 try
                 {
-                    string clientName = System.Text.Encoding.UTF8.GetString(request.Payload);
-                    if (!string.IsNullOrWhiteSpace(clientName))
+                    string payloadStr = System.Text.Encoding.UTF8.GetString(request.Payload);
+                    if (!string.IsNullOrWhiteSpace(payloadStr))
                     {
-                        PlayerNameRegistry.Register(request.ClientNetworkId, clientName.Trim());
+                        string clientName = payloadStr;
+                        string ugsId = null;
+                        int pipeIdx = payloadStr.IndexOf('|');
+                        if (pipeIdx > 0)
+                        {
+                            clientName = payloadStr.Substring(0, pipeIdx);
+                            ugsId = payloadStr.Substring(pipeIdx + 1);
+                        }
+                        PlayerNameRegistry.Register(request.ClientNetworkId, clientName.Trim(), ugsId);
                     }
                 }
                 catch (Exception ex)
@@ -115,7 +129,6 @@ namespace Shootopia
         public async Task EnsurePreviousSessionCleanedUpAsync()
         {
             LanDiscoveryManager.StopBroadcasting();
-            IsLanSession = false;
             CurrentRoomCode = "";
 
             if (_currentSession != null)
@@ -141,15 +154,25 @@ namespace Shootopia
                 _currentSession = null;
             }
 
-            if (IsLanSession && NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
+            // Ensure NetworkManager is fully stopped before starting any new session (LAN or Online)
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress)
             {
-                NetworkManager.Singleton.Shutdown();
+                try
+                {
+                    NetworkManager.Singleton.Shutdown();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[SessionManager] NetworkManager shutdown note: {ex.Message}");
+                }
             }
 
             while (NetworkManager.Singleton != null && NetworkManager.Singleton.ShutdownInProgress)
             {
                 await Task.Yield();
             }
+
+            IsLanSession = false;
 
             if (NetworkedGameManager.Instance != null && NetworkedGameManager.Instance.gameObject.scene.name == "DontDestroyOnLoad")
             {
