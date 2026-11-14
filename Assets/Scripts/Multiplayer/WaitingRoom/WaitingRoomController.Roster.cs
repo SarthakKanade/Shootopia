@@ -148,7 +148,7 @@ private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
                         var badgeRt = img.GetComponent<RectTransform>();
                         if (badgeRt != null)
                         {
-                            badgeRt.anchoredPosition = new Vector2(-76f, 0f);
+                            badgeRt.anchoredPosition = new Vector2(-114f, 0f);
                         }
                     }
                 }
@@ -173,7 +173,7 @@ private void PopulateRoster(ISession session, bool isHost, bool isTeamMode)
             rt.anchorMin = new Vector2(1f, 0.5f);
             rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot = new Vector2(1f, 0.5f);
-            rt.anchoredPosition = new Vector2(-12f, 0f);
+            rt.anchoredPosition = new Vector2(-48f, 0f);
             rt.sizeDelta = new Vector2(58f, 26f);
 
             var img = kickObj.GetComponent<Image>();
