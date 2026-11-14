@@ -18,7 +18,10 @@
 
 <p align="center">
   <a href="https://mastersk.itch.io/shootopia">
-    <img src="https://img.shields.io/badge/Play%20Online%20%2F%20Download-itch.io-FA5C5C?style=for-the-badge&logo=itchdotio&logoColor=white" alt="Play on itch.io" />
+    <img src="https://img.shields.io/badge/Play%20Online-itch.io-FA5C5C?style=for-the-badge&logo=itchdotio&logoColor=white" alt="Play on itch.io" />
+  </a>
+  <a href="https://github.com/SarthakKanade/Shootopia/releases/latest">
+    <img src="https://img.shields.io/badge/Download%20Builds-GitHub%20Releases-2ea44f?style=for-the-badge&logo=github&logoColor=white" alt="Download on GitHub Releases" />
   </a>
 </p>
 
