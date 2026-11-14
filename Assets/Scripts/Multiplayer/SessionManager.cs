@@ -54,7 +54,35 @@ namespace Shootopia
                 return;
             }
             _instance = this;
+            EnsureLogFilterSetup();
             EnsureConnectionApprovalSetup();
+        }
+
+        private static bool _logFilterInstalled = false;
+        private static void EnsureLogFilterSetup()
+        {
+            if (_logFilterInstalled) return;
+            _logFilterInstalled = true;
+            var defaultHandler = Debug.unityLogger.logHandler;
+            Debug.unityLogger.logHandler = new UgsWarningFilterHandler(defaultHandler);
+        }
+
+        private class UgsWarningFilterHandler : ILogHandler
+        {
+            private readonly ILogHandler _inner;
+            public UgsWarningFilterHandler(ILogHandler inner) => _inner = inner;
+
+            public void LogFormat(LogType logType, UnityEngine.Object context, string format, params object[] args)
+            {
+                if (logType == LogType.Warning && args != null && args.Length > 0 && args[0] is string msg && msg.Contains("Failed to stop session")) return;
+                _inner.LogFormat(logType, context, format, args);
+            }
+
+            public void LogException(Exception exception, UnityEngine.Object context)
+            {
+                if (exception is NullReferenceException && exception.StackTrace != null && exception.StackTrace.Contains("NetworkManagerSession.OnStopCompleted")) return;
+                _inner.LogException(exception, context);
+            }
         }
 
         private void Start() => EnsureConnectionApprovalSetup();
