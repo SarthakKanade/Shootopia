@@ -1,152 +1,198 @@
-# Shootopia
+<p align="center">
+  <img src="Assets/Art/icon/icon.PNG" alt="Shootopia Logo" width="180" style="border-radius: 20%;" />
+</p>
 
-<div align="center">
+<h1 align="center">Shootopia</h1>
 
-![Unity](https://img.shields.io/badge/Unity-6.0+-black?style=for-the-badge&logo=unity)
-![Render Pipeline](https://img.shields.io/badge/Render%20Pipeline-URP-blue?style=for-the-badge)
-![Networking](https://img.shields.io/badge/Networking-Netcode%20for%20GameObjects-green?style=for-the-badge)
-![UI](https://img.shields.io/badge/UI-UI%20Toolkit-purple?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Platform-PC%20%2F%20Mac-lightgrey?style=for-the-badge)
+<p align="center">
+  <strong>A fast-paced, chaotic 3D multiplayer third-person arena shooter built for pure fun and unforgettable game nights.</strong>
+</p>
 
-**A fast-paced, stylized 3D multiplayer chibi arcade shooter built in Unity 6 using Netcode for GameObjects, Universal Render Pipeline (URP), and UI Toolkit.**
+<p align="center">
+  <img src="https://img.shields.io/badge/Unity-6000.3.9f1%20(Unity%206)-blue?logo=unity" alt="Unity 6" />
+  <img src="https://img.shields.io/badge/Render%20Pipeline-URP-orange" alt="URP" />
+  <img src="https://img.shields.io/badge/Multiplayer-Netcode%20for%20GameObjects-green" alt="NGO" />
+  <img src="https://img.shields.io/badge/Networking-UGS%20Relay%20%2B%20LAN-blueviolet" alt="Networking" />
+  <img src="https://img.shields.io/badge/Platforms-WebGL%20%7C%20Windows%20%7C%20macOS%20%7C%20Android-red" alt="Platforms" />
+</p>
 
-</div>
-
----
-
-## 🎮 Overview
-
-**Shootopia** is an action-packed, third-person chibi arena shooter engineered with server-authoritative multiplayer Netcode, elemental combat mechanics, physical projectile simulations, and custom UI Toolkit interfaces. 
-
-Featuring responsive locomotion mechanics (dash, roll, slide, jump), a tactical arsenal ranging from cryo/flame guns to parabolic throwables, dynamic tiered loot crates with holographic previews, and lethal environmental hazards, Shootopia delivers an arcade combat experience.
-
----
-
-## ✨ Key Features
-
-### 🌐 Server-Authoritative Multiplayer
-- **Netcode for GameObjects (NGO) & UGS**: Integrated with Unity Gaming Services for lobby management, session discovery, and low-latency network synchronization.
-- **Game Modes**:
-  - **Free-For-All (FFA)**: Real-time dynamic leaderboard ranking and kill-count tracker.
-  - **Team Deathmatch (TDM)**: Team-specific spawn points, team scoreboards (Blue vs Red), friendly fire prevention, and team-colored nameplates.
-- **Session Resilience**: Graceful host migration/disconnect handling (`DisconnectHandler`), live error toasts (`NetworkNotificationUI`), and automated room player readiness checks.
-
-### 🏃 Locomotion & Character Controller
-- **State Machine Architecture (FSM)**: Dedicated states for Grounded, Airborne, Locomotion, Jump Start, Jump Air, Jump Land, Dash, and Roll.
-- **Combat Movement**: Smooth sprinting, tactical rolling, and directional sliding.
-- **Animation Rigging & Hand IK**: Real-time two-bone IK alignment for single-handed, two-handed, melee, and throwable weapon grips with automatic ragdoll IK release on death.
-
-### 🔫 Dynamic Arsenal & Elemental Status Effects
-- **Cryo Freeze Gun**: Direct hits completely freeze player movement and animators for 5 seconds; splash damage applies distance-scaled movement slowing with cyan frost shader effects.
-- **Flame Gun**: Fires rapid incendiary streams that ignite targets with Afterburn damage-over-time (DoT), orange emissive shader glow, and flame particle FX.
-- **Void Blaster**: Emits cosmic gravity orbs that pull targets inward before detonating in a high-damage implosion.
-- **TrickShot Gun**: Fires high-velocity bouncing projectiles with real-time in-game ricochet reflection trajectory line previews.
-- **Assault Rifle, Pistol, & Sniper Rifle**: Server-validated hitscan and ballistic projectile trajectories with customized weapon recoil, spread, and audio pitch modulation.
-- **Charging Mechanics**: Visual energy buildup sphere tinted to weapon elements with audio pitch-bending modulation (0.8x to 1.6x).
-
-### 💣 Tactical Throwables & Traps
-- **Parabolic Trajectory Predictor**: Visual LineRenderer trajectory arc projection with surface-aligned dynamic landing markers while aiming throwables.
-- **Grenades & Smoke Canisters**: Physics-driven parabolic tosses for area-denial smoke cover and explosive fragmentation.
-- **Trip Mines**: Proximity-triggered laser mines with team-owner discrimination and disarm mechanics.
-
-### 🛡️ Personal Energy Shield & Melee Combat
-- **Rechargeable Forcefield**: Networked energy shield (`PlayerShield`) with visual forcefield sphere mesh, intercepting incoming projectiles before health depletion.
-- **Melee System**: Sci-Fi neon knife slashing attacks with animation-synchronized delayed hit registration.
-- **Deployables**: In-world consumable Health Boxes and portable Shield generators.
-
-### 📦 Dynamic Loot Box System
-- **Tiered Chests**: Defense (Chest 1), Traps (Chest 2), and Weapons (Chest 3).
-- **Holographic Previews**: Rotating 3D item holograms floating above unopened crates.
-- **Lifecycle Management**: Server-authoritative weighted loot distribution and automated respawn timers.
-
-### 🌋 Dynamic Maps & Environmental Hazards
-- **Map 1 (Inferno Arena)**: Volcanic battleground featuring modular rock formations, custom lava shader graphs, and lethal `LavaZone` environmental heat hazards.
-- **Waiting Room / Lobby**: Interactive pre-match lobby allowing players to move, inspect loadouts, and ready up before match deployment.
-
-### 🎨 Modern UI & Sound Architecture
-- **UI Toolkit + USS**: Complete UI system (`ShootopiaTheme.uss`) featuring Main Menu tabs (Play, Lobby Browser, Settings, Loadout, Shop), 3D interactive avatar preview stage, animated loading transitions, and an in-game pause menu.
-- **Live Scoreboard & Killfeed**: Hold `[Tab]` for real-time FFA/TDM leaderboard statistics and killfeed system messages.
-- **Spatial Audio Engine (`AudioManager`)**: Centralized sound management with 2D/3D spatial audio pooling, pitch variation, footstep surface cues, weapon sounds, and UI feedback.
+<p align="center">
+  <a href="https://mastersk.itch.io/shootopia">
+    <img src="https://img.shields.io/badge/Play%20Online%20%2F%20Download-itch.io-FA5C5C?style=for-the-badge&logo=itchdotio&logoColor=white" alt="Play on itch.io" />
+  </a>
+</p>
 
 ---
 
-## 🕹️ Controls
+## 🚀 Welcome to Shootopia!
 
-| Action | Primary Key / Input |
-| :--- | :--- |
-| **Move** | `W` / `A` / `S` / `D` |
-| **Look / Aim** | `Mouse` |
-| **Fire / Throw (Release)** | `Left Mouse Button` |
-| **Aim Down Sights (ADS) / Aim Trap** | `Right Mouse Button` (Hold) |
-| **Jump** | `Space` |
-| **Dash / Slide** | `Left Shift` |
-| **Melee Attack (Knife)** | `V` / `F` |
-| **Interact / Open Chest** | `E` |
-| **In-Game Scoreboard** | `Tab` (Hold) |
-| **Pause / Game Menu** | `Escape` |
+Welcome to **Shootopia**! A free, fast-paced 3D multiplayer third-person shooter made for pure fun and chaotic game nights with friends. It runs right in your web browser—no downloads required—so you and your friends can jump into a match on desktop, laptop, or mobile instantly.
+
+This is a genuine passion project built entirely using free community assets. It's Day 1 of our launch, so we're keeping things simple, accessible, and fun!
 
 ---
 
-## 🛠️ Project Structure
+## 🎬 Gameplay Showcase
 
-```
-Assets/
-├── _Shootopia/                # Core modular assets (animators, data, scripts)
-├── Animations/                # Locomotion, combat, throwing & melee animation clips
-├── Animators/                 # Shootopia locomotion & upper body mask controllers
-├── Audio/                     # Sound effects (SFX) for Player, UI, and Weapons
-├── Data/Weapons/              # ScriptableObject weapon data & attachment configs
-├── Prefabs/
-│   ├── Guns/                  # Weapon prefabs & visual attachments
-│   ├── LootBoxes/             # Multi-tiered loot crate prefabs
-│   ├── Player/                # Networked player character prefab & rigs
-│   └── Weapons/Traps/         # Grenades, smoke clouds, and trip mines
-├── Scenes/
-│   ├── Bootstrap.unity        # Network initialization scene
-│   ├── MainMenu.unity         # Main Menu UI & Avatar showcase stage
-│   ├── WaitingRoom.unity      # Multiplayer lobby waiting room
-│   └── Map1.unity             # Inferno arena gameplay scene
-├── Scripts/
-│   ├── Character/             # Motor, FSM states, PlayerHealth, PlayerShield
-│   ├── Core/                  # AudioManager, CursorManager, PlayerProfileManager
-│   ├── Environment/           # LavaZone hazard controllers
-│   ├── Input/                 # Input Intent & Router mapping
-│   ├── Multiplayer/           # GameModeBase, FFAMode, TDMMode, SessionManager
-│   ├── UI/                    # MainMenuController, HUDController, ScoreboardController
-│   └── Weapons/               # WeaponController, LootBoxController, Traps, Projectiles
-└── UI/
-    ├── Screens/               # UXML layouts (MainMenu, PauseMenu, LoadingOverlay, HUD)
-    └── Theme/                 # ShootopiaTheme.uss & panel settings
-```
+<p align="center">
+  <video src="Screenshots/Gameplay_GasStation.mp4" width="100%" controls autoplay loop muted></video>
+</p>
+
+<p align="center">
+  🎥 <strong>Gameplay Video Clips:</strong> 
+  <a href="Screenshots/Gameplay_GasStation.mp4"><strong>Gas Station Shootout (MP4)</strong></a> • 
+  <a href="Screenshots/Gameplay_InfernoArena.mp4"><strong>Inferno Arena Battle (MP4)</strong></a>
+</p>
 
 ---
 
-## 🚀 Getting Started
+## 📸 In-Game Screenshots
 
-### Prerequisites
-- **Unity Version**: Unity `6000.0.x` (Unity 6) or higher.
-- **Render Pipeline**: Universal Render Pipeline (URP).
-- **Unity Packages**:
-  - `com.unity.netcode.gameobjects` (Netcode for GameObjects)
-  - `com.unity.services.multiplayer` / `com.unity.services.core` (UGS)
-  - `com.unity.modules.ui` / `UI Toolkit`
-  - `com.unity.animation.rigging` (Animation Rigging)
-  - `com.unity.inputsystem` (New Input System)
-
-### Setup & Play
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/SarthakKanade/Shootopia.git
-   ```
-2. Open the project in **Unity Hub** using **Unity 6**.
-3. Open `Assets/Scenes/Bootstrap.unity` or `Assets/Scenes/MainMenu.unity`.
-4. Press **Play** in the Unity Editor:
-   - Click **Host** to create a lobby or **Join** to connect via Unity Gaming Services.
-   - Select game mode (**FFA** or **TDM**) and jump into combat!
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="Screenshots/GasStation_Combat.png" alt="Team Deathmatch Action" style="width:100%; border-radius: 8px;" />
+      <br />
+      <strong>⚔️ Team Deathmatch at The Gas Station</strong>
+    </td>
+    <td width="50%" align="center">
+      <img src="Screenshots/InfernoArena_VoidExplosion.png" alt="Void Blaster in Inferno Arena" style="width:100%; border-radius: 8px;" />
+      <br />
+      <strong>🌌 Void Blaster Gravitational Singularity</strong>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="Screenshots/Matchmaking_Lobby.png" alt="Lobby and Room Customization" style="width:100%; border-radius: 8px;" />
+      <br />
+      <strong>👥 10-Player Lobby & Team Matchmaking</strong>
+    </td>
+    <td width="50%" align="center">
+      <img src="Screenshots/GasStation_Action.png" alt="Combat & Particle Effects" style="width:100%; border-radius: 8px;" />
+      <br />
+      <strong>💥 Chaotic Firefights & Particle FX</strong>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## 📄 License
+## 📥 Play Online or Download
 
-This project is developed and maintained by **[Sarthak Kanade](https://github.com/SarthakKanade)**.
-All rights reserved.
+You can jump straight into the game via WebGL in your browser or grab the dedicated native downloads here:
+
+🎮 **[Play WebGL or Download on itch.io (https://mastersk.itch.io/shootopia)](https://mastersk.itch.io/shootopia)**
+
+While you can play directly in your browser, we strongly recommend downloading the dedicated executable version for the best experience. Shootopia is available for **Android**, **Windows**, and **macOS**.
+
+> [!TIP]
+> **Why native builds?** The downloadable builds offer superior performance, rock-solid frame rates, and more reliable network synchronization. The WebGL browser version is super convenient for jumping into a quick match with friends on the fly, but may experience additional delays or synchronization issues on slower or unstable internet connections.
+
+---
+
+## 🎮 How to Play
+
+The gameplay is simple: spawn into the arena, sprint to the nearest loot boxes scattered across the map, grab whatever weapon pops out, and start blasting!
+
+* **Free-For-All (FFA)**: Total chaos. Every player for themselves—rack up kills, survive the frenzy, and climb to the top of the leaderboard.
+* **Team Deathmatch (TDM)**: Red vs. Blue. Team up, watch each other's backs, coordinate pushes, and hit the team score target together.
+* **Custom Match Settings**: Hosting a match? You have full control to customize the kill goal, match duration, and player count (supporting up to **10 players per room**).
+
+---
+
+## 🗺️ Current Maps
+
+Battle it out across two handcrafted battlegrounds, each demanding different tactics:
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="Assets/Textures/Maps/Map_SectorAlpha.png" alt="Inferno Arena" style="width:100%; border-radius: 8px;" />
+      <br />
+      <strong>🔥 Inferno Arena (Sector Alpha)</strong>
+    </td>
+    <td width="50%" align="center">
+      <img src="Assets/Textures/Maps/Map_GasStation.png" alt="The Gas Station" style="width:100%; border-radius: 8px;" />
+      <br />
+      <strong>⛽ The Gas Station</strong>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      A sci-fi dungeon fortress suspended directly over bubbling lava. Features jump pads and vertical combat platforms—watch your step, because falling into the lava is an instant fiery knockout!
+    </td>
+    <td valign="top">
+      An abandoned, dusty outpost in the middle of nowhere surrounded by a containment zone. Perfect for rooftop snipers, close-quarters flanking around fuel pumps, and sudden ambushes.
+    </td>
+  </tr>
+</table>
+
+---
+
+## 🔫 The Arsenal
+
+Loot chests drop all kinds of fun weapons and tactical toys. A few favorites to look out for:
+
+* ❄️ **Freeze Gun**: Turn your friends into solid blocks of ice and stop them dead in their tracks.
+* 🔥 **Flame Gun**: Spray continuous fire to light up opponents with lingering burn damage.
+* 🌌 **Void Blaster**: Shoots gravity orbs that pull nearby players inward before blowing up.
+* ⚡ **TrickShot Gun**: Bounces high-speed plasma shots off walls and ceilings for ridiculous trick shots.
+* 🎯 **Sniper Rifle, Grenades, Shields & More**: Long-range scopes, bounce grenades, deployable force fields, and smoke cover.
+
+---
+
+## 🛠️ Tech Stack & Under the Hood
+
+Shootopia was built as an ambitious, modern multiplayer project engineered to provide low-friction cross-platform access across the web and native hardware.
+
+### ⚙️ Core Engine & Rendering
+* **Unity 6 (`6000.3.9f1`)**: Leveraging the latest Unity 6 engine features for optimized runtime performance and multi-platform compilation.
+* **Universal Render Pipeline (URP 17.3.0)**: Delivers clean visual styling, balanced lighting, and lightweight post-processing calibrated to run smoothly across browser WebGL, mobile chips, and high-refresh desktop monitors.
+* **Visual Effect Graph (VFX Graph) & Custom Shaders**: Custom Shader Graph materials and GPU-accelerated particle effects driving projectile trails, weapon muzzle blasts, cryogenic freezing overlays, and fire particles.
+* **Cinemachine (3.1.7)**: Dynamic third-person camera management featuring responsive orbital follow, smooth shoulder switching, and precision zoom for Aim-Down-Sights (ADS).
+
+### 🌐 Multiplayer Architecture & Networking
+* **Unity Netcode for GameObjects (NGO 2.13.0)**: Powers the authoritative networked game state, player synchronization, weapon handling, and match lifecycle.
+* **Unity Transport (UTP) with Unity Gaming Services (UGS) Relay & Lobby**:
+  * Frictionless cloud matchmaking: Players can host and join rooms via simple lobby codes or matchmaking without needing complex port-forwarding or static IPs.
+  * UGS Relay relays UDP packets securely between peers across varying NAT types.
+* **Local LAN Discovery (`LanDiscoveryManager`)**:
+  * An integrated UDP broadcasting system that allows devices on the same local network (Wi-Fi/LAN) to automatically discover and join active sessions without internet access.
+* **Lag Compensation & Client Prediction**:
+  * Client-side prediction (`ClientNetworkTransform`) provides immediate local movement and responsive aim.
+  * Server-validated hit registration and lag compensation buffers keep high-speed projectile exchanges fair and snappy, even on varying network conditions.
+
+### 🖥️ User Interface & Input Systems
+* **Unity UI Toolkit (UXML & USS)**:
+  * Hardware-accelerated, flexible UI system powering the Main Menu, Custom Match settings, Waiting Room/Lobby, and HUD.
+  * Fully scalable styling that automatically adapts between desktop displays and mobile touch screens.
+* **Unity New Input System (1.18.0)**:
+  * Unified input handling supporting Keyboard & Mouse, Gamepads/Controllers, and Touch screen controls with integrated mobile haptics (`MobileHapticsManager`).
+
+### ⚡ Optimization & Memory Management
+* **Global Object Pooling (`GlobalPoolManager`)**:
+  * Pre-allocates and recycles projectiles, explosions, impact sparks, and audio sources.
+  * Eliminates runtime garbage collection (GC) spikes during heavy firefights, ensuring consistent 60+ FPS on mobile and WebGL.
+* **Adaptive Device Profiling (`DeviceProfileManager`)**:
+  * Dynamically tunes graphic fidelity, target frame rates, and touch control layouts based on whether the game is running on a high-end desktop, mobile device, or inside a browser canvas.
+
+---
+
+## 💬 Day 1 Launch & Future Plans
+
+We haven't done anything crazy yet—this is just the beginning! We built this game out of love for classic arcade party shooters and fun gaming sessions with friends.
+
+We already have plans for:
+- 🗺️ **New Maps** with unique environmental hazards
+- 🕹️ **Fresh Game Modes**
+- 💥 **More Weapons & Tactical Pickups**
+- 🎨 **Extra Character Styles & Customizations**
+
+Since this is our very first release, we would absolutely love to hear your feedback, reviews, and bug reports. Drop a comment with what you loved, what felt clunky, and what features you'd like to see next!
+
+---
+
+<p align="center">
+  <strong>Grab a friend, share the link, and have fun in Shootopia!</strong><br /><br />
+  👉 <a href="https://mastersk.itch.io/shootopia"><strong>Play WebGL or Download on itch.io</strong></a>
+</p>
