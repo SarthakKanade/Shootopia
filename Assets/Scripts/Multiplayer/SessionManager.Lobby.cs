@@ -32,12 +32,26 @@ namespace Shootopia
                 EnsureConnectionApprovalSetup();
                 ConfigureTransportForPlatform();
 
+                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                string ugsPlayerId = Unity.Services.Authentication.AuthenticationService.Instance.IsSignedIn ? Unity.Services.Authentication.AuthenticationService.Instance.PlayerId : null;
+                string connPayload = !string.IsNullOrEmpty(ugsPlayerId) ? $"{myName}|{ugsPlayerId}" : myName;
+
+                if (NetworkManager.Singleton != null)
+                {
+                    NetworkManager.Singleton.NetworkConfig.ConnectionData = System.Text.Encoding.UTF8.GetBytes(connPayload);
+                }
+
                 var options = new SessionOptions
                 {
                     Name = sessionName,
                     MaxPlayers = maxPlayers,
                     IsPrivate = !isPublic,
-                    Type = "default-session"
+                    Type = "default-session",
+                    PlayerProperties = new Dictionary<string, PlayerProperty>
+                    {
+                        { "DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public) },
+                        { "IsReady", new PlayerProperty("true", VisibilityPropertyOptions.Public) }
+                    }
                 };
 
                 options.SessionProperties = new Dictionary<string, SessionProperty>
@@ -54,7 +68,9 @@ namespace Shootopia
                 _currentSession = await MultiplayerService.Instance.CreateSessionAsync(options);
                 SubscribeToSessionEvents(_currentSession);
 
-                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                ulong hostLocalId = NetworkManager.Singleton != null ? NetworkManager.Singleton.LocalClientId : 0;
+                PlayerNameRegistry.Register(hostLocalId, myName, ugsPlayerId);
+
                 if (_currentSession.CurrentPlayer != null)
                 {
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
@@ -126,10 +142,28 @@ namespace Shootopia
                 EnsureConnectionApprovalSetup();
                 ConfigureTransportForPlatform();
 
-                _currentSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode);
+                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                string ugsPlayerId = Unity.Services.Authentication.AuthenticationService.Instance.IsSignedIn ? Unity.Services.Authentication.AuthenticationService.Instance.PlayerId : null;
+                string connPayload = !string.IsNullOrEmpty(ugsPlayerId) ? $"{myName}|{ugsPlayerId}" : myName;
+
+                if (NetworkManager.Singleton != null)
+                {
+                    NetworkManager.Singleton.NetworkConfig.ConnectionData = System.Text.Encoding.UTF8.GetBytes(connPayload);
+                }
+
+                var joinOptions = new JoinSessionOptions
+                {
+                    Type = "default-session",
+                    PlayerProperties = new Dictionary<string, PlayerProperty>
+                    {
+                        { "DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public) },
+                        { "IsReady", new PlayerProperty("false", VisibilityPropertyOptions.Public) }
+                    }
+                };
+
+                _currentSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode, joinOptions);
                 SubscribeToSessionEvents(_currentSession);
 
-                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
                 if (_currentSession.CurrentPlayer != null)
                 {
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));
@@ -164,10 +198,28 @@ namespace Shootopia
                 EnsureConnectionApprovalSetup();
                 ConfigureTransportForPlatform();
 
-                _currentSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId);
+                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
+                string ugsPlayerId = Unity.Services.Authentication.AuthenticationService.Instance.IsSignedIn ? Unity.Services.Authentication.AuthenticationService.Instance.PlayerId : null;
+                string connPayload = !string.IsNullOrEmpty(ugsPlayerId) ? $"{myName}|{ugsPlayerId}" : myName;
+
+                if (NetworkManager.Singleton != null)
+                {
+                    NetworkManager.Singleton.NetworkConfig.ConnectionData = System.Text.Encoding.UTF8.GetBytes(connPayload);
+                }
+
+                var joinOptions = new JoinSessionOptions
+                {
+                    Type = "default-session",
+                    PlayerProperties = new Dictionary<string, PlayerProperty>
+                    {
+                        { "DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public) },
+                        { "IsReady", new PlayerProperty("false", VisibilityPropertyOptions.Public) }
+                    }
+                };
+
+                _currentSession = await MultiplayerService.Instance.JoinSessionByIdAsync(sessionId, joinOptions);
                 SubscribeToSessionEvents(_currentSession);
 
-                string myName = PlayerProfileManager.Instance != null ? PlayerProfileManager.Instance.DisplayName : "Agent";
                 if (_currentSession.CurrentPlayer != null)
                 {
                     _currentSession.CurrentPlayer.SetProperty("DisplayName", new PlayerProperty(myName, VisibilityPropertyOptions.Public));

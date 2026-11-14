@@ -22,7 +22,7 @@ namespace Shootopia
             {
                 try
                 {
-                    return IsInitialized && AuthenticationService.Instance != null && AuthenticationService.Instance.IsSignedIn;
+                    return IsInitialized && AuthenticationService.Instance != null && AuthenticationService.Instance.IsSignedIn && !AuthenticationService.Instance.IsExpired;
                 }
                 catch
                 {
@@ -36,6 +36,7 @@ namespace Shootopia
         public UnityEvent<string> OnAuthError;
 
         private static Task<bool> _initTask;
+        private static bool _hasSubscribedToEvents = false;
 
         private void Awake()
         {
@@ -99,11 +100,29 @@ namespace Shootopia
                         }
                     }
 
-                    if (AuthenticationService.Instance != null && !AuthenticationService.Instance.IsSignedIn)
+                    if (AuthenticationService.Instance != null)
                     {
-                        Debug.Log($"[MultiplayerAutoInitializer] Signing in anonymously (Attempt {attempt}/{maxRetries})...");
-                        await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                        Debug.Log($"[MultiplayerAutoInitializer] Signed in successfully. Player ID: {AuthenticationService.Instance.PlayerId}");
+                        if (!_hasSubscribedToEvents)
+                        {
+                            _hasSubscribedToEvents = true;
+                            AuthenticationService.Instance.Expired += OnSessionExpired;
+                        }
+
+                        if (!AuthenticationService.Instance.IsSignedIn || AuthenticationService.Instance.IsExpired)
+                        {
+                            Debug.Log($"[MultiplayerAutoInitializer] Signing in anonymously (Attempt {attempt}/{maxRetries})...");
+                            try
+                            {
+                                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                            }
+                            catch (Exception)
+                            {
+                                Debug.LogWarning("[MultiplayerAutoInitializer] Anonymous sign-in failed with existing token. Clearing token and retrying...");
+                                AuthenticationService.Instance.ClearSessionToken();
+                                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                            }
+                            Debug.Log($"[MultiplayerAutoInitializer] Signed in successfully. Player ID: {AuthenticationService.Instance.PlayerId}");
+                        }
                     }
 
                     Instance?.OnAuthSuccess?.Invoke();
@@ -126,6 +145,30 @@ namespace Shootopia
             }
 
             return false;
+        }
+
+        private static async void OnSessionExpired()
+        {
+            Debug.LogWarning("[MultiplayerAutoInitializer] Authentication session expired. Refreshing token...");
+            try
+            {
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                Debug.Log("[MultiplayerAutoInitializer] Re-authenticated successfully after expiry.");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[MultiplayerAutoInitializer] Re-auth with existing token failed ({ex.Message}). Clearing token and re-authenticating...");
+                try
+                {
+                    AuthenticationService.Instance.ClearSessionToken();
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                    Debug.Log("[MultiplayerAutoInitializer] Fresh anonymous sign-in succeeded after expiry.");
+                }
+                catch (Exception innerEx)
+                {
+                    Debug.LogError($"[MultiplayerAutoInitializer] Failed to recover expired session: {innerEx.Message}");
+                }
+            }
         }
     }
 }

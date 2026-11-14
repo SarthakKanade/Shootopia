@@ -82,10 +82,10 @@ namespace Shootopia
         private void HandleRemoteClientDisconnected(ulong clientId)
         {
             // 1. Resolve display name before unregistering
-            string playerName = PlayerNameRegistry.GetName(clientId);
-            if (string.IsNullOrEmpty(playerName) || playerName == "Player " + clientId)
+            string playerName = PlayerNameRegistry.GetLastKnownName(clientId);
+            if (string.IsNullOrEmpty(playerName) || playerName == "Player " + clientId || playerName == $"Player {clientId}")
             {
-                playerName = $"Player {clientId}";
+                playerName = "A player";
             }
 
             // 2. Log system message to kill feed
